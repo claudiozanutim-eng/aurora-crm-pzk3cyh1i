@@ -1,20 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getClienteById, Cliente } from '@/services/clientes'
 import { useRealtime } from '@/hooks/use-realtime'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
-import { ClientDataForm } from '@/components/details/ClientDataForm'
+import { ClientDataForm, ClientDataFormRef } from '@/components/details/ClientDataForm'
 import { ContactsList } from '@/components/details/ContactsList'
 import { InteractionsTimeline } from '@/components/details/InteractionsTimeline'
 import { TasksList } from '@/components/details/TasksList'
 import { TagBadge } from '@/components/ui/tag-badge'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export default function ClienteDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [cliente, setCliente] = useState<Cliente | null>(null)
+  const formRef = useRef<ClientDataFormRef>(null)
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
 
   const load = async () => {
     if (!id) return
@@ -38,10 +50,33 @@ export default function ClienteDetail() {
       </div>
     )
 
+  const handleBack = () => {
+    if (formRef.current?.isDirty) {
+      setShowUnsavedDialog(true)
+    } else {
+      navigate(-1)
+    }
+  }
+
+  const handleSaveAndExit = async () => {
+    if (formRef.current) {
+      const success = await formRef.current.saveChanges()
+      if (success) {
+        setShowUnsavedDialog(false)
+        navigate(-1)
+      }
+    }
+  }
+
+  const handleExitWithoutSaving = () => {
+    setShowUnsavedDialog(false)
+    navigate(-1)
+  }
+
   return (
     <div className="h-full flex flex-col space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
+        <Button variant="ghost" size="icon" onClick={handleBack} className="shrink-0">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </Button>
         <div>
@@ -91,7 +126,7 @@ export default function ClienteDetail() {
           </TabsList>
 
           <TabsContent value="dados" className="focus-visible:outline-none">
-            <ClientDataForm cliente={cliente} />
+            <ClientDataForm ref={formRef} cliente={cliente} />
           </TabsContent>
           <TabsContent value="contatos" className="focus-visible:outline-none">
             <ContactsList clienteId={cliente.id} />
@@ -104,6 +139,24 @@ export default function ClienteDetail() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Salvar alterações?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você possui alterações não salvas. Deseja salvar antes de sair?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button variant="destructive" onClick={handleExitWithoutSaving}>
+              Não salvar
+            </Button>
+            <AlertDialogAction onClick={handleSaveAndExit}>Sim, salvar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
