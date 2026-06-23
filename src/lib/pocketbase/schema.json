@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T20:56:52.504Z",
+  "generatedAt": "2026-06-23T21:07:43.847Z",
   "collections": [
     {
       "name": "users",
@@ -230,7 +230,7 @@
         {
           "name": "valor_estimado",
           "type": "number",
-          "required": true,
+          "required": false,
           "system": false
         },
         {

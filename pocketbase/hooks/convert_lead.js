@@ -58,7 +58,15 @@ routerAdd(
         negocio.set('vendedor_id', lead.getString('vendedor_id'))
         negocio.set('status', 'Qualificação')
         negocio.set('prioridade', lead.getString('prioridade'))
-        negocio.set('valor_estimado', 0)
+
+        if (
+          body.valor_estimado !== undefined &&
+          body.valor_estimado !== null &&
+          body.valor_estimado !== ''
+        ) {
+          negocio.set('valor_estimado', Number(body.valor_estimado))
+        }
+
         negocio.set('probabilidade', 10)
 
         const closingDate = new Date(now)

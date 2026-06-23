@@ -8,11 +8,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { convertLeadToSale, Lead } from '@/services/leads'
+import { Lead } from '@/services/leads'
 import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage, extractFieldErrors } from '@/lib/pocketbase/errors'
 import { Loader2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import pb from '@/lib/pocketbase/client'
 
 interface LeadConvertModalProps {
   lead: Lead
@@ -23,12 +26,20 @@ interface LeadConvertModalProps {
 
 export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadConvertModalProps) {
   const [loading, setLoading] = useState(false)
+  const [valorEstimado, setValorEstimado] = useState('')
   const { toast } = useToast()
 
   const handleConvert = async () => {
     setLoading(true)
     try {
-      await convertLeadToSale(lead)
+      await pb.send('/backend/v1/convert-lead', {
+        method: 'POST',
+        body: JSON.stringify({
+          lead_id: lead.id,
+          valor_estimado: valorEstimado ? Number(valorEstimado) : null,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      })
       toast({
         title: 'Lead convertido com sucesso!',
         description: 'O novo negócio já está na coluna Qualificação.',
@@ -37,10 +48,11 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
       onOpenChange(false)
     } catch (e: any) {
       const fieldErrs = extractFieldErrors(e)
+      const errorMsg = getErrorMessage(e)
       const msg =
         fieldErrs.nome ||
-        e.response?.message ||
-        e.message ||
+        fieldErrs.valor_estimado ||
+        errorMsg ||
         'Não foi possível realizar a conversão.'
 
       toast({
@@ -64,6 +76,23 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
             Isso irá gerar um novo cliente, um contato e um novo negócio na coluna "Qualificação".
           </AlertDialogDescription>
         </AlertDialogHeader>
+
+        <div className="py-4">
+          <div className="space-y-2">
+            <Label htmlFor="valor">Valor Estimado (Opcional)</Label>
+            <Input
+              id="valor"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Ex: 5000"
+              value={valorEstimado}
+              onChange={(e) => setValorEstimado(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+        </div>
+
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
           <AlertDialogAction
