@@ -55,7 +55,7 @@ export default function ClienteDetail() {
     if (formRef.current?.isDirty) {
       setShowUnsavedDialog(true)
     } else {
-      navigate(-1)
+      navigate('/clientes')
     }
   }
 
@@ -66,14 +66,14 @@ export default function ClienteDetail() {
       setIsSaving(false)
       if (success) {
         setShowUnsavedDialog(false)
-        navigate(-1)
+        navigate('/clientes')
       }
     }
   }
 
   const handleExitWithoutSaving = () => {
     setShowUnsavedDialog(false)
-    navigate(-1)
+    navigate('/clientes')
   }
 
   return (
@@ -129,7 +129,7 @@ export default function ClienteDetail() {
           </TabsList>
 
           <TabsContent value="dados" className="focus-visible:outline-none">
-            <ClientDataForm ref={formRef} cliente={cliente} />
+            <ClientDataForm ref={formRef} cliente={cliente} onExit={() => navigate('/clientes')} />
           </TabsContent>
           <TabsContent value="contatos" className="focus-visible:outline-none">
             <ContactsList clienteId={cliente.id} />
