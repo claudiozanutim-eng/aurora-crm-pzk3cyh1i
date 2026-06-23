@@ -1,9 +1,44 @@
+import { useEffect, useState } from 'react'
 import { KpiCards } from '@/components/dashboard/KpiCards'
 import { KanbanBoard } from '@/components/dashboard/KanbanBoard'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
+import { getNegocios, Negocio, updateNegocio } from '@/services/negocios'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export default function Index() {
+  const [negocios, setNegocios] = useState<Negocio[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const loadData = async () => {
+    try {
+      const data = await getNegocios()
+      setNegocios(data || [])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  useRealtime('negocios', () => {
+    loadData()
+  })
+
+  const handleStatusChange = async (deal: Negocio, newStatus: Negocio['status']) => {
+    if (deal.status === newStatus) return
+    setNegocios((prev) => prev.map((n) => (n.id === deal.id ? { ...n, status: newStatus } : n)))
+    try {
+      await updateNegocio(deal.id, { status: newStatus })
+    } catch (e) {
+      loadData()
+    }
+  }
+
   return (
     <div className="space-y-8 h-full flex flex-col">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -32,7 +67,13 @@ export default function Index() {
           </h2>
         </div>
         <div className="bg-white border rounded-xl shadow-subtle p-2 md:p-4 overflow-hidden">
-          <KanbanBoard />
+          {loading ? (
+            <div className="flex h-64 items-center justify-center text-gray-500 text-sm">
+              Carregando funil de vendas...
+            </div>
+          ) : (
+            <KanbanBoard negocios={negocios} onStatusChange={handleStatusChange} />
+          )}
         </div>
       </div>
     </div>

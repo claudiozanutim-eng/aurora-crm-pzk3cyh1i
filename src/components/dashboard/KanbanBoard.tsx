@@ -31,12 +31,14 @@ function PriorityBadge({ priority }: { priority: string }) {
 }
 
 interface KanbanBoardProps {
-  negocios: Negocio[]
-  onStatusChange: (deal: Negocio, status: Status) => void
+  negocios?: Negocio[]
+  onStatusChange?: (deal: Negocio, status: Status) => void
 }
 
-export function KanbanBoard({ negocios, onStatusChange }: KanbanBoardProps) {
+export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps) {
   const [activeColumn, setActiveColumn] = useState<Status | null>(null)
+
+  const safeNegocios = Array.isArray(negocios) ? negocios : []
 
   const handleDragStart = (e: React.DragEvent, deal: Negocio) => {
     e.dataTransfer.setData('dealId', deal.id)
@@ -57,8 +59,8 @@ export function KanbanBoard({ negocios, onStatusChange }: KanbanBoardProps) {
     e.preventDefault()
     setActiveColumn(null)
     const dealId = e.dataTransfer.getData('dealId')
-    const deal = negocios.find((n) => n.id === dealId)
-    if (deal && deal.status !== columnStatus) {
+    const deal = safeNegocios.find((n) => n.id === dealId)
+    if (deal && deal.status !== columnStatus && onStatusChange) {
       onStatusChange(deal, columnStatus)
     }
   }
@@ -66,7 +68,7 @@ export function KanbanBoard({ negocios, onStatusChange }: KanbanBoardProps) {
   return (
     <div className="flex h-full w-full gap-4 overflow-x-auto p-4 hide-scrollbar snap-x">
       {COLUMNS.map((column) => {
-        const columnDeals = negocios.filter((n) => n.status === column)
+        const columnDeals = safeNegocios.filter((n) => n.status === column)
         const isActive = activeColumn === column
 
         return (
