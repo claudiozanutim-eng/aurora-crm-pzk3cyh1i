@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T20:08:45.087Z",
+  "generatedAt": "2026-06-23T20:20:43.179Z",
   "collections": [
     {
       "name": "users",
@@ -323,6 +323,118 @@
       "indexes": [
         "CREATE INDEX idx_negocios_cliente_id ON negocios (cliente_id)",
         "CREATE INDEX idx_negocios_status ON negocios (status)"
+      ]
+    },
+    {
+      "name": "leads",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "contato_nome",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "telefone",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "email",
+          "type": "email",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tipo",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["PF", "PJ"]
+        },
+        {
+          "name": "origem",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Indicação", "Site", "Redes Sociais", "Evento", "Outro"]
+        },
+        {
+          "name": "segmento",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Educação",
+            "Tecnologia",
+            "Varejo",
+            "Agro",
+            "Indústria",
+            "Serviços",
+            "Cooperativa",
+            "Outro"
+          ]
+        },
+        {
+          "name": "prioridade",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Alta", "Média", "Baixa"]
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Novos Leads",
+            "Primeiro Contato",
+            "Qualificando",
+            "Não Qualificado",
+            "Convertido"
+          ]
+        },
+        {
+          "name": "vendedor_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_leads_status ON leads (status)",
+        "CREATE INDEX idx_leads_vendedor_id ON leads (vendedor_id)"
       ]
     }
   ]
