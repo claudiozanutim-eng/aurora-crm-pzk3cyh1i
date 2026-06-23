@@ -10,6 +10,8 @@ import {
   Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import pb from '@/lib/pocketbase/client'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import auroraLogoHorizontal from '@/assets/image69debc47-caaa-4a34-9b6b-8da340b6c9e7-53707.png'
 
 const navigation = [
@@ -71,11 +73,24 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
 
       <div className="p-4 border-t">
         <div className="flex items-center gap-3 px-3 py-2">
-          <img
-            src="https://img.usecurling.com/ppl/thumbnail?gender=female&seed=1"
-            alt="User profile"
-            className="h-8 w-8 rounded-full border border-gray-200"
-          />
+          <Avatar className="h-8 w-8 border border-gray-200">
+            <AvatarImage
+              src={user?.avatar ? pb.files.getURL(user, user.avatar) : undefined}
+              alt={user?.name || 'User profile'}
+              className="object-cover"
+            />
+            <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+              {user?.name?.trim()
+                ? user.name
+                    .split(' ')
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((n: string) => n[0])
+                    .join('')
+                    .toUpperCase()
+                : 'U'}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex flex-col">
             <span className="text-sm font-medium text-gray-900">{user?.name || 'Usuário'}</span>
             <span className="text-xs text-gray-500">IC Educ</span>
