@@ -26,9 +26,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getClientes, type Cliente } from '@/services/clientes'
+import { toast } from 'sonner'
+import { getClientes, deleteCliente, type Cliente } from '@/services/clientes'
 import { useRealtime } from '@/hooks/use-realtime'
 import { ClienteFormSheet } from '@/components/clientes/ClienteFormSheet'
+import { ClienteDetailsSheet } from '@/components/clientes/ClienteDetailsSheet'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export default function Clientes() {
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -36,6 +48,9 @@ export default function Clientes() {
   const [statusFilter, setStatusFilter] = useState('Todos')
   const [tipoFilter, setTipoFilter] = useState('Todos')
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [clientToEdit, setClientToEdit] = useState<Cliente | null>(null)
+  const [clientToView, setClientToView] = useState<Cliente | null>(null)
+  const [clientToDelete, setClientToDelete] = useState<Cliente | null>(null)
 
   const loadData = async () => {
     try {
@@ -76,7 +91,10 @@ export default function Clientes() {
           <p className="text-gray-500 mt-1">Gerencie sua base de clientes e contatos.</p>
         </div>
         <Button
-          onClick={() => setIsSheetOpen(true)}
+          onClick={() => {
+            setClientToEdit(null)
+            setIsSheetOpen(true)
+          }}
           className="bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
         >
           <Plus className="mr-2 h-4 w-4" /> Novo Cliente
@@ -195,10 +213,24 @@ export default function Clientes() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
-                            <DropdownMenuItem>Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setClientToView(client)}>
+                              Ver detalhes
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setClientToEdit(client)
+                                setIsSheetOpen(true)
+                              }}
+                            >
+                              Editar
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">Excluir</DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                              onClick={() => setClientToDelete(client)}
+                            >
+                              Excluir
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -215,7 +247,45 @@ export default function Clientes() {
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
         onSuccess={() => loadData()}
+        initialData={clientToEdit}
       />
+
+      <ClienteDetailsSheet
+        open={!!clientToView}
+        onOpenChange={(o) => !o && setClientToView(null)}
+        cliente={clientToView}
+      />
+
+      <AlertDialog open={!!clientToDelete} onOpenChange={(o) => !o && setClientToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Cliente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o cliente <strong>{clientToDelete?.nome}</strong>? Esta
+              ação removerá também todos os contatos associados e não poderá ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={async () => {
+                if (clientToDelete) {
+                  try {
+                    await deleteCliente(clientToDelete.id)
+                    toast.success('Cliente excluído com sucesso')
+                    loadData()
+                  } catch (e) {
+                    toast.error('Erro ao excluir cliente')
+                  }
+                }
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

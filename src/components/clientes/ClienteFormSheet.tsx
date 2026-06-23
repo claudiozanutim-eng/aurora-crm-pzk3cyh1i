@@ -31,7 +31,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { createClienteEContatos } from '@/services/clientes'
+import { useEffect } from 'react'
+import { createClienteEContatos, updateClienteEContatos, type Cliente } from '@/services/clientes'
 
 function isValidCPF(cpf: string) {
   cpf = cpf.replace(/[^\d]+/g, '')
@@ -176,9 +177,15 @@ interface ClienteFormSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  initialData?: Cliente | null
 }
 
-export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormSheetProps) {
+export function ClienteFormSheet({
+  open,
+  onOpenChange,
+  onSuccess,
+  initialData,
+}: ClienteFormSheetProps) {
   const [step, setStep] = useState<1 | 2>(1)
   const [isLoading, setIsLoading] = useState(false)
   const [showConfirmEmptyDoc, setShowConfirmEmptyDoc] = useState(false)
@@ -221,6 +228,67 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
   })
 
   const tipo = watch('tipo')
+
+  useEffect(() => {
+    if (open) {
+      if (initialData) {
+        const isPF = initialData.tipo === 'PF'
+        const contatos = initialData.expand?.contatos_via_cliente_id || []
+
+        let pf_email = ''
+        let pf_telefone = ''
+        let mappedContatos = [
+          { nome_contato: '', email: '', telefone: '', cargo: '', data_aniversario: '' },
+        ]
+
+        if (isPF && contatos.length > 0) {
+          const c = contatos[0]
+          pf_email = c.email || ''
+          pf_telefone = c.telefone || ''
+        } else if (!isPF && contatos.length > 0) {
+          mappedContatos = contatos.map((c) => ({
+            nome_contato: c.nome || '',
+            email: c.email || '',
+            telefone: c.telefone || '',
+            cargo: c.cargo || '',
+            data_aniversario: c.data_aniversario ? c.data_aniversario.substring(0, 10) : '',
+          }))
+        }
+
+        const rawDoc = initialData.documento || ''
+        const maskedDoc = isPF ? maskCPF(rawDoc) : maskCNPJ(rawDoc)
+
+        reset({
+          tipo: initialData.tipo,
+          nome: initialData.nome,
+          nome_fantasia: initialData.nome_fantasia || '',
+          documento: maskedDoc,
+          segmento: initialData.segmento,
+          porte: initialData.porte,
+          status: initialData.status,
+          pf_email,
+          pf_telefone,
+          contatos: mappedContatos,
+        })
+      } else {
+        reset({
+          tipo: 'PJ',
+          status: 'Lead',
+          segmento: 'Educação',
+          porte: 'Pequeno',
+          pf_email: '',
+          pf_telefone: '',
+          documento: '',
+          nome: '',
+          nome_fantasia: '',
+          contatos: [
+            { nome_contato: '', email: '', telefone: '', cargo: '', data_aniversario: '' },
+          ],
+        })
+      }
+      setStep(1)
+    }
+  }, [open, initialData, reset])
 
   const handleNext = async () => {
     const isStep1Valid = await trigger([
@@ -317,42 +385,43 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
           }))
       }
 
-      await createClienteEContatos(
-        {
-          tipo: data.tipo,
-          nome: data.nome,
-          nome_fantasia: data.tipo === 'PJ' ? data.nome_fantasia : undefined,
-          documento: data.documento || '',
-          segmento: data.segmento,
-          porte: data.porte,
-          status: data.status,
-          data_cadastro: new Date().toISOString(),
-        },
-        validContacts,
-      )
-      toast.success('Cliente cadastrado com sucesso!')
-      reset({
-        tipo: 'PJ',
-        status: 'Lead',
-        segmento: 'Educação',
-        porte: 'Pequeno',
-        pf_email: '',
-        pf_telefone: '',
-        contatos: [
+      if (initialData) {
+        await updateClienteEContatos(
+          initialData.id,
           {
-            nome_contato: '',
-            email: '',
-            telefone: '',
-            cargo: '',
-            data_aniversario: '',
+            tipo: data.tipo,
+            nome: data.nome,
+            nome_fantasia: data.tipo === 'PJ' ? data.nome_fantasia : undefined,
+            documento: data.documento || '',
+            segmento: data.segmento,
+            porte: data.porte,
+            status: data.status,
           },
-        ],
-      })
+          validContacts,
+        )
+        toast.success('Cliente atualizado com sucesso!')
+      } else {
+        await createClienteEContatos(
+          {
+            tipo: data.tipo,
+            nome: data.nome,
+            nome_fantasia: data.tipo === 'PJ' ? data.nome_fantasia : undefined,
+            documento: data.documento || '',
+            segmento: data.segmento,
+            porte: data.porte,
+            status: data.status,
+            data_cadastro: new Date().toISOString(),
+          },
+          validContacts,
+        )
+        toast.success('Cliente cadastrado com sucesso!')
+      }
+
       setStep(1)
       onSuccess()
       onOpenChange(false)
     } catch (error: any) {
-      toast.error('Erro ao cadastrar cliente. Verifique se os dados estão corretos.')
+      toast.error('Erro ao salvar cliente. Verifique se os dados estão corretos.')
     } finally {
       setIsLoading(false)
       setShowConfirmEmptyDoc(false)
@@ -365,7 +434,7 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Novo Cliente</SheetTitle>
+          <SheetTitle>{initialData ? 'Editar Cliente' : 'Novo Cliente'}</SheetTitle>
           <SheetDescription>
             {step === 1 ? 'Preencha os dados do cliente.' : 'Adicione os contatos do cliente.'}
           </SheetDescription>
@@ -544,7 +613,7 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
                   disabled={isLoading}
                   className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
                 >
-                  {isLoading ? 'Salvando...' : 'Salvar'}
+                  {isLoading ? 'Salvando...' : initialData ? 'Atualizar' : 'Salvar'}
                 </Button>
               )}
             </div>
@@ -664,7 +733,7 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
                   disabled={isLoading}
                   className="flex-1 bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
                 >
-                  {isLoading ? 'Salvando...' : 'Salvar Cliente'}
+                  {isLoading ? 'Salvando...' : initialData ? 'Atualizar Cliente' : 'Salvar Cliente'}
                 </Button>
               </div>
             </div>

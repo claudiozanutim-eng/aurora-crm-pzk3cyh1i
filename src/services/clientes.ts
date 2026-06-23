@@ -53,3 +53,54 @@ export const createClienteEContatos = async (
 
   return cliente
 }
+
+export const updateClienteEContatos = async (
+  id: string,
+  clienteData: Partial<Cliente>,
+  contatosData: Partial<Contato>[],
+) => {
+  const cliente = await pb.collection('clientes').update<Cliente>(id, clienteData)
+
+  try {
+    const existingContacts = await pb.collection('contatos').getFullList({
+      filter: `cliente_id = "${id}"`,
+    })
+    for (const contact of existingContacts) {
+      await pb.collection('contatos').delete(contact.id)
+    }
+
+    for (let i = 0; i < contatosData.length; i++) {
+      await pb.collection('contatos').create({
+        ...contatosData[i],
+        cliente_id: cliente.id,
+        is_principal: i === 0,
+      })
+    }
+  } catch (error) {
+    console.error('Failed to update contacts:', error)
+    throw error
+  }
+
+  return cliente
+}
+
+export const deleteCliente = async (id: string) => {
+  try {
+    const existingContacts = await pb.collection('contatos').getFullList({
+      filter: `cliente_id = "${id}"`,
+    })
+    for (const contact of existingContacts) {
+      await pb.collection('contatos').delete(contact.id)
+    }
+
+    const existingNegocios = await pb.collection('negocios').getFullList({
+      filter: `cliente_id = "${id}"`,
+    })
+    for (const negocio of existingNegocios) {
+      await pb.collection('negocios').delete(negocio.id)
+    }
+  } catch (err) {
+    console.error('Failed to delete related records', err)
+  }
+  return pb.collection('clientes').delete(id)
+}
