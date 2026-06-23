@@ -31,9 +31,13 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
 
   return (
     <div className={cn('flex h-full w-full flex-col bg-white border-r', className)}>
-      <div className="flex h-16 items-center px-6 border-b">
+      <div className="flex h-24 shrink-0 items-center px-6 border-b">
         <Link to="/" className="flex items-center" onClick={onNavigate}>
-          <img src={auroraLogoHorizontal} alt="Aurora CRM" className="h-10 w-auto object-contain" />
+          <img
+            src={auroraLogoHorizontal}
+            alt="Aurora CRM"
+            className="h-[72px] w-auto object-contain"
+          />
         </Link>
       </div>
 
