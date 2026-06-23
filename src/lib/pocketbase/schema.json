@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T13:47:22.894Z",
+  "generatedAt": "2026-06-23T13:58:28.872Z",
   "collections": [
     {
       "name": "users",
@@ -199,6 +199,101 @@
         }
       ],
       "indexes": ["CREATE INDEX idx_contatos_cliente_id ON contatos (cliente_id)"]
+    },
+    {
+      "name": "negocios",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "cliente_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "clientes"
+        },
+        {
+          "name": "valor_estimado",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "probabilidade",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_prevista_fechamento",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "data_fechamento_real",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": [
+            "Prospecção",
+            "Qualificação",
+            "Proposta Enviada",
+            "Negociação",
+            "Fechado/Ganho",
+            "Perdido"
+          ]
+        },
+        {
+          "name": "prioridade",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Alta", "Média", "Baixa"]
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ciclo_vendas_dias",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_negocios_cliente_id ON negocios (cliente_id)",
+        "CREATE INDEX idx_negocios_status ON negocios (status)"
+      ]
     }
   ]
 }
