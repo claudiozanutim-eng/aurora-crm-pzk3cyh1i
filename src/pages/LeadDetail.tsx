@@ -1,20 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getLeadById, Lead } from '@/services/leads'
 import { useRealtime } from '@/hooks/use-realtime'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
-import { LeadDataForm } from '@/components/details/LeadDataForm'
+import { LeadDataForm, LeadDataFormRef } from '@/components/details/LeadDataForm'
 import { LeadContactsTab } from '@/components/details/LeadContactsTab'
 import { InteractionsTimeline } from '@/components/details/InteractionsTimeline'
 import { TasksList } from '@/components/details/TasksList'
 import { TagBadge } from '@/components/ui/tag-badge'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [lead, setLead] = useState<Lead | null>(null)
+  const formRef = useRef<LeadDataFormRef>(null)
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const load = async () => {
     if (!id) return
@@ -31,6 +43,31 @@ export default function LeadDetail() {
   }, [id])
   useRealtime('leads', load)
 
+  const handleBack = () => {
+    if (formRef.current?.isDirty) {
+      setShowUnsavedDialog(true)
+    } else {
+      navigate('/funil')
+    }
+  }
+
+  const handleSaveAndExit = async () => {
+    if (formRef.current) {
+      setIsSaving(true)
+      const success = await formRef.current.saveChanges()
+      setIsSaving(false)
+      if (success) {
+        setShowUnsavedDialog(false)
+        navigate('/funil')
+      }
+    }
+  }
+
+  const handleExitWithoutSaving = () => {
+    setShowUnsavedDialog(false)
+    navigate('/funil')
+  }
+
   if (!lead)
     return (
       <div className="p-8 flex items-center justify-center text-gray-500">
@@ -41,7 +78,7 @@ export default function LeadDetail() {
   return (
     <div className="h-full flex flex-col space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
+        <Button variant="ghost" size="icon" onClick={handleBack} className="shrink-0">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </Button>
         <div>
@@ -91,7 +128,7 @@ export default function LeadDetail() {
           </TabsList>
 
           <TabsContent value="dados" className="focus-visible:outline-none">
-            <LeadDataForm lead={lead} />
+            <LeadDataForm ref={formRef} lead={lead} onExit={() => navigate('/funil')} />
           </TabsContent>
           <TabsContent value="contatos" className="focus-visible:outline-none">
             <LeadContactsTab lead={lead} />
@@ -104,6 +141,30 @@ export default function LeadDetail() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Salvar alterações?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você possui alterações não salvas. Deseja salvar antes de sair?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving}>Cancelar</AlertDialogCancel>
+            <Button variant="destructive" onClick={handleExitWithoutSaving} disabled={isSaving}>
+              Sair sem Salvar
+            </Button>
+            <Button
+              onClick={handleSaveAndExit}
+              disabled={isSaving}
+              className="bg-[#FF6B00] hover:bg-[#E66000] text-white"
+            >
+              {isSaving ? 'Salvando...' : 'Salvar e Sair'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
