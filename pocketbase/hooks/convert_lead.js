@@ -8,13 +8,16 @@ routerAdd(
     }
 
     let result
+    let customError = null
+
     try {
       $app.runInTransaction((txApp) => {
         let lead
         try {
           lead = txApp.findRecordById('leads', body.lead_id)
         } catch (_) {
-          throw new NotFoundError('Lead not found')
+          customError = new NotFoundError('Lead not found')
+          throw new Error('Lead not found')
         }
 
         let clienteExists = false
@@ -26,9 +29,10 @@ routerAdd(
         }
 
         if (clienteExists) {
-          throw new BadRequestError('Erro: Já existe um cliente cadastrado com este nome.', {
+          customError = new BadRequestError('Já existe um cliente cadastrado com este nome.', {
             nome: 'Já existe um cliente cadastrado com este nome.',
           })
+          throw new Error('Validation')
         }
 
         const clientesCol = txApp.findCollectionByNameOrId('clientes')
@@ -41,7 +45,15 @@ routerAdd(
         const now = new Date()
         cliente.set('data_cadastro', now.toISOString())
         cliente.set('porte', 'Pequeno')
-        txApp.save(cliente)
+
+        try {
+          txApp.save(cliente)
+        } catch (err) {
+          customError = new BadRequestError('Erro ao criar cliente. Verifique os dados.', {
+            error: err.message,
+          })
+          throw err
+        }
 
         const contatosCol = txApp.findCollectionByNameOrId('contatos')
         const contato = new Record(contatosCol)
@@ -50,14 +62,20 @@ routerAdd(
         if (lead.getString('email')) contato.set('email', lead.getString('email'))
         if (lead.getString('telefone')) contato.set('telefone', lead.getString('telefone'))
         contato.set('is_principal', true)
-        txApp.save(contato)
+
+        try {
+          txApp.save(contato)
+        } catch (err) {
+          customError = new BadRequestError('Erro ao criar contato.', { error: err.message })
+          throw err
+        }
 
         const negociosCol = txApp.findCollectionByNameOrId('negocios')
         const negocio = new Record(negociosCol)
         negocio.set('cliente_id', cliente.id)
         negocio.set('vendedor_id', lead.getString('vendedor_id'))
         negocio.set('status', 'Qualificação')
-        negocio.set('prioridade', lead.getString('prioridade'))
+        negocio.set('prioridade', lead.getString('prioridade') || 'Média')
 
         if (
           body.valor_estimado !== undefined &&
@@ -72,18 +90,27 @@ routerAdd(
         const closingDate = new Date(now)
         closingDate.setDate(closingDate.getDate() + 30)
         negocio.set('data_prevista_fechamento', closingDate.toISOString())
-        txApp.save(negocio)
+
+        try {
+          txApp.save(negocio)
+        } catch (err) {
+          customError = new BadRequestError('Erro ao criar negócio.', { error: err.message })
+          throw err
+        }
 
         lead.set('status', 'Convertido')
-        txApp.save(lead)
+        try {
+          txApp.save(lead)
+        } catch (err) {
+          customError = new BadRequestError('Erro ao atualizar lead.', { error: err.message })
+          throw err
+        }
 
         result = { success: true, cliente_id: cliente.id, negocio_id: negocio.id }
       })
     } catch (err) {
-      if (err.status) {
-        throw err
-      }
-      throw new BadRequestError(err.message || 'Erro ao converter lead')
+      if (customError) throw customError
+      throw new BadRequestError(err.message || 'Erro interno ao converter lead')
     }
 
     return e.json(200, result)

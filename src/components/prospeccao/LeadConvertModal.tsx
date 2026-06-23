@@ -49,11 +49,16 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
     } catch (e: any) {
       const fieldErrs = extractFieldErrors(e)
       const errorMsg = getErrorMessage(e)
-      const msg =
+
+      let msg =
         fieldErrs.nome ||
         fieldErrs.valor_estimado ||
+        fieldErrs.error ||
         errorMsg ||
         'Não foi possível realizar a conversão.'
+      if (msg === 'Something went wrong.' || msg === 'An unexpected error occurred.') {
+        msg = 'Não foi possível realizar a conversão. Verifique os dados.'
+      }
 
       toast({
         variant: 'destructive',
