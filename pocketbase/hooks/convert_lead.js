@@ -16,21 +16,18 @@ routerAdd(
         throw new NotFoundError('Lead not found')
       }
 
+      let clienteExists = false
       try {
         txApp.findFirstRecordByData('clientes', 'nome', lead.getString('nome'))
-        // If found, it means it's a duplicate
-        const errors = {
-          nome: new ValidationError(
-            'validation_not_unique',
-            'Já existe um cliente cadastrado com este nome.',
-          ),
-        }
-        throw new BadRequestError('Erro: Já existe um cliente cadastrado com este nome.', errors)
-      } catch (err) {
-        if (err instanceof BadRequestError) {
-          throw err
-        }
+        clienteExists = true
+      } catch (_) {
         // Not found, continue execution safely
+      }
+
+      if (clienteExists) {
+        throw new BadRequestError('Erro: Já existe um cliente cadastrado com este nome.', {
+          nome: 'Já existe um cliente cadastrado com este nome.',
+        })
       }
 
       const clientesCol = txApp.findCollectionByNameOrId('clientes')
@@ -59,7 +56,8 @@ routerAdd(
       const negocio = new Record(negociosCol)
       negocio.set('cliente_id', cliente.id)
       negocio.set('vendedor_id', lead.getString('vendedor_id'))
-      negocio.set('status', 'Prospecção')
+      // Automatically map it to the first active column of the Sales Funnel
+      negocio.set('status', 'Qualificação')
       negocio.set('prioridade', lead.getString('prioridade'))
       negocio.set('valor_estimado', 0)
       negocio.set('probabilidade', 10)
