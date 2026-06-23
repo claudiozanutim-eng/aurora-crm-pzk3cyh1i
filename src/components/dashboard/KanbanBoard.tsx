@@ -82,7 +82,15 @@ export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps)
             onDrop={(e) => handleDrop(e, column)}
           >
             <div className="flex items-center justify-between p-3 border-b border-gray-100/50 bg-white/50 rounded-t-xl backdrop-blur-sm">
-              <h3 className="font-semibold text-gray-700">{column}</h3>
+              <div className="flex flex-col">
+                <h3 className="font-semibold text-gray-700">{column}</h3>
+                <span className="text-xs font-medium text-gray-500 mt-0.5">
+                  {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  }).format(columnDeals.reduce((sum, deal) => sum + (deal.valor_estimado || 0), 0))}
+                </span>
+              </div>
               <span className="bg-white text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full border border-gray-200 shadow-sm">
                 {columnDeals.length}
               </span>
