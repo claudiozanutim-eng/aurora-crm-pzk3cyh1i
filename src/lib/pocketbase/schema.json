@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T18:20:50.261Z",
+  "generatedAt": "2026-06-23T18:33:01.903Z",
   "collections": [
     {
       "name": "users",
@@ -132,10 +132,10 @@
         }
       ],
       "indexes": [
-        "CREATE INDEX idx_clientes_nome ON clientes (nome)",
         "CREATE INDEX idx_clientes_status ON clientes (status)",
         "CREATE INDEX idx_clientes_tipo ON clientes (tipo)",
-        "CREATE UNIQUE INDEX `idx_clientes_documento` ON `clientes` (documento) WHERE documento != ''"
+        "CREATE UNIQUE INDEX `idx_clientes_documento` ON `clientes` (documento) WHERE documento != ''",
+        "CREATE UNIQUE INDEX `idx_clientes_nome_unique` ON `clientes` (nome) WHERE nome != ''"
       ]
     },
     {

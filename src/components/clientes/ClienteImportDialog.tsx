@@ -62,7 +62,8 @@ export function ClienteImportDialog({
   const [csvData, setCsvData] = useState<string[][]>([])
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [result, setResult] = useState<{
-    success: number
+    created: number
+    updated: number
     errors: { row: number; error: string }[]
   } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -145,7 +146,8 @@ export function ClienteImportDialog({
 
   const handleImport = async () => {
     setStep('importing')
-    let successCount = 0
+    let createdCount = 0
+    let updatedCount = 0
     const errorList: { row: number; error: string }[] = []
 
     for (let i = 0; i < csvData.length; i++) {
@@ -197,10 +199,13 @@ export function ClienteImportDialog({
         dCad = new Date().toISOString()
       }
 
+      const nomeVal = val('nome') || 'Sem Nome'
+      const docVal = val('documento')
+
       const recordData = {
         tipo,
-        documento: val('documento'),
-        nome: val('nome') || 'Sem Nome',
+        documento: docVal,
+        nome: nomeVal,
         nome_fantasia: val('nome_fantasia'),
         segmento,
         porte,
@@ -208,14 +213,41 @@ export function ClienteImportDialog({
         data_cadastro: dCad,
       }
 
-      if (!val('nome')) {
+      if (!nomeVal || nomeVal === 'Sem Nome') {
         errorList.push({ row: i + 2, error: 'Nome é obrigatório' })
         continue
       }
 
       try {
-        await pb.collection('clientes').create(recordData)
-        successCount++
+        let existingClient = null
+
+        if (docVal) {
+          try {
+            existingClient = await pb
+              .collection('clientes')
+              .getFirstListItem(`documento="${docVal.replace(/"/g, '\\"')}"`)
+          } catch {
+            /* intentionally ignored */
+          }
+        }
+
+        if (!existingClient && nomeVal) {
+          try {
+            existingClient = await pb
+              .collection('clientes')
+              .getFirstListItem(`nome="${nomeVal.replace(/"/g, '\\"')}"`)
+          } catch {
+            /* intentionally ignored */
+          }
+        }
+
+        if (existingClient) {
+          await pb.collection('clientes').update(existingClient.id, recordData)
+          updatedCount++
+        } else {
+          await pb.collection('clientes').create(recordData)
+          createdCount++
+        }
       } catch (err: any) {
         const fieldErrors = extractFieldErrors(err)
         const errorMsg = Object.entries(fieldErrors)
@@ -227,7 +259,11 @@ export function ClienteImportDialog({
         })
       }
     }
-    setResult({ success: successCount, errors: errorList })
+
+    toast.success(
+      `Importação concluída: ${createdCount} novos clientes criados e ${updatedCount} clientes atualizados.`,
+    )
+    setResult({ created: createdCount, updated: updatedCount, errors: errorList })
     setStep('result')
     onSuccess()
   }
@@ -431,10 +467,18 @@ export function ClienteImportDialog({
               </div>
             </div>
             <h3 className="text-center text-lg font-medium">Importação Concluída</h3>
-            <div className="grid grid-cols-2 gap-4 text-center border-y py-4">
+            <p className="text-center text-sm text-gray-500">
+              Importação concluída: {result.created} novos clientes criados e {result.updated}{' '}
+              clientes atualizados.
+            </p>
+            <div className="grid grid-cols-3 gap-4 text-center border-y py-4">
               <div>
-                <div className="text-2xl font-bold text-green-600">{result.success}</div>
-                <div className="text-sm text-gray-500">Importados</div>
+                <div className="text-2xl font-bold text-green-600">{result.created}</div>
+                <div className="text-sm text-gray-500">Criados</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-blue-600">{result.updated}</div>
+                <div className="text-sm text-gray-500">Atualizados</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-red-600">{result.errors.length}</div>
