@@ -41,7 +41,6 @@ export default function Funil() {
   let totalPerdidosMes = 0
 
   const statusCounts = {
-    Prospecção: 0,
     Qualificação: 0,
     'Proposta Enviada': 0,
     Negociação: 0,
@@ -50,9 +49,11 @@ export default function Funil() {
   } as Record<string, number>
 
   const isActiveStatus = (status: string) =>
-    ['Prospecção', 'Qualificação', 'Proposta Enviada', 'Negociação'].includes(status)
+    ['Qualificação', 'Proposta Enviada', 'Negociação'].includes(status)
 
-  negocios.forEach((n) => {
+  const visibleNegocios = negocios.filter((n) => n.status !== 'Prospecção')
+
+  visibleNegocios.forEach((n) => {
     totalDeals++
     if (statusCounts[n.status] !== undefined) {
       statusCounts[n.status]++
@@ -159,7 +160,7 @@ export default function Funil() {
       </div>
 
       <div className="flex-1 min-h-0 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
-        <KanbanBoard negocios={negocios} onStatusChange={handleStatusChange} />
+        <KanbanBoard negocios={visibleNegocios} onStatusChange={handleStatusChange} />
       </div>
 
       <NegocioFormSheet open={isNewDealOpen} onOpenChange={setIsNewDealOpen} onSuccess={loadData} />

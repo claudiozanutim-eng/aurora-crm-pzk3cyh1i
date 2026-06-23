@@ -6,7 +6,6 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
 const COLUMNS = [
-  'Prospecção',
   'Qualificação',
   'Proposta Enviada',
   'Negociação',
@@ -75,7 +74,7 @@ export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps)
           <div
             key={column}
             className={cn(
-              'flex-shrink-0 w-80 flex flex-col rounded-xl border transition-colors snap-start',
+              'flex-shrink-0 w-80 lg:w-auto lg:flex-1 lg:min-w-0 flex flex-col rounded-xl border transition-colors snap-start',
               isActive ? 'border-orange-400 bg-orange-50/30' : 'bg-gray-50 border-gray-100',
             )}
             onDragOver={(e) => handleDragOver(e, column)}
