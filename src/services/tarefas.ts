@@ -14,9 +14,9 @@ export interface Tarefa extends RecordModel {
 }
 
 export const getTarefas = async (targetId: string, targetType: 'cliente' | 'lead') => {
-  const filter = targetType === 'cliente' ? `cliente_id="${targetId}"` : `lead_id="${targetId}"`
+  const baseFilter = targetType === 'cliente' ? `cliente_id="${targetId}"` : `lead_id="${targetId}"`
   return pb.collection('tarefas').getFullList<Tarefa>({
-    filter,
+    filter: `${baseFilter} && status != 'Concluída'`,
     sort: 'status,data_limite',
     expand: 'vendedor_id',
   })
