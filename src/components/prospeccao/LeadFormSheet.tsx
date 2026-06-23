@@ -29,7 +29,6 @@ import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { createLead } from '@/services/leads'
 import { useAuth } from '@/hooks/use-auth'
-import { TagInput } from '@/components/ui/tag-input'
 
 const formSchema = z.object({
   nome: z.string().min(1, 'Obrigatório'),
@@ -278,10 +277,23 @@ export function LeadFormSheet({ open, onOpenChange, onSuccess }: LeadFormSheetPr
               name="tags"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tags</FormLabel>
-                  <FormControl>
-                    <TagInput value={field.value} onChange={field.onChange} />
-                  </FormControl>
+                  <FormLabel>Tag</FormLabel>
+                  <Select
+                    onValueChange={(val) => field.onChange(val === 'nenhuma' ? [] : [val])}
+                    value={field.value?.[0] || 'nenhuma'}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="nenhuma">Sem tag</SelectItem>
+                      <SelectItem value="Frio">Frio</SelectItem>
+                      <SelectItem value="Quente">Quente</SelectItem>
+                      <SelectItem value="Parceria">Parceria</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

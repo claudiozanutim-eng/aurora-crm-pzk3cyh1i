@@ -211,7 +211,7 @@ export default function Clientes() {
                 <TableHead>Contato Principal</TableHead>
                 <TableHead>E-mail</TableHead>
                 <TableHead>Segmento</TableHead>
-                <TableHead>Tags</TableHead>
+                <TableHead>Tag</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>

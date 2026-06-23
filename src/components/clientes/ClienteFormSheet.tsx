@@ -33,7 +33,6 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useEffect } from 'react'
 import { createClienteEContatos, updateClienteEContatos, type Cliente } from '@/services/clientes'
-import { TagInput } from '@/components/ui/tag-input'
 
 function isValidCPF(cpf: string) {
   cpf = cpf.replace(/[^\d]+/g, '')
@@ -607,11 +606,26 @@ export function ClienteFormSheet({
               </div>
 
               <div className="space-y-2">
-                <Label>Tags</Label>
+                <Label>Tag</Label>
                 <Controller
                   name="tags"
                   control={control}
-                  render={({ field }) => <TagInput value={field.value} onChange={field.onChange} />}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value?.[0] || 'nenhuma'}
+                      onValueChange={(val) => field.onChange(val === 'nenhuma' ? [] : [val])}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nenhuma">Sem tag</SelectItem>
+                        <SelectItem value="Frio">Frio</SelectItem>
+                        <SelectItem value="Quente">Quente</SelectItem>
+                        <SelectItem value="Parceria">Parceria</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 />
               </div>
 

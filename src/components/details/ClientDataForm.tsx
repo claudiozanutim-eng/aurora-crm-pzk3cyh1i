@@ -12,7 +12,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { TagInput } from '@/components/ui/tag-input'
 
 export function ClientDataForm({ cliente }: { cliente: Cliente }) {
   const { toast } = useToast()
@@ -137,8 +136,21 @@ export function ClientDataForm({ cliente }: { cliente: Cliente }) {
         </div>
       </div>
       <div className="space-y-2">
-        <Label>Tags</Label>
-        <TagInput value={data.tags} onChange={(val) => handleChange('tags', val)} />
+        <Label>Tag</Label>
+        <Select
+          value={data.tags?.[0] || 'nenhuma'}
+          onValueChange={(val) => handleChange('tags', val === 'nenhuma' ? [] : [val])}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="nenhuma">Sem tag</SelectItem>
+            <SelectItem value="Frio">Frio</SelectItem>
+            <SelectItem value="Quente">Quente</SelectItem>
+            <SelectItem value="Parceria">Parceria</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-2">
         <Label>Observações</Label>
