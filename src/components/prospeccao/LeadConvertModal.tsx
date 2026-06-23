@@ -11,6 +11,8 @@ import {
 import { convertLeadToSale, Lead } from '@/services/leads'
 import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage, extractFieldErrors } from '@/lib/pocketbase/errors'
+import { Loader2 } from 'lucide-react'
 
 interface LeadConvertModalProps {
   lead: Lead
@@ -28,16 +30,23 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
     try {
       await convertLeadToSale(lead)
       toast({
-        title: 'Lead convertido!',
-        description: 'Cliente e negócio criados com sucesso.',
+        title: 'Lead convertido com sucesso!',
+        description: 'O novo negócio já está disponível no Funil de Vendas.',
       })
       onSuccess()
       onOpenChange(false)
-    } catch (e) {
+    } catch (e: any) {
+      const fieldErrs = extractFieldErrors(e)
+      const msg =
+        fieldErrs.nome ||
+        e.response?.message ||
+        e.message ||
+        'Não foi possível realizar a conversão.'
+
       toast({
         variant: 'destructive',
         title: 'Erro ao converter lead',
-        description: 'Não foi possível realizar a conversão.',
+        description: msg,
       })
     } finally {
       setLoading(false)
@@ -48,10 +57,11 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Converter Lead</AlertDialogTitle>
+          <AlertDialogTitle>
+            Deseja converter este lead em cliente e abrir um novo negócio?
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Deseja criar automaticamente um cliente no Funil de Vendas? Isso irá gerar um novo
-            cliente, um contato e um novo negócio na coluna "Prospecção".
+            Isso irá gerar um novo cliente, um contato e um novo negócio na coluna "Prospecção".
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -64,7 +74,14 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
             disabled={loading}
             className="bg-[#F97316] hover:bg-[#EA580C] text-white"
           >
-            {loading ? 'Convertendo...' : 'Sim, converter'}
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Convertendo...
+              </>
+            ) : (
+              'Sim, converter'
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

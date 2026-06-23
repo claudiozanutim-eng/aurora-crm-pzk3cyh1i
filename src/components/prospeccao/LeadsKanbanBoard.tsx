@@ -138,7 +138,7 @@ export function LeadsKanbanBoard({
                         {convertedClientNames.has(lead.nome) ? (
                           <div className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 py-1.5 px-3 rounded-md text-sm font-medium border border-emerald-100">
                             <CheckCircle2 className="h-4 w-4" />
-                            <span>Enviado para Vendas</span>
+                            <span>Convertido para Venda</span>
                           </div>
                         ) : (
                           <Button

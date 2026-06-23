@@ -1,7 +1,5 @@
 import pb from '@/lib/pocketbase/client'
 import type { RecordModel } from 'pocketbase'
-import { createClienteEContatos } from './clientes'
-import { createNegocio } from './negocios'
 
 export interface Lead extends RecordModel {
   nome: string
@@ -43,33 +41,9 @@ export const deleteLead = async (id: string) => {
 }
 
 export const convertLeadToSale = async (lead: Lead) => {
-  const clienteData = {
-    tipo: lead.tipo,
-    nome: lead.nome,
-    segmento: lead.segmento as any,
-    porte: 'Pequeno',
-    status: 'Lead',
-    data_cadastro: new Date().toISOString().substring(0, 10),
-  } as any
-
-  const contatosData = [
-    {
-      nome: lead.contato_nome || lead.nome,
-      email: lead.email || '',
-      telefone: lead.telefone || '',
-      is_principal: true,
-    },
-  ] as any
-
-  const newClient = await createClienteEContatos(clienteData, contatosData)
-
-  await createNegocio({
-    cliente_id: newClient.id,
-    vendedor_id: lead.vendedor_id,
-    valor_estimado: 0,
-    status: 'Prospecção',
-    prioridade: lead.prioridade,
+  return pb.send('/backend/v1/convert-lead', {
+    method: 'POST',
+    body: JSON.stringify({ lead_id: lead.id }),
+    headers: { 'Content-Type': 'application/json' },
   })
-
-  return updateLead(lead.id, { status: 'Convertido' })
 }
