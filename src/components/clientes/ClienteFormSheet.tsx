@@ -451,7 +451,7 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
           <AlertDialogHeader>
             <AlertDialogTitle>Atenção</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to register this client without a CPF/CNPJ?
+              Tem certeza que deseja cadastrar este cliente sem um CPF/CNPJ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
