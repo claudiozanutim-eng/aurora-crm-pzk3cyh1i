@@ -12,6 +12,8 @@ import Prospeccao from './pages/Prospeccao'
 import Funil from './pages/Funil'
 import Tarefas from './pages/Tarefas'
 import Propostas from './pages/Propostas'
+import PropostaForm from './pages/PropostaForm'
+import PropostaView from './pages/PropostaView'
 import Configuracoes from './pages/Configuracoes'
 import NotFound from './pages/NotFound'
 import Login from './pages/Login'
@@ -41,6 +43,9 @@ const AppRoutes = () => (
       <Route path="/funil" element={<Funil />} />
       <Route path="/tarefas" element={<Tarefas />} />
       <Route path="/propostas" element={<Propostas />} />
+      <Route path="/propostas/nova" element={<PropostaForm />} />
+      <Route path="/propostas/:id/editar" element={<PropostaForm />} />
+      <Route path="/propostas/:id" element={<PropostaView />} />
       <Route path="/configuracoes" element={<Configuracoes />} />
       <Route path="/clientes/:id" element={<ClienteDetail />} />
       <Route path="/leads/:id" element={<LeadDetail />} />

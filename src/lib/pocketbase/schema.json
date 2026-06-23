@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T22:20:45.825Z",
+  "generatedAt": "2026-06-23T23:30:26.634Z",
   "collections": [
     {
       "name": "users",
@@ -636,6 +636,95 @@
         "CREATE INDEX idx_tarefas_cliente ON tarefas (cliente_id)",
         "CREATE INDEX idx_tarefas_lead ON tarefas (lead_id)",
         "CREATE INDEX idx_tarefas_status ON tarefas (status)"
+      ]
+    },
+    {
+      "name": "propostas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != ''",
+        "view": "@request.auth.id != ''",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != ''",
+        "delete": "@request.auth.id != ''"
+      },
+      "fields": [
+        {
+          "name": "titulo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "cliente_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "clientes"
+        },
+        {
+          "name": "negocio_id",
+          "type": "relation",
+          "required": false,
+          "system": false,
+          "collectionRef": "negocios"
+        },
+        {
+          "name": "valor_total",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao_servicos",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "condicoes_comerciais",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "validade_dias",
+          "type": "number",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Rascunho", "Enviada", "Aprovada", "Rejeitada", "Expirada"]
+        },
+        {
+          "name": "data_envio",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_propostas_status ON propostas (status)",
+        "CREATE INDEX idx_propostas_cliente_id ON propostas (cliente_id)",
+        "CREATE INDEX idx_propostas_titulo ON propostas (titulo)"
       ]
     }
   ]
