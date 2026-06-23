@@ -32,20 +32,22 @@ export const getClientes = async () => {
   })
 }
 
-export const createClienteEContato = async (
+export const createClienteEContatos = async (
   clienteData: Partial<Cliente>,
-  contatoData: Partial<Contato>,
+  contatosData: Partial<Contato>[],
 ) => {
   const cliente = await pb.collection('clientes').create<Cliente>(clienteData)
 
   try {
-    await pb.collection('contatos').create({
-      ...contatoData,
-      cliente_id: cliente.id,
-      is_principal: true,
-    })
+    for (let i = 0; i < contatosData.length; i++) {
+      await pb.collection('contatos').create({
+        ...contatosData[i],
+        cliente_id: cliente.id,
+        is_principal: i === 0,
+      })
+    }
   } catch (error) {
-    console.error('Failed to create contact:', error)
+    console.error('Failed to create contacts:', error)
     throw error
   }
 

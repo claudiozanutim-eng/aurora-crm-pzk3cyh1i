@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { createClienteEContato } from '@/services/clientes'
+import { createClienteEContatos } from '@/services/clientes'
 
 function isValidCPF(cpf: string) {
   cpf = cpf.replace(/[^\d]+/g, '')
@@ -95,11 +95,20 @@ const clientSchema = z
     ]),
     porte: z.enum(['Micro', 'Pequeno', 'Médio', 'Grande']),
     status: z.enum(['Ativo', 'Inativo', 'Lead']),
-    nome_contato: z.string().min(3, 'Nome do contato obrigatório'),
-    email: z.string().email('E-mail inválido'),
-    telefone: z.string().min(14, 'Telefone inválido'),
-    cargo: z.string().optional(),
-    data_aniversario: z.string().optional(),
+    contatos: z
+      .array(
+        z.object({
+          nome_contato: z.string().optional(),
+          email: z.string().trim().email('E-mail inválido').or(z.literal('')).optional(),
+          telefone: z
+            .string()
+            .optional()
+            .refine((val) => !val || val.length >= 14, 'Telefone inválido'),
+          cargo: z.string().optional(),
+          data_aniversario: z.string().optional(),
+        }),
+      )
+      .default([{}]),
   })
   .refine(
     (data) => {
@@ -154,6 +163,7 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
   const [step, setStep] = useState<1 | 2>(1)
   const [isLoading, setIsLoading] = useState(false)
   const [showConfirmEmptyDoc, setShowConfirmEmptyDoc] = useState(false)
+  const [showConfirmEmptyContact, setShowConfirmEmptyContact] = useState(false)
   const [pendingData, setPendingData] = useState<FormData | null>(null)
 
   const {
@@ -172,7 +182,21 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
       status: 'Lead',
       segmento: 'Educação',
       porte: 'Pequeno',
+      contatos: [
+        {
+          nome_contato: '',
+          email: '',
+          telefone: '',
+          cargo: '',
+          data_aniversario: '',
+        },
+      ],
     },
+  })
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'contatos',
   })
 
   const tipo = watch('tipo')
@@ -197,24 +221,64 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
     setValue('documento', masked, { shouldValidate: true })
   }
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue('telefone', maskPhone(e.target.value), { shouldValidate: true })
+  const handlePhoneChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    setValue(`contatos.${index}.telefone`, maskPhone(e.target.value), { shouldValidate: true })
+  }
+
+  const checkDocumento = (data: FormData) => {
+    const cleanDoc = data.documento?.replace(/\D/g, '') || ''
+    if (cleanDoc.length === 0) {
+      setShowConfirmEmptyDoc(true)
+    } else {
+      checkContacts(data)
+    }
+  }
+
+  const checkContacts = (data: FormData) => {
+    const hasAnyContact = data.contatos.some(
+      (c) =>
+        c.nome_contato?.trim() ||
+        c.email?.trim() ||
+        c.telefone?.trim() ||
+        c.cargo?.trim() ||
+        c.data_aniversario?.trim(),
+    )
+    if (!hasAnyContact) {
+      setShowConfirmEmptyContact(true)
+    } else {
+      executeSubmit(data)
+    }
   }
 
   const onSubmit = async (data: FormData) => {
-    const cleanDoc = data.documento?.replace(/\D/g, '') || ''
-    if (cleanDoc.length === 0) {
-      setPendingData(data)
-      setShowConfirmEmptyDoc(true)
-      return
-    }
-    executeSubmit(data)
+    setPendingData(data)
+    checkDocumento(data)
   }
 
   const executeSubmit = async (data: FormData) => {
     try {
       setIsLoading(true)
-      await createClienteEContato(
+
+      const validContacts = data.contatos
+        .filter(
+          (c) =>
+            c.nome_contato?.trim() ||
+            c.email?.trim() ||
+            c.telefone?.trim() ||
+            c.cargo?.trim() ||
+            c.data_aniversario?.trim(),
+        )
+        .map((c) => ({
+          nome: c.nome_contato?.trim() || '',
+          email: c.email?.trim() || '',
+          telefone: c.telefone?.trim() || '',
+          cargo: c.cargo?.trim() || '',
+          data_aniversario: c.data_aniversario
+            ? new Date(c.data_aniversario).toISOString()
+            : undefined,
+        }))
+
+      await createClienteEContatos(
         {
           tipo: data.tipo,
           nome: data.nome,
@@ -225,26 +289,33 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
           status: data.status,
           data_cadastro: new Date().toISOString(),
         },
-        {
-          nome: data.nome_contato,
-          email: data.email,
-          telefone: data.telefone,
-          cargo: data.cargo,
-          data_aniversario: data.data_aniversario
-            ? new Date(data.data_aniversario).toISOString()
-            : undefined,
-        },
+        validContacts,
       )
       toast.success('Cliente cadastrado com sucesso!')
-      reset()
+      reset({
+        tipo: 'PJ',
+        status: 'Lead',
+        segmento: 'Educação',
+        porte: 'Pequeno',
+        contatos: [
+          {
+            nome_contato: '',
+            email: '',
+            telefone: '',
+            cargo: '',
+            data_aniversario: '',
+          },
+        ],
+      })
       setStep(1)
       onSuccess()
       onOpenChange(false)
     } catch (error: any) {
-      toast.error('Erro ao cadastrar cliente. Verifique se o documento já existe.')
+      toast.error('Erro ao cadastrar cliente. Verifique se os dados estão corretos.')
     } finally {
       setIsLoading(false)
       setShowConfirmEmptyDoc(false)
+      setShowConfirmEmptyContact(false)
       setPendingData(null)
     }
   }
@@ -255,9 +326,7 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
         <SheetHeader>
           <SheetTitle>Novo Cliente</SheetTitle>
           <SheetDescription>
-            {step === 1
-              ? 'Preencha os dados do cliente.'
-              : 'Preencha os dados do contato principal.'}
+            {step === 1 ? 'Preencha os dados do cliente.' : 'Adicione os contatos do cliente.'}
           </SheetDescription>
         </SheetHeader>
 
@@ -394,51 +463,105 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
 
           {step === 2 && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="nome_contato">Nome do Contato *</Label>
-                <Input id="nome_contato" {...register('nome_contato')} placeholder="Maria Silva" />
-                {errors.nome_contato && (
-                  <span className="text-sm text-red-500">{errors.nome_contato.message}</span>
-                )}
-              </div>
+              {fields.map((field, index) => (
+                <div key={field.id} className="space-y-4 p-4 border rounded-md relative bg-card">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold">Contato {index + 1}</h4>
+                    {fields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 h-8 px-2"
+                        onClick={() => remove(index)}
+                      >
+                        Remover
+                      </Button>
+                    )}
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  {...register('email')}
-                  placeholder="maria@empresa.com"
-                />
-                {errors.email && (
-                  <span className="text-sm text-red-500">{errors.email.message}</span>
-                )}
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`nome_contato-${index}`}>Nome do Contato</Label>
+                    <Input
+                      id={`nome_contato-${index}`}
+                      {...register(`contatos.${index}.nome_contato`)}
+                      placeholder="Maria Silva"
+                    />
+                    {errors.contatos?.[index]?.nome_contato && (
+                      <span className="text-sm text-red-500">
+                        {errors.contatos[index]?.nome_contato?.message}
+                      </span>
+                    )}
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="telefone">Telefone *</Label>
-                <Input
-                  id="telefone"
-                  value={watch('telefone') || ''}
-                  onChange={handlePhoneChange}
-                  placeholder="(11) 99999-9999"
-                />
-                {errors.telefone && (
-                  <span className="text-sm text-red-500">{errors.telefone.message}</span>
-                )}
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`email-${index}`}>E-mail</Label>
+                    <Input
+                      id={`email-${index}`}
+                      type="email"
+                      {...register(`contatos.${index}.email`)}
+                      placeholder="maria@empresa.com"
+                    />
+                    {errors.contatos?.[index]?.email && (
+                      <span className="text-sm text-red-500">
+                        {errors.contatos[index]?.email?.message}
+                      </span>
+                    )}
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="cargo">Cargo</Label>
-                <Input id="cargo" {...register('cargo')} placeholder="Diretor, Gerente..." />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`telefone-${index}`}>Telefone</Label>
+                    <Input
+                      id={`telefone-${index}`}
+                      value={watch(`contatos.${index}.telefone`) || ''}
+                      onChange={(e) => handlePhoneChange(index, e)}
+                      placeholder="(11) 99999-9999"
+                    />
+                    {errors.contatos?.[index]?.telefone && (
+                      <span className="text-sm text-red-500">
+                        {errors.contatos[index]?.telefone?.message}
+                      </span>
+                    )}
+                  </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="data_aniversario">Data de Aniversário</Label>
-                <Input id="data_aniversario" type="date" {...register('data_aniversario')} />
-              </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`cargo-${index}`}>Cargo</Label>
+                    <Input
+                      id={`cargo-${index}`}
+                      {...register(`contatos.${index}.cargo`)}
+                      placeholder="Diretor, Gerente..."
+                    />
+                  </div>
 
-              <div className="flex gap-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor={`data_aniversario-${index}`}>Data de Aniversário</Label>
+                    <Input
+                      id={`data_aniversario-${index}`}
+                      type="date"
+                      {...register(`contatos.${index}.data_aniversario`)}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-dashed"
+                onClick={() =>
+                  append({
+                    nome_contato: '',
+                    email: '',
+                    telefone: '',
+                    cargo: '',
+                    data_aniversario: '',
+                  })
+                }
+              >
+                + Novo Contato
+              </Button>
+
+              <div className="sticky bottom-0 bg-background pt-4 pb-2 border-t mt-4 flex gap-4 z-10">
                 <Button
                   type="button"
                   variant="outline"
@@ -459,6 +582,7 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
           )}
         </form>
       </SheetContent>
+
       <AlertDialog open={showConfirmEmptyDoc} onOpenChange={setShowConfirmEmptyDoc}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -472,6 +596,32 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault()
+                setShowConfirmEmptyDoc(false)
+                if (pendingData) checkContacts(pendingData)
+              }}
+              disabled={isLoading}
+              className="bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showConfirmEmptyContact} onOpenChange={setShowConfirmEmptyContact}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Atenção</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que não quer cadastrar um contato para o cliente?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                setShowConfirmEmptyContact(false)
                 if (pendingData) executeSubmit(pendingData)
               }}
               disabled={isLoading}
