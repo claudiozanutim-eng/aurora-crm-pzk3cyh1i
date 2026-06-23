@@ -19,6 +19,7 @@ export interface Negocio extends RecordModel {
   prioridade: 'Alta' | 'Média' | 'Baixa'
   descricao?: string
   ciclo_vendas_dias?: number
+  motivo_perda?: 'Desistiu do Projeto' | 'Preço' | 'Preferiu Concorrente' | 'Cliente Sumiu'
   expand?: {
     cliente_id?: Cliente & {
       expand?: {

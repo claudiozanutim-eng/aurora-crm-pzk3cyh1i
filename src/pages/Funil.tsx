@@ -6,11 +6,13 @@ import { getNegocios, Negocio, updateNegocio } from '@/services/negocios'
 import { useRealtime } from '@/hooks/use-realtime'
 import { NegocioFormSheet } from '@/components/funil/NegocioFormSheet'
 import { FechamentoModal } from '@/components/funil/FechamentoModal'
+import { PerdaModal } from '@/components/funil/PerdaModal'
 
 export default function Funil() {
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [isNewDealOpen, setIsNewDealOpen] = useState(false)
   const [closingDeal, setClosingDeal] = useState<Negocio | null>(null)
+  const [lostDeal, setLostDeal] = useState<Negocio | null>(null)
 
   const loadData = async () => {
     try {
@@ -77,6 +79,11 @@ export default function Funil() {
 
     if (newStatus === 'Fechado/Ganho') {
       setClosingDeal(deal)
+      return
+    }
+
+    if (newStatus === 'Perdido') {
+      setLostDeal(deal)
       return
     }
 
@@ -162,6 +169,15 @@ export default function Funil() {
           deal={closingDeal}
           open={!!closingDeal}
           onOpenChange={(v) => !v && setClosingDeal(null)}
+          onSuccess={loadData}
+        />
+      )}
+
+      {lostDeal && (
+        <PerdaModal
+          deal={lostDeal}
+          open={!!lostDeal}
+          onOpenChange={(v) => !v && setLostDeal(null)}
           onSuccess={loadData}
         />
       )}
