@@ -4,7 +4,81 @@ routerAdd(
   (e) => {
     const body = e.requestInfo().body
 
-    if (!body.data || !Array.isArray(body.data)) {
+    let dataArray = body.data
+
+    if (body.source === 'clientes' && Array.isArray(body.ids)) {
+      try {
+        const ids = body.ids
+        const headers = [
+          'Tipo',
+          'Documento',
+          'Nome',
+          'Nome Fantasia',
+          'Segmento',
+          'Porte',
+          'Status',
+          'Data de Cadastro',
+          'Nome do Contato',
+          'E-mail do Contato',
+          'Telefone do Contato',
+          'Cargo do Contato',
+          'Aniversário do Contato',
+          'Tipo de Contato',
+        ]
+
+        dataArray = [headers]
+
+        for (const id of ids) {
+          try {
+            const cliente = $app.findRecordById('clientes', id)
+            const baseRow = [
+              cliente.getString('tipo'),
+              cliente.getString('documento'),
+              cliente.getString('nome'),
+              cliente.getString('nome_fantasia'),
+              cliente.getString('segmento'),
+              cliente.getString('porte'),
+              cliente.getString('status'),
+              cliente.getString('data_cadastro')
+                ? cliente.getString('data_cadastro').substring(0, 10)
+                : '',
+            ]
+
+            const contatos = $app.findRecordsByFilter(
+              'contatos',
+              `cliente_id = '${id}'`,
+              '-is_principal,created',
+              100,
+              0,
+            )
+
+            if (contatos.length === 0) {
+              dataArray.push([...baseRow, '', '', '', '', '', ''])
+            } else {
+              for (const contato of contatos) {
+                dataArray.push([
+                  ...baseRow,
+                  contato.getString('nome'),
+                  contato.getString('email'),
+                  contato.getString('telefone'),
+                  contato.getString('cargo'),
+                  contato.getString('data_aniversario')
+                    ? contato.getString('data_aniversario').substring(0, 10)
+                    : '',
+                  contato.getBool('is_principal') ? 'Principal' : 'Adicional',
+                ])
+              }
+            }
+          } catch (err) {
+            // Ignore missing client
+          }
+        }
+      } catch (err) {
+        return e.badRequestError('Erro ao buscar clientes: ' + err.message)
+      }
+    }
+
+    if (!dataArray || !Array.isArray(dataArray)) {
       return e.badRequestError('missing data array')
     }
 
@@ -31,7 +105,7 @@ routerAdd(
       sheet1 += '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">\n'
       sheet1 += '  <sheetData>\n'
 
-      body.data.forEach((row) => {
+      dataArray.forEach((row) => {
         sheet1 += '    <row>\n'
         row.forEach((cell) => {
           if (cell === null || cell === undefined || cell === '') {
@@ -266,10 +340,26 @@ routerAdd(
         return out
       }
 
+      if (body.format === 'csv') {
+        const escapeCsvStr = (str) => {
+          if (str === null || str === undefined || str === '') return '""'
+          return '"' + String(str).replace(/"/g, '""') + '"'
+        }
+        const csvContent = dataArray.map((row) => row.map(escapeCsvStr).join(',')).join('\n')
+
+        const utf8BOM = [0xef, 0xbb, 0xbf]
+        const csvBytes = strToBytes(csvContent)
+
+        const fullBytes = [...utf8BOM, ...csvBytes]
+        const base64 = bytesToBase64(fullBytes)
+
+        return e.json(200, { base64, type: 'csv' })
+      }
+
       const zipBytes = createZip(files)
       const base64 = bytesToBase64(zipBytes)
 
-      return e.json(200, { base64 })
+      return e.json(200, { base64, type: 'xlsx' })
     } catch (err) {
       return e.badRequestError('Exportação falhou: ' + err.message)
     }
