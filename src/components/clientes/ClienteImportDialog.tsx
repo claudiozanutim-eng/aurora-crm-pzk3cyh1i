@@ -18,6 +18,8 @@ import {
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { UploadCloud, CheckCircle2, AlertCircle, Loader2, Database } from 'lucide-react'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
   TableBody,
@@ -28,6 +30,8 @@ import {
 } from '@/components/ui/table'
 import pb from '@/lib/pocketbase/client'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+import { extractFieldErrors } from '@/lib/pocketbase/errors'
 
 const TARGET_FIELDS = [
   { key: 'tipo', label: 'Tipo (PF/PJ)' },
@@ -40,28 +44,6 @@ const TARGET_FIELDS = [
   { key: 'data_cadastro', label: 'Data de Cadastro' },
 ]
 
-function parseCSV(text: string) {
-  const lines = text.split(/\r?\n/).filter((line) => line.trim())
-  return lines.map((line) => {
-    const result = []
-    let cur = '',
-      inQ = false
-    for (let i = 0; i < line.length; i++) {
-      if (line[i] === '"') {
-        if (inQ && line[i + 1] === '"') {
-          cur += '"'
-          i++
-        } else inQ = !inQ
-      } else if (line[i] === ',' && !inQ) {
-        result.push(cur)
-        cur = ''
-      } else cur += line[i]
-    }
-    result.push(cur)
-    return result
-  })
-}
-
 export function ClienteImportDialog({
   open,
   onOpenChange,
@@ -72,7 +54,10 @@ export function ClienteImportDialog({
   onSuccess: () => void
 }) {
   const [file, setFile] = useState<File | null>(null)
-  const [step, setStep] = useState<'upload' | 'mapping' | 'importing' | 'result'>('upload')
+  const [step, setStep] = useState<'upload' | 'loading' | 'mapping' | 'importing' | 'result'>(
+    'upload',
+  )
+  const [googleUrl, setGoogleUrl] = useState('')
   const [csvHeaders, setCsvHeaders] = useState<string[]>([])
   const [csvData, setCsvData] = useState<string[][]>([])
   const [mapping, setMapping] = useState<Record<string, string>>({})
@@ -84,6 +69,7 @@ export function ClienteImportDialog({
 
   const reset = () => {
     setFile(null)
+    setGoogleUrl('')
     setStep('upload')
     setCsvHeaders([])
     setCsvData([])
@@ -95,73 +81,121 @@ export function ClienteImportDialog({
     onOpenChange(o)
   }
 
+  const setupMapping = (headers: string[], rows: string[][]) => {
+    setCsvHeaders(headers)
+    setCsvData(rows)
+    const autoMap: Record<string, string> = {}
+    headers.forEach((h, i) => {
+      const l = h.toLowerCase()
+      if (l.includes('tipo')) autoMap.tipo = String(i)
+      if (l.includes('doc') || l.includes('cpf') || l.includes('cnpj'))
+        autoMap.documento = String(i)
+      if (l.includes('nome') && !l.includes('fantasia')) autoMap.nome = String(i)
+      if (l.includes('fantasia')) autoMap.nome_fantasia = String(i)
+      if (l.includes('seg')) autoMap.segmento = String(i)
+      if (l.includes('port')) autoMap.porte = String(i)
+      if (l.includes('status') || l.includes('situ')) autoMap.status = String(i)
+      if (l.includes('data') || l.includes('cadastro')) autoMap.data_cadastro = String(i)
+    })
+    setMapping(autoMap)
+    setStep('mapping')
+  }
+
   const processFile = (f: File) => {
     setFile(f)
+    setStep('loading')
     const reader = new FileReader()
-    reader.onload = (e) => {
-      const rows = parseCSV(e.target?.result as string)
-      if (rows.length > 0) {
-        setCsvHeaders(rows[0])
-        setCsvData(rows.slice(1))
-        const autoMap: Record<string, string> = {}
-        rows[0].forEach((h, i) => {
-          const l = h.toLowerCase()
-          if (l.includes('tipo')) autoMap.tipo = String(i)
-          if (l.includes('doc') || l.includes('cpf') || l.includes('cnpj'))
-            autoMap.documento = String(i)
-          if (l.includes('nome') && !l.includes('fantasia')) autoMap.nome = String(i)
-          if (l.includes('fantasia')) autoMap.nome_fantasia = String(i)
-          if (l.includes('seg')) autoMap.segmento = String(i)
-          if (l.includes('port')) autoMap.porte = String(i)
-          if (l.includes('status') || l.includes('situ')) autoMap.status = String(i)
-          if (l.includes('data') || l.includes('cadastro')) autoMap.data_cadastro = String(i)
+    reader.onload = async (e) => {
+      try {
+        const fileContent = e.target?.result as string
+        const base64 = fileContent.split(',')[1]
+
+        const res = await pb.send('/backend/v1/spreadsheet/parse', {
+          method: 'POST',
+          body: JSON.stringify({ base64 }),
+          headers: { 'Content-Type': 'application/json' },
         })
-        setMapping(autoMap)
-        setStep('mapping')
+
+        setupMapping(res.headers, res.rows)
+      } catch (err: any) {
+        toast.error(
+          err.response?.message || err.message || 'Erro ao processar arquivo. Verifique o formato.',
+        )
+        setStep('upload')
       }
     }
-    reader.readAsText(f)
+    reader.readAsDataURL(f)
+  }
+
+  const processGoogleUrl = async () => {
+    if (!googleUrl) return
+    setStep('loading')
+    try {
+      const res = await pb.send('/backend/v1/spreadsheet/google', {
+        method: 'POST',
+        body: JSON.stringify({ url: googleUrl }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      setupMapping(res.headers, res.rows)
+    } catch (err: any) {
+      toast.error(err.response?.message || err.message || 'Erro ao importar do Google Sheets')
+      setStep('upload')
+    }
   }
 
   const handleImport = async () => {
     setStep('importing')
     let successCount = 0
     const errorList: { row: number; error: string }[] = []
+
     for (let i = 0; i < csvData.length; i++) {
       const row = csvData[i]
-      if (row.length === 1 && !row[0]) continue
+      if (row.length === 0 || (row.length === 1 && !row[0])) continue
+
       const val = (k: string) =>
         mapping[k] && row[Number(mapping[k])] ? row[Number(mapping[k])].trim() : ''
-      const tipo = ['PF', 'PJ'].find((t) => t === val('tipo').toUpperCase()) || 'PJ'
-      const status =
-        ['Ativo', 'Inativo', 'Lead'].find((s) => s.toLowerCase() === val('status').toLowerCase()) ||
-        'Lead'
-      const segmento =
-        [
-          'Educação',
-          'Tecnologia',
-          'Varejo',
-          'Agro',
-          'Indústria',
-          'Serviços',
-          'Cooperativa',
-          'Outro',
-        ].find((s) => s.toLowerCase() === val('segmento').toLowerCase()) || 'Outro'
+
+      const tipoRaw = val('tipo').toUpperCase()
+      const tipo = ['PF', 'PJ'].includes(tipoRaw) ? tipoRaw : 'PJ'
+
+      const statusRaw = val('status').toLowerCase()
+      const statusOptions = ['Ativo', 'Inativo', 'Lead']
+      const status = statusOptions.find((o) => o.toLowerCase() === statusRaw) || 'Lead'
+
+      const segRaw = val('segmento').toLowerCase()
+      const segOptions = [
+        'Educação',
+        'Tecnologia',
+        'Varejo',
+        'Agro',
+        'Indústria',
+        'Serviços',
+        'Cooperativa',
+        'Outro',
+      ]
+      const segmento = segOptions.find((o) => o.toLowerCase() === segRaw) || 'Outro'
+
+      const porteRaw = val('porte').toLowerCase()
+      const porteOptions = ['Micro', 'Pequeno', 'Médio', 'Grande']
       const porte =
-        ['Micro', 'Pequeno', 'Médio', 'Grande'].find(
-          (p) => p.toLowerCase() === val('porte').toLowerCase(),
+        porteOptions.find(
+          (o) => o.toLowerCase() === porteRaw || o.toLowerCase().replace('é', 'e') === porteRaw,
         ) || 'Micro'
+
       let dCad = val('data_cadastro')
       if (dCad) {
         if (dCad.includes('/')) {
           const parts = dCad.split(' ')[0].split('/')
-          if (parts.length === 3)
+          if (parts.length === 3) {
             dCad = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00Z`).toISOString()
+          }
         } else {
           const d = new Date(dCad)
           dCad = isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString()
         }
-      } else dCad = new Date().toISOString()
+      } else {
+        dCad = new Date().toISOString()
+      }
 
       const recordData = {
         tipo,
@@ -173,17 +207,23 @@ export function ClienteImportDialog({
         status,
         data_cadastro: dCad,
       }
+
       if (!val('nome')) {
         errorList.push({ row: i + 2, error: 'Nome é obrigatório' })
         continue
       }
+
       try {
         await pb.collection('clientes').create(recordData)
         successCount++
       } catch (err: any) {
+        const fieldErrors = extractFieldErrors(err)
+        const errorMsg = Object.entries(fieldErrors)
+          .map(([f, m]) => `${f}: ${m}`)
+          .join(', ')
         errorList.push({
           row: i + 2,
-          error: err.response?.data?.documento?.message || err.message || 'Erro ao salvar',
+          error: errorMsg || err.message || 'Erro ao salvar',
         })
       }
     }
@@ -203,29 +243,69 @@ export function ClienteImportDialog({
         <DialogHeader>
           <DialogTitle>Importar Clientes</DialogTitle>
           <DialogDescription>
-            Importe sua base de clientes a partir de um arquivo CSV.
+            Importe sua base de clientes a partir de arquivos CSV, Excel (.xlsx) ou Google Sheets.
           </DialogDescription>
         </DialogHeader>
 
         {step === 'upload' && (
-          <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors">
-            <UploadCloud className="h-10 w-10 text-gray-400 mb-4" />
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">
-              Clique ou arraste seu arquivo
-            </h3>
-            <p className="text-xs text-gray-500 mb-4">Apenas arquivos .csv são suportados</p>
-            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-              Selecionar Arquivo
-            </Button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept=".csv"
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files?.[0]) processFile(e.target.files[0])
-              }}
-            />
+          <Tabs defaultValue="file" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="file">Arquivo Local</TabsTrigger>
+              <TabsTrigger value="google">Google Sheets</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="file" className="mt-0">
+              <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors">
+                <UploadCloud className="h-10 w-10 text-gray-400 mb-4" />
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                  Clique ou arraste seu arquivo
+                </h3>
+                <p className="text-xs text-gray-500 mb-4">Suporta arquivos .csv e .xlsx</p>
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                  Selecionar Arquivo
+                </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".csv,.xlsx"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) processFile(e.target.files[0])
+                  }}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="google" className="mt-0">
+              <div className="flex flex-col p-6 border rounded-lg border-gray-200 bg-gray-50 space-y-4">
+                <div>
+                  <Label htmlFor="googleUrl" className="mb-2 block">
+                    URL da Planilha
+                  </Label>
+                  <Input
+                    id="googleUrl"
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    value={googleUrl}
+                    onChange={(e) => setGoogleUrl(e.target.value)}
+                    className="bg-white"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    A planilha precisa estar com acesso público (Qualquer pessoa com o link pode
+                    ler).
+                  </p>
+                </div>
+                <Button onClick={processGoogleUrl} disabled={!googleUrl} className="w-full">
+                  Carregar Dados
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {step === 'loading' && (
+          <div className="flex flex-col items-center justify-center p-12">
+            <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
+            <p className="text-gray-600 font-medium">Processando planilha...</p>
           </div>
         )}
 
@@ -234,7 +314,7 @@ export function ClienteImportDialog({
             <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm flex gap-2 items-start">
               <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
               <p>
-                Relacione as colunas do seu arquivo aos campos do sistema. O preview abaixo mostra
+                Relacione as colunas da sua planilha aos campos do sistema. O preview abaixo mostra
                 os dados reais que serão importados.
               </p>
             </div>
@@ -298,7 +378,7 @@ export function ClienteImportDialog({
                       )
                     })}
                   </TableRow>
-                  {Array.from({ length: Math.min(3, csvData.length) }).map((_, rowIdx) => (
+                  {Array.from({ length: Math.min(4, csvData.length) }).map((_, rowIdx) => (
                     <TableRow key={rowIdx} className="hover:bg-transparent">
                       {TARGET_FIELDS.map((f) => {
                         const colIdx = mapping[f.key]
@@ -326,7 +406,7 @@ export function ClienteImportDialog({
 
             <DialogFooter>
               <Button variant="outline" onClick={reset}>
-                Cancelar
+                Voltar
               </Button>
               <Button onClick={handleImport}>Iniciar Importação</Button>
             </DialogFooter>
@@ -360,12 +440,12 @@ export function ClienteImportDialog({
             </div>
             {result.errors.length > 0 && (
               <div className="mt-4">
-                <h4 className="text-sm font-semibold mb-2">Erros:</h4>
+                <h4 className="text-sm font-semibold mb-2">Detalhes dos erros:</h4>
                 <ScrollArea className="h-[150px] bg-red-50 p-2 rounded-md border border-red-100">
-                  <ul className="text-xs space-y-1 text-red-800">
+                  <ul className="text-xs space-y-1 text-red-800 p-2">
                     {result.errors.map((e, i) => (
-                      <li key={i}>
-                        Linha {e.row}: {e.error}
+                      <li key={i} className="mb-2 last:mb-0">
+                        <strong>Linha {e.row}:</strong> {e.error}
                       </li>
                     ))}
                   </ul>

@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
+import pb from '@/lib/pocketbase/client'
 import { getClientes, deleteCliente, type Cliente } from '@/services/clientes'
 import { useRealtime } from '@/hooks/use-realtime'
 import { ClienteFormSheet } from '@/components/clientes/ClienteFormSheet'
@@ -54,42 +55,70 @@ export default function Clientes() {
   const [clientToDelete, setClientToDelete] = useState<Cliente | null>(null)
   const [isImportOpen, setIsImportOpen] = useState(false)
 
-  const exportCsv = () => {
-    const headers = [
-      'Tipo',
-      'Documento',
-      'Nome',
-      'Nome Fantasia',
-      'Segmento',
-      'Porte',
-      'Status',
-      'Data Cadastro',
-    ]
-    const rows = filteredClientes.map((c) => [
-      c.tipo,
-      c.documento || '',
-      c.nome,
-      c.nome_fantasia || '',
-      c.segmento,
-      c.porte,
-      c.status,
-      c.data_cadastro ? c.data_cadastro.substring(0, 10) : '',
-    ])
+  const handleExport = async (format: 'csv' | 'xlsx') => {
+    try {
+      const headers = [
+        'Tipo',
+        'Documento',
+        'Nome',
+        'Nome Fantasia',
+        'Segmento',
+        'Porte',
+        'Status',
+        'Data Cadastro',
+      ]
+      const rows = filteredClientes.map((c) => [
+        c.tipo,
+        c.documento || '',
+        c.nome,
+        c.nome_fantasia || '',
+        c.segmento,
+        c.porte,
+        c.status,
+        c.data_cadastro ? c.data_cadastro.substring(0, 10) : '',
+      ])
 
-    const escapeCsv = (str: string) => `"${String(str).replace(/"/g, '""')}"`
-    const csvContent = [
-      headers.map(escapeCsv).join(','),
-      ...rows.map((row) => row.map(escapeCsv).join(',')),
-    ].join('\n')
+      if (format === 'csv') {
+        const escapeCsv = (str: string) => `"${String(str).replace(/"/g, '""')}"`
+        const csvContent = [
+          headers.map(escapeCsv).join(','),
+          ...rows.map((row) => row.map(escapeCsv).join(',')),
+        ].join('\n')
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', `clientes_${new Date().toISOString().split('T')[0]}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.setAttribute('href', url)
+        link.setAttribute('download', `clientes_${new Date().toISOString().split('T')[0]}.csv`)
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      } else {
+        const res = await pb.send('/backend/v1/spreadsheet/export', {
+          method: 'POST',
+          body: JSON.stringify({ data: [headers, ...rows] }),
+          headers: { 'Content-Type': 'application/json' },
+        })
+        if (res && res.base64) {
+          const binaryStr = atob(res.base64)
+          const len = binaryStr.length
+          const bytes = new Uint8Array(len)
+          for (let i = 0; i < len; i++) bytes[i] = binaryStr.charCodeAt(i)
+          const blob = new Blob([bytes], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          })
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `clientes_${new Date().toISOString().split('T')[0]}.xlsx`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+        }
+      }
+    } catch (err) {
+      toast.error('Erro ao exportar arquivo')
+    }
   }
 
   const loadData = async () => {
@@ -131,9 +160,21 @@ export default function Clientes() {
           <p className="text-gray-500 mt-1">Gerencie sua base de clientes e contatos.</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button onClick={exportCsv} variant="outline" className="bg-white">
-            <Download className="mr-2 h-4 w-4" /> Exportar
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="bg-white">
+                <Download className="mr-2 h-4 w-4" /> Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                Exportar como CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+                Exportar como Excel (.xlsx)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => setIsImportOpen(true)} variant="outline" className="bg-white">
             <Upload className="mr-2 h-4 w-4" /> Importar
           </Button>
