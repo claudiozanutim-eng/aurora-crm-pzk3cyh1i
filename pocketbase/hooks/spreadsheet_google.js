@@ -18,7 +18,18 @@ routerAdd(
         return e.badRequestError('Falha ao buscar planilha. Verifique se o link está público.')
       }
 
-      const text = new TextDecoder().decode(res.body)
+      let text = ''
+      if (typeof res.body === 'string') {
+        text = res.body
+      } else {
+        try {
+          text = new TextDecoder().decode(res.body)
+        } catch (err) {
+          if (res.body) {
+            text = new TextDecoder().decode(new Uint8Array(res.body))
+          }
+        }
+      }
 
       function parseCSV(str) {
         var arr = []
