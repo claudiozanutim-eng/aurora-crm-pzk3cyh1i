@@ -6,11 +6,13 @@ import { getLeads, Lead, updateLead } from '@/services/leads'
 import { useRealtime } from '@/hooks/use-realtime'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
+import pb from '@/lib/pocketbase/client'
 
 export default function Prospeccao() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false)
   const [convertingLead, setConvertingLead] = useState<Lead | null>(null)
+  const [convertedClientNames, setConvertedClientNames] = useState<Set<string>>(new Set())
 
   const loadData = async () => {
     try {
@@ -21,21 +23,30 @@ export default function Prospeccao() {
     }
   }
 
+  const loadClients = async () => {
+    try {
+      const clients = await pb.collection('clientes').getFullList({ fields: 'nome' })
+      setConvertedClientNames(new Set(clients.map((c) => c.nome)))
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   useEffect(() => {
     loadData()
+    loadClients()
   }, [])
 
   useRealtime('leads', () => {
     loadData()
   })
 
+  useRealtime('clientes', () => {
+    loadClients()
+  })
+
   const handleStatusChange = async (lead: Lead, newStatus: Lead['status']) => {
     if (lead.status === newStatus) return
-
-    if (newStatus === 'Convertido') {
-      setConvertingLead(lead)
-      return
-    }
 
     setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, status: newStatus } : l)))
 
@@ -105,7 +116,12 @@ export default function Prospeccao() {
       </div>
 
       <div className="flex-1 min-h-0 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
-        <LeadsKanbanBoard leads={leads} onStatusChange={handleStatusChange} />
+        <LeadsKanbanBoard
+          leads={leads}
+          onStatusChange={handleStatusChange}
+          onConvertLead={setConvertingLead}
+          convertedClientNames={convertedClientNames}
+        />
       </div>
 
       <LeadFormSheet open={isNewLeadOpen} onOpenChange={setIsNewLeadOpen} onSuccess={loadData} />

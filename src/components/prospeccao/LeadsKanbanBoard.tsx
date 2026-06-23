@@ -1,7 +1,8 @@
 import { Lead } from '@/services/leads'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { User, Phone, Briefcase } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { User, Phone, Briefcase, CheckCircle2 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -32,9 +33,16 @@ function PriorityBadge({ priority }: { priority: string }) {
 interface LeadsKanbanBoardProps {
   leads?: Lead[]
   onStatusChange?: (lead: Lead, status: Status) => void
+  onConvertLead?: (lead: Lead) => void
+  convertedClientNames?: Set<string>
 }
 
-export function LeadsKanbanBoard({ leads = [], onStatusChange }: LeadsKanbanBoardProps) {
+export function LeadsKanbanBoard({
+  leads = [],
+  onStatusChange,
+  onConvertLead,
+  convertedClientNames = new Set(),
+}: LeadsKanbanBoardProps) {
   const [activeColumn, setActiveColumn] = useState<Status | null>(null)
 
   const safeLeads = Array.isArray(leads) ? leads : []
@@ -124,6 +132,27 @@ export function LeadsKanbanBoard({ leads = [], onStatusChange }: LeadsKanbanBoar
                         </div>
                       )}
                     </div>
+
+                    {column === 'Convertido' && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        {convertedClientNames.has(lead.nome) ? (
+                          <div className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 py-1.5 px-3 rounded-md text-sm font-medium border border-emerald-100">
+                            <CheckCircle2 className="h-4 w-4" />
+                            <span>Enviado para Vendas</span>
+                          </div>
+                        ) : (
+                          <Button
+                            className="w-full bg-[#F97316] hover:bg-[#EA580C] text-white h-8 text-sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onConvertLead?.(lead)
+                            }}
+                          >
+                            Enviar para Vendas
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
