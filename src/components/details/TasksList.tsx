@@ -57,11 +57,17 @@ export function TasksList({
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
     const data = Object.fromEntries(fd.entries())
+
+    const dataLimiteStr = data.data_limite as string
+    const finalDataLimite = dataLimiteStr
+      ? new Date(dataLimiteStr).toISOString()
+      : new Date().toISOString()
+
     try {
       await createTarefa({
         ...data,
         status: 'Pendente',
-        data_limite: new Date(data.data_limite as string).toISOString(),
+        data_limite: finalDataLimite,
         ...(targetType === 'cliente' ? { cliente_id: targetId } : { lead_id: targetId }),
       })
       toast({ title: 'Tarefa criada.' })
@@ -132,8 +138,6 @@ export function TasksList({
               <DialogTitle>Nova Tarefa</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <Input name="descricao" placeholder="Descrição" required />
-              <Input name="data_limite" type="date" required />
               <Select name="tipo" required>
                 <SelectTrigger>
                   <SelectValue placeholder="Tipo de Interação" />
@@ -147,6 +151,11 @@ export function TasksList({
                   <SelectItem value="Enviar Proposta">Enviar Proposta</SelectItem>
                 </SelectContent>
               </Select>
+              <Input name="descricao" placeholder="Descrição" required />
+              <div className="space-y-1">
+                <span className="text-sm font-medium text-gray-700">Data Limite (opcional)</span>
+                <Input name="data_limite" type="datetime-local" title="Data Limite" />
+              </div>
               <Select name="prioridade" defaultValue="Média">
                 <SelectTrigger>
                   <SelectValue placeholder="Prioridade" />
@@ -193,7 +202,10 @@ export function TasksList({
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />{' '}
-                    {new Date(t.data_limite).toLocaleDateString('pt-BR')}
+                    {new Date(t.data_limite).toLocaleString('pt-BR', {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    })}
                   </span>
                   <Badge
                     variant="secondary"
