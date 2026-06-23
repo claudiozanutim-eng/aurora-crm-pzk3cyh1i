@@ -267,7 +267,7 @@ export function ClienteImportDialog({
                 <input
                   type="file"
                   ref={fileInputRef}
-                  accept=".csv,.xlsx"
+                  accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   className="hidden"
                   onChange={(e) => {
                     if (e.target.files?.[0]) processFile(e.target.files[0])
@@ -323,22 +323,31 @@ export function ClienteImportDialog({
               <Table className="w-full border-collapse">
                 <TableHeader>
                   <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
-                    {csvHeaders.map((header, colIndex) => {
+                    {csvHeaders.map((header, colIndex) => (
+                      <TableHead
+                        key={colIndex}
+                        className="min-w-[220px] max-w-[250px] border-r last:border-r-0 align-top p-4"
+                      >
+                        <div
+                          className="flex items-center gap-2 text-gray-900 font-semibold truncate"
+                          title={header || `Coluna ${colIndex + 1}`}
+                        >
+                          <Database className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="truncate">{header || `Coluna ${colIndex + 1}`}</span>
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                  <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
+                    {csvHeaders.map((_, colIndex) => {
                       const currentMappedField = Object.keys(mapping).find(
                         (k) => mapping[k] === colIndex.toString(),
                       )
                       return (
                         <TableHead
-                          key={colIndex}
-                          className="min-w-[220px] max-w-[250px] border-r last:border-r-0 align-top p-4"
+                          key={`select-${colIndex}`}
+                          className="min-w-[220px] max-w-[250px] border-r last:border-r-0 align-top p-2"
                         >
-                          <div
-                            className="flex items-center gap-2 mb-3 text-gray-900 font-semibold truncate"
-                            title={header || `Coluna ${colIndex + 1}`}
-                          >
-                            <Database className="w-4 h-4 text-gray-400 shrink-0" />
-                            <span className="truncate">{header || `Coluna ${colIndex + 1}`}</span>
-                          </div>
                           <Select
                             value={currentMappedField ?? 'none'}
                             onValueChange={(val) =>
@@ -376,22 +385,6 @@ export function ClienteImportDialog({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow className="bg-gray-100/50 hover:bg-gray-100/50">
-                    {csvHeaders.map((_, colIndex) => {
-                      const mappedFieldKey = Object.keys(mapping).find(
-                        (k) => mapping[k] === colIndex.toString(),
-                      )
-                      const mappedField = TARGET_FIELDS.find((f) => f.key === mappedFieldKey)
-                      return (
-                        <TableCell
-                          key={colIndex}
-                          className="border-r last:border-r-0 font-bold text-[11px] text-gray-500 uppercase tracking-wider bg-gray-50/80"
-                        >
-                          {mappedField ? mappedField.label : '-'}
-                        </TableCell>
-                      )
-                    })}
-                  </TableRow>
                   {Array.from({ length: Math.min(4, csvData.length) }).map((_, rowIdx) => (
                     <TableRow key={rowIdx} className="hover:bg-transparent">
                       {csvHeaders.map((_, colIndex) => {

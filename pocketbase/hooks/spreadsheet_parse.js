@@ -1,3 +1,4 @@
+// @deps xlsx@0.18.5
 routerAdd(
   'POST',
   '/backend/v1/spreadsheet/parse',
@@ -8,9 +9,39 @@ routerAdd(
     if (!base64) return e.badRequestError('missing base64 content')
 
     if (base64.startsWith('UEsD')) {
-      return e.badRequestError(
-        'Arquivos XLSX não são suportados. Por favor, salve a planilha como CSV e tente novamente.',
-      )
+      try {
+        const XLSX = require('xlsx')
+        const workbook = XLSX.read(base64, { type: 'base64' })
+        const firstSheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[firstSheetName]
+        const jsonArrays = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' })
+
+        if (
+          !jsonArrays ||
+          jsonArrays.length === 0 ||
+          (jsonArrays.length === 1 && jsonArrays[0].length === 0)
+        ) {
+          return e.badRequestError('A planilha está vazia')
+        }
+
+        const headers = jsonArrays[0].map((h) => String(h).trim())
+        const numCols = headers.length
+
+        const rows = jsonArrays
+          .slice(1)
+          .map((row) => {
+            const normalizedRow = []
+            for (let i = 0; i < numCols; i++) {
+              normalizedRow.push(String(row[i] || '').trim())
+            }
+            return normalizedRow
+          })
+          .filter((row) => row.some((cell) => cell !== ''))
+
+        return e.json(200, { headers, rows })
+      } catch (err) {
+        return e.badRequestError('Erro ao ler arquivo XLSX: ' + err.message)
+      }
     }
 
     try {
