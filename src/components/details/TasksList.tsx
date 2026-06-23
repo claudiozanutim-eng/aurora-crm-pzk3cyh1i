@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getTarefas, createTarefa, updateTarefa, Tarefa } from '@/services/tarefas'
+import { createInteracao } from '@/services/interacoes'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
@@ -19,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Calendar, AlertCircle } from 'lucide-react'
@@ -69,11 +71,45 @@ export function TasksList({
     }
   }
 
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
+  const [completingTask, setCompletingTask] = useState<Tarefa | null>(null)
+  const [resumo, setResumo] = useState('')
+
   const changeStatus = async (id: string, status: Tarefa['status']) => {
+    if (status === 'Concluída') {
+      const task = tarefas.find((t) => t.id === id)
+      if (task) {
+        setCompletingTask(task)
+        setCompleteDialogOpen(true)
+      }
+      return
+    }
     try {
       await updateTarefa(id, { status })
     } catch {
       toast({ title: 'Erro ao atualizar', variant: 'destructive' })
+    }
+  }
+
+  const handleCompletion = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!completingTask) return
+    try {
+      await updateTarefa(completingTask.id, { status: 'Concluída' })
+      await createInteracao({
+        tipo: completingTask.tipo || 'Telefonema',
+        data_hora: new Date().toISOString(),
+        resumo,
+        vendedor_id: completingTask.vendedor_id,
+        ...(targetType === 'cliente' ? { cliente_id: targetId } : { lead_id: targetId }),
+      })
+      toast({ title: 'Tarefa concluída e interação registrada.' })
+      setCompleteDialogOpen(false)
+      setCompletingTask(null)
+      setResumo('')
+      load()
+    } catch {
+      toast({ title: 'Erro ao concluir tarefa', variant: 'destructive' })
     }
   }
 
@@ -98,6 +134,19 @@ export function TasksList({
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input name="descricao" placeholder="Descrição" required />
               <Input name="data_limite" type="date" required />
+              <Select name="tipo" required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tipo de Interação" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="E-mail">E-mail</SelectItem>
+                  <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                  <SelectItem value="Telefonema">Telefonema</SelectItem>
+                  <SelectItem value="Reunião">Reunião</SelectItem>
+                  <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
+                  <SelectItem value="Enviar Proposta">Enviar Proposta</SelectItem>
+                </SelectContent>
+              </Select>
               <Select name="prioridade" defaultValue="Média">
                 <SelectTrigger>
                   <SelectValue placeholder="Prioridade" />
@@ -158,6 +207,11 @@ export function TasksList({
                   >
                     {t.prioridade}
                   </Badge>
+                  {t.tipo && (
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      {t.tipo}
+                    </Badge>
+                  )}
                   <span>Resp: {t.expand?.vendedor_id?.name}</span>
                 </div>
               </div>
@@ -180,6 +234,26 @@ export function TasksList({
           <p className="text-gray-500 text-sm italic">Nenhuma tarefa pendente.</p>
         )}
       </div>
+
+      <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Concluir Tarefa</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCompletion} className="space-y-4">
+            <Textarea
+              placeholder="Resumo da Interação..."
+              value={resumo}
+              onChange={(e) => setResumo(e.target.value)}
+              required
+              rows={4}
+            />
+            <Button type="submit" className="w-full bg-[#FF6B00] hover:bg-[#E66000]">
+              Salvar e Registrar Interação
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

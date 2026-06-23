@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T21:30:27.912Z",
+  "generatedAt": "2026-06-23T21:39:15.944Z",
   "collections": [
     {
       "name": "users",
@@ -485,7 +485,14 @@
           "type": "select",
           "required": true,
           "system": false,
-          "selectValues": ["E-mail", "WhatsApp", "Telefonema", "Reunião", "Proposta Enviada"]
+          "selectValues": [
+            "E-mail",
+            "WhatsApp",
+            "Telefonema",
+            "Reunião",
+            "Proposta Enviada",
+            "Enviar Proposta"
+          ]
         },
         {
           "name": "data_hora",
@@ -597,6 +604,20 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "tipo",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": [
+            "E-mail",
+            "WhatsApp",
+            "Telefonema",
+            "Reunião",
+            "Proposta Enviada",
+            "Enviar Proposta"
+          ]
         }
       ],
       "indexes": [

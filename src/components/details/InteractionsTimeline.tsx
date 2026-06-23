@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
-import { Mail, MessageCircle, Phone, Users, FileText, Plus } from 'lucide-react'
+import { Mail, MessageCircle, Phone, Users, FileText, Send, Plus } from 'lucide-react'
 
 const icons = {
   'E-mail': <Mail className="w-4 h-4 text-blue-500" />,
@@ -28,6 +28,7 @@ const icons = {
   Telefonema: <Phone className="w-4 h-4 text-purple-500" />,
   Reunião: <Users className="w-4 h-4 text-orange-500" />,
   'Proposta Enviada': <FileText className="w-4 h-4 text-red-500" />,
+  'Enviar Proposta': <Send className="w-4 h-4 text-indigo-500" />,
 }
 
 export function InteractionsTimeline({

@@ -7,6 +7,7 @@ export interface Tarefa extends RecordModel {
   vendedor_id: string
   descricao: string
   data_limite: string
+  tipo?: 'E-mail' | 'WhatsApp' | 'Telefonema' | 'Reunião' | 'Proposta Enviada' | 'Enviar Proposta'
   prioridade: 'Alta' | 'Média' | 'Baixa'
   status: 'Pendente' | 'Em andamento' | 'Concluída' | 'Atrasada'
   expand?: { vendedor_id?: { name: string } }
