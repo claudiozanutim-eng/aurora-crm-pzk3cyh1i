@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T21:14:28.017Z",
+  "generatedAt": "2026-06-23T21:19:40.128Z",
   "collections": [
     {
       "name": "users",
@@ -129,6 +129,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "data_conversao",
+          "type": "date",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [

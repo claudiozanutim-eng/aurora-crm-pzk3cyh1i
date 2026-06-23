@@ -61,8 +61,7 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
         headers: { 'Content-Type': 'application/json' },
       })
       toast({
-        title: 'Lead convertido com sucesso!',
-        description: "O novo negócio foi criado em 'Qualificação'.",
+        title: 'Lead convertido com sucesso! O novo negócio já está no seu funil.',
       })
       onSuccess()
       onOpenChange(false)
@@ -71,9 +70,9 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
       const errorMsg = getErrorMessage(e)
 
       let msg =
+        fieldErrs.error ||
         fieldErrs.nome ||
         fieldErrs.valor_estimado ||
-        fieldErrs.error ||
         errorMsg ||
         'Não foi possível realizar a conversão.'
       if (msg === 'Something went wrong.' || msg === 'An unexpected error occurred.') {

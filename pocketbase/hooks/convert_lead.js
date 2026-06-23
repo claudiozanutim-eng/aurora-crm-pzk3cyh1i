@@ -35,6 +35,34 @@ routerAdd(
           throw new Error('Validation')
         }
 
+        let contatoExists = false
+        const leadEmail = lead.getString('email')
+        const leadTelefone = lead.getString('telefone')
+
+        if (leadEmail) {
+          try {
+            txApp.findFirstRecordByData('contatos', 'email', leadEmail)
+            contatoExists = true
+          } catch (_) {}
+        }
+
+        if (!contatoExists && leadTelefone) {
+          try {
+            txApp.findFirstRecordByData('contatos', 'telefone', leadTelefone)
+            contatoExists = true
+          } catch (_) {}
+        }
+
+        if (contatoExists) {
+          customError = new BadRequestError(
+            'Já existe um contato cadastrado com este e-mail ou telefone.',
+            {
+              error: 'Já existe um contato cadastrado com este e-mail ou telefone.',
+            },
+          )
+          throw new Error('Validation')
+        }
+
         const clientesCol = txApp.findCollectionByNameOrId('clientes')
         const cliente = new Record(clientesCol)
         cliente.set('nome', lead.getString('nome'))
@@ -44,6 +72,7 @@ routerAdd(
 
         const now = new Date()
         cliente.set('data_cadastro', now.toISOString())
+        cliente.set('data_conversao', now.toISOString())
         cliente.set('porte', 'Pequeno')
 
         try {
