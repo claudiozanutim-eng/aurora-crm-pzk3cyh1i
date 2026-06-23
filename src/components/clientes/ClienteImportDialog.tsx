@@ -323,72 +323,82 @@ export function ClienteImportDialog({
               <Table className="w-full border-collapse">
                 <TableHeader>
                   <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
-                    {TARGET_FIELDS.map((f) => (
-                      <TableHead
-                        key={f.key}
-                        className="min-w-[220px] max-w-[250px] border-r last:border-r-0 align-top p-4"
-                      >
-                        <div className="flex items-center gap-2 mb-3 text-gray-900 font-semibold">
-                          <Database className="w-4 h-4 text-gray-400" />
-                          {f.label}
-                        </div>
-                        <Select
-                          value={mapping[f.key] ?? 'none'}
-                          onValueChange={(val) =>
-                            setMapping((prev) => {
-                              const n = { ...prev }
-                              if (val === 'none') delete n[f.key]
-                              else n[f.key] = val
-                              return n
-                            })
-                          }
+                    {csvHeaders.map((header, colIndex) => {
+                      const currentMappedField = Object.keys(mapping).find(
+                        (k) => mapping[k] === colIndex.toString(),
+                      )
+                      return (
+                        <TableHead
+                          key={colIndex}
+                          className="min-w-[220px] max-w-[250px] border-r last:border-r-0 align-top p-4"
                         >
-                          <SelectTrigger className="w-full bg-white">
-                            <SelectValue placeholder="Selecione uma coluna" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none" className="text-gray-400 italic">
-                              Ignorar coluna
-                            </SelectItem>
-                            {csvHeaders.map((h, i) => (
-                              <SelectItem key={i} value={i.toString()}>
-                                {h || `Coluna ${i + 1}`}
+                          <div
+                            className="flex items-center gap-2 mb-3 text-gray-900 font-semibold truncate"
+                            title={header || `Coluna ${colIndex + 1}`}
+                          >
+                            <Database className="w-4 h-4 text-gray-400 shrink-0" />
+                            <span className="truncate">{header || `Coluna ${colIndex + 1}`}</span>
+                          </div>
+                          <Select
+                            value={currentMappedField ?? 'none'}
+                            onValueChange={(val) =>
+                              setMapping((prev) => {
+                                const n = { ...prev }
+                                const oldField = Object.keys(n).find(
+                                  (k) => n[k] === colIndex.toString(),
+                                )
+                                if (oldField) delete n[oldField]
+
+                                if (val !== 'none') {
+                                  n[val] = colIndex.toString()
+                                }
+                                return n
+                              })
+                            }
+                          >
+                            <SelectTrigger className="w-full bg-white">
+                              <SelectValue placeholder="Selecione um campo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none" className="text-gray-400 italic">
+                                Ignorar coluna
                               </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableHead>
-                    ))}
+                              {TARGET_FIELDS.map((f) => (
+                                <SelectItem key={f.key} value={f.key}>
+                                  {f.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableHead>
+                      )
+                    })}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   <TableRow className="bg-gray-100/50 hover:bg-gray-100/50">
-                    {TARGET_FIELDS.map((f) => {
-                      const colIdx = mapping[f.key]
-                      const isMapped = colIdx !== undefined && colIdx !== 'none'
+                    {csvHeaders.map((_, colIndex) => {
+                      const mappedFieldKey = Object.keys(mapping).find(
+                        (k) => mapping[k] === colIndex.toString(),
+                      )
+                      const mappedField = TARGET_FIELDS.find((f) => f.key === mappedFieldKey)
                       return (
                         <TableCell
-                          key={f.key}
+                          key={colIndex}
                           className="border-r last:border-r-0 font-bold text-[11px] text-gray-500 uppercase tracking-wider bg-gray-50/80"
                         >
-                          {isMapped
-                            ? csvHeaders[Number(colIdx)] || `COLUNA ${Number(colIdx) + 1}`
-                            : '-'}
+                          {mappedField ? mappedField.label : '-'}
                         </TableCell>
                       )
                     })}
                   </TableRow>
                   {Array.from({ length: Math.min(4, csvData.length) }).map((_, rowIdx) => (
                     <TableRow key={rowIdx} className="hover:bg-transparent">
-                      {TARGET_FIELDS.map((f) => {
-                        const colIdx = mapping[f.key]
-                        const val =
-                          colIdx !== undefined && colIdx !== 'none'
-                            ? csvData[rowIdx][Number(colIdx)]
-                            : ''
+                      {csvHeaders.map((_, colIndex) => {
+                        const val = csvData[rowIdx][colIndex]
                         return (
                           <TableCell
-                            key={f.key}
+                            key={colIndex}
                             className="border-r last:border-r-0 text-sm text-gray-600"
                           >
                             <div className="truncate max-w-[200px]" title={val}>
