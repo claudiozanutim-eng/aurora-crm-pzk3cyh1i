@@ -27,7 +27,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-8 bg-white rounded-xl shadow-subtle border border-gray-100">
         <div className="flex justify-center mb-6">
-          <img src={auroraLogo} alt="Aurora CRM" className="h-28 w-auto object-contain" />
+          <img src={auroraLogo} alt="Aurora CRM" className="h-56 w-auto object-contain" />
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
