@@ -109,6 +109,11 @@ const clientSchema = z
         }),
       )
       .default([{}]),
+    pf_email: z.string().trim().email('E-mail inválido').or(z.literal('')).optional(),
+    pf_telefone: z
+      .string()
+      .optional()
+      .refine((val) => !val || val.length >= 14, 'Telefone inválido'),
   })
   .refine(
     (data) => {
@@ -121,6 +126,20 @@ const clientSchema = z
     {
       message: 'Documento inválido',
       path: ['documento'],
+    },
+  )
+  .refine(
+    (data) => {
+      if (data.tipo === 'PF') {
+        const hasEmail = !!data.pf_email?.trim()
+        const hasPhone = !!data.pf_telefone?.trim()
+        return hasEmail || hasPhone
+      }
+      return true
+    },
+    {
+      message: 'Salvar pelo menos uma forma de contato com a pessoa',
+      path: ['pf_telefone'],
     },
   )
 
@@ -182,6 +201,8 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
       status: 'Lead',
       segmento: 'Educação',
       porte: 'Pequeno',
+      pf_email: '',
+      pf_telefone: '',
       contatos: [
         {
           nome_contato: '',
@@ -235,6 +256,11 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
   }
 
   const checkContacts = (data: FormData) => {
+    if (data.tipo === 'PF') {
+      executeSubmit(data)
+      return
+    }
+
     const hasAnyContact = data.contatos.some(
       (c) =>
         c.nome_contato?.trim() ||
@@ -259,30 +285,43 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
     try {
       setIsLoading(true)
 
-      const validContacts = data.contatos
-        .filter(
-          (c) =>
-            c.nome_contato?.trim() ||
-            c.email?.trim() ||
-            c.telefone?.trim() ||
-            c.cargo?.trim() ||
-            c.data_aniversario?.trim(),
-        )
-        .map((c) => ({
-          nome: c.nome_contato?.trim() || '',
-          email: c.email?.trim() || '',
-          telefone: c.telefone?.trim() || '',
-          cargo: c.cargo?.trim() || '',
-          data_aniversario: c.data_aniversario
-            ? new Date(c.data_aniversario).toISOString()
-            : undefined,
-        }))
+      let validContacts = []
+
+      if (data.tipo === 'PF') {
+        validContacts = [
+          {
+            nome: data.nome,
+            email: data.pf_email?.trim() || '',
+            telefone: data.pf_telefone?.trim() || '',
+            cargo: '',
+          },
+        ]
+      } else {
+        validContacts = data.contatos
+          .filter(
+            (c) =>
+              c.nome_contato?.trim() ||
+              c.email?.trim() ||
+              c.telefone?.trim() ||
+              c.cargo?.trim() ||
+              c.data_aniversario?.trim(),
+          )
+          .map((c) => ({
+            nome: c.nome_contato?.trim() || '',
+            email: c.email?.trim() || '',
+            telefone: c.telefone?.trim() || '',
+            cargo: c.cargo?.trim() || '',
+            data_aniversario: c.data_aniversario
+              ? new Date(c.data_aniversario).toISOString()
+              : undefined,
+          }))
+      }
 
       await createClienteEContatos(
         {
           tipo: data.tipo,
           nome: data.nome,
-          nome_fantasia: data.nome_fantasia,
+          nome_fantasia: data.tipo === 'PJ' ? data.nome_fantasia : undefined,
           documento: data.documento || '',
           segmento: data.segmento,
           porte: data.porte,
@@ -297,6 +336,8 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
         status: 'Lead',
         segmento: 'Educação',
         porte: 'Pequeno',
+        pf_email: '',
+        pf_telefone: '',
         contatos: [
           {
             nome_contato: '',
@@ -338,6 +379,10 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
                 onValueChange={(v) => {
                   setValue('tipo', v as 'PF' | 'PJ')
                   setValue('documento', '')
+                  if (v === 'PJ') {
+                    setValue('pf_email', '')
+                    setValue('pf_telefone', '')
+                  }
                 }}
                 className="w-full"
               >
@@ -377,59 +422,93 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Segmento *</Label>
-                  <Controller
-                    name="segmento"
-                    control={control}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Educação">Educação</SelectItem>
-                          <SelectItem value="Tecnologia">Tecnologia</SelectItem>
-                          <SelectItem value="Varejo">Varejo</SelectItem>
-                          <SelectItem value="Agro">Agro</SelectItem>
-                          <SelectItem value="Indústria">Indústria</SelectItem>
-                          <SelectItem value="Serviços">Serviços</SelectItem>
-                          <SelectItem value="Cooperativa">Cooperativa</SelectItem>
-                          <SelectItem value="Outro">Outro</SelectItem>
-                        </SelectContent>
-                      </Select>
+              {tipo === 'PJ' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Segmento *</Label>
+                    <Controller
+                      name="segmento"
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Educação">Educação</SelectItem>
+                            <SelectItem value="Tecnologia">Tecnologia</SelectItem>
+                            <SelectItem value="Varejo">Varejo</SelectItem>
+                            <SelectItem value="Agro">Agro</SelectItem>
+                            <SelectItem value="Indústria">Indústria</SelectItem>
+                            <SelectItem value="Serviços">Serviços</SelectItem>
+                            <SelectItem value="Cooperativa">Cooperativa</SelectItem>
+                            <SelectItem value="Outro">Outro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.segmento && (
+                      <span className="text-sm text-red-500">{errors.segmento.message}</span>
                     )}
-                  />
-                  {errors.segmento && (
-                    <span className="text-sm text-red-500">{errors.segmento.message}</span>
-                  )}
-                </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>Porte *</Label>
-                  <Controller
-                    name="porte"
-                    control={control}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Micro">Micro</SelectItem>
-                          <SelectItem value="Pequeno">Pequeno</SelectItem>
-                          <SelectItem value="Médio">Médio</SelectItem>
-                          <SelectItem value="Grande">Grande</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  <div className="space-y-2">
+                    <Label>Porte *</Label>
+                    <Controller
+                      name="porte"
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Micro">Micro</SelectItem>
+                            <SelectItem value="Pequeno">Pequeno</SelectItem>
+                            <SelectItem value="Médio">Médio</SelectItem>
+                            <SelectItem value="Grande">Grande</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.porte && (
+                      <span className="text-sm text-red-500">{errors.porte.message}</span>
                     )}
-                  />
-                  {errors.porte && (
-                    <span className="text-sm text-red-500">{errors.porte.message}</span>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {tipo === 'PF' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="pf_email">E-mail</Label>
+                    <Input
+                      id="pf_email"
+                      type="email"
+                      {...register('pf_email')}
+                      placeholder="email@exemplo.com"
+                    />
+                    {errors.pf_email && (
+                      <span className="text-sm text-red-500">{errors.pf_email.message}</span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pf_telefone">Telefone</Label>
+                    <Input
+                      id="pf_telefone"
+                      value={watch('pf_telefone') || ''}
+                      onChange={(e) => {
+                        setValue('pf_telefone', maskPhone(e.target.value), { shouldValidate: true })
+                      }}
+                      placeholder="(11) 99999-9999"
+                    />
+                    {errors.pf_telefone && (
+                      <span className="text-sm text-red-500">{errors.pf_telefone.message}</span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Status *</Label>
@@ -451,13 +530,23 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
                 />
               </div>
 
-              <Button
-                type="button"
-                onClick={handleNext}
-                className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
-              >
-                Próximo Passo
-              </Button>
+              {tipo === 'PJ' ? (
+                <Button
+                  type="button"
+                  onClick={handleNext}
+                  className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
+                >
+                  Próximo Passo
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
+                >
+                  {isLoading ? 'Salvando...' : 'Salvar'}
+                </Button>
+              )}
             </div>
           )}
 
