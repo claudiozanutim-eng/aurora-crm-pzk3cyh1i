@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '@/hooks/use-auth'
 import {
   LayoutDashboard,
   Users,
@@ -28,6 +29,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
   const location = useLocation()
+  const { user } = useAuth()
 
   return (
     <div className={cn('flex h-full w-full flex-col bg-white border-r', className)}>
@@ -75,7 +77,7 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
             className="h-8 w-8 rounded-full border border-gray-200"
           />
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-gray-900">Ana Gerente</span>
+            <span className="text-sm font-medium text-gray-900">{user?.name || 'Usuário'}</span>
             <span className="text-xs text-gray-500">IC Educ</span>
           </div>
         </div>
