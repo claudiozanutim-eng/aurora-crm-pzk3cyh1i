@@ -47,13 +47,31 @@ export function NegocioFormSheet({
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [clienteId, setClienteId] = useState<string>('')
   const [openCombobox, setOpenCombobox] = useState(false)
+  const [valorEstimado, setValorEstimado] = useState('')
 
   useEffect(() => {
     if (open) {
       getClientes().then(setClientes).catch(console.error)
       setClienteId('')
+      setValorEstimado('')
     }
   }, [open])
+
+  const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    const numbers = value.replace(/\D/g, '')
+    if (!numbers) {
+      setValorEstimado('')
+      return
+    }
+    const amount = Number(numbers) / 100
+    setValorEstimado(
+      amount.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -68,10 +86,12 @@ export function NegocioFormSheet({
 
     const fd = new FormData(e.currentTarget)
     const prevDate = fd.get('data_prevista_fechamento') as string
+    const rawValor = fd.get('valor_estimado') as string
+    const valorNum = rawValor ? Number(rawValor.replace(/\./g, '').replace(',', '.')) : 0
 
     const data = {
       cliente_id: clienteId,
-      valor_estimado: Number(fd.get('valor_estimado') || 0),
+      valor_estimado: valorNum,
       probabilidade_nivel: fd.get('probabilidade_nivel') as any,
       data_prevista_fechamento: prevDate ? `${prevDate} 12:00:00.000Z` : undefined,
       status: fd.get('status') as any,
@@ -152,7 +172,14 @@ export function NegocioFormSheet({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="valor_estimado">Valor Estimado (R$)</Label>
-              <Input type="number" step="0.01" min="0" name="valor_estimado" required />
+              <Input
+                type="text"
+                name="valor_estimado"
+                required
+                value={valorEstimado}
+                onChange={handleValorChange}
+                placeholder="0,00"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="probabilidade_nivel">Probabilidade</Label>
