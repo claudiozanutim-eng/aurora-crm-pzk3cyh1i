@@ -4,6 +4,7 @@ import { Cliente, Contato } from './clientes'
 
 export interface Negocio extends RecordModel {
   cliente_id: string
+  vendedor_id: string
   valor_estimado: number
   probabilidade?: number
   probabilidade_nivel?: 'Alta' | 'Média' | 'Baixa'

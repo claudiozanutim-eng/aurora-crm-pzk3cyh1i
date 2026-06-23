@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils'
 
 import { createNegocio } from '@/services/negocios'
 import { getClientes, Cliente } from '@/services/clientes'
+import { getUsers, User } from '@/services/users'
 import { extractFieldErrors } from '@/lib/pocketbase/errors'
 
 export function NegocioFormSheet({
@@ -43,16 +44,21 @@ export function NegocioFormSheet({
   onSuccess: () => void
 }) {
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [clienteId, setClienteId] = useState<string>('')
+  const [vendedorId, setVendedorId] = useState<string>('')
   const [openCombobox, setOpenCombobox] = useState(false)
+  const [openUserCombobox, setOpenUserCombobox] = useState(false)
   const [valorEstimado, setValorEstimado] = useState('')
 
   useEffect(() => {
     if (open) {
       getClientes().then(setClientes).catch(console.error)
+      getUsers().then(setUsers).catch(console.error)
       setClienteId('')
+      setVendedorId('')
       setValorEstimado('')
     }
   }, [open])
@@ -84,6 +90,12 @@ export function NegocioFormSheet({
       return
     }
 
+    if (!vendedorId) {
+      setErrors({ vendedor_id: 'Selecione um vendedor responsável.' })
+      setLoading(false)
+      return
+    }
+
     const fd = new FormData(e.currentTarget)
     const prevDate = fd.get('data_prevista_fechamento') as string
     const rawValor = fd.get('valor_estimado') as string
@@ -91,6 +103,7 @@ export function NegocioFormSheet({
 
     const data = {
       cliente_id: clienteId,
+      vendedor_id: vendedorId,
       valor_estimado: valorNum,
       probabilidade_nivel: fd.get('probabilidade_nivel') as any,
       data_prevista_fechamento: prevDate ? `${prevDate} 12:00:00.000Z` : undefined,
@@ -167,6 +180,57 @@ export function NegocioFormSheet({
               </PopoverContent>
             </Popover>
             {errors.cliente_id && <p className="text-red-500 text-sm">{errors.cliente_id}</p>}
+          </div>
+
+          <div className="space-y-2 flex flex-col">
+            <Label htmlFor="vendedor_id">Vendedor Responsável</Label>
+            <Popover open={openUserCombobox} onOpenChange={setOpenUserCombobox}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openUserCombobox}
+                  className={cn(
+                    'w-full justify-between font-normal',
+                    !vendedorId && 'text-muted-foreground',
+                  )}
+                >
+                  {vendedorId
+                    ? users.find((u) => u.id === vendedorId)?.name || 'Vendedor selecionado'
+                    : 'Selecione um vendedor'}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar vendedor..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhum vendedor encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {users.map((u) => (
+                        <CommandItem
+                          key={u.id}
+                          value={u.name}
+                          onSelect={() => {
+                            setVendedorId(u.id)
+                            setOpenUserCombobox(false)
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              vendedorId === u.id ? 'opacity-100' : 'opacity-0',
+                            )}
+                          />
+                          {u.name || 'Sem nome'}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {errors.vendedor_id && <p className="text-red-500 text-sm">{errors.vendedor_id}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

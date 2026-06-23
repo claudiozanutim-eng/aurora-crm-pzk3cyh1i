@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T19:08:35.333Z",
+  "generatedAt": "2026-06-23T19:25:51.192Z",
   "collections": [
     {
       "name": "users",
@@ -311,6 +311,13 @@
           "required": false,
           "system": false,
           "selectValues": ["Desistiu do Projeto", "Preço", "Preferiu Concorrente", "Cliente Sumiu"]
+        },
+        {
+          "name": "vendedor_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
         }
       ],
       "indexes": [
