@@ -15,10 +15,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { UploadCloud, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import { UploadCloud, CheckCircle2, AlertCircle, Loader2, Database } from 'lucide-react'
 import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import pb from '@/lib/pocketbase/client'
+import { cn } from '@/lib/utils'
 
 const TARGET_FIELDS = [
   { key: 'tipo', label: 'Tipo (PF/PJ)' },
@@ -185,7 +194,12 @@ export function ClienteImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent
+        className={cn(
+          'sm:max-w-[600px] transition-all duration-300',
+          step === 'mapping' && 'sm:max-w-[1000px] w-[95vw]',
+        )}
+      >
         <DialogHeader>
           <DialogTitle>Importar Clientes</DialogTitle>
           <DialogDescription>
@@ -219,42 +233,97 @@ export function ClienteImportDialog({
           <div className="space-y-4">
             <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm flex gap-2 items-start">
               <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-              <p>Mapeie as colunas do arquivo para os campos do sistema.</p>
+              <p>
+                Relacione as colunas do seu arquivo aos campos do sistema. O preview abaixo mostra
+                os dados reais que serão importados.
+              </p>
             </div>
-            <ScrollArea className="h-[300px] pr-4">
-              <div className="space-y-4">
-                {TARGET_FIELDS.map((f) => (
-                  <div key={f.key} className="grid grid-cols-2 gap-4 items-center">
-                    <Label className="text-right text-gray-600">{f.label}</Label>
-                    <Select
-                      value={mapping[f.key] ?? 'none'}
-                      onValueChange={(val) =>
-                        setMapping((prev) => {
-                          const n = { ...prev }
-                          if (val === 'none') delete n[f.key]
-                          else n[f.key] = val
-                          return n
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Ignorar coluna" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none" className="text-gray-400 italic">
-                          Ignorar coluna
-                        </SelectItem>
-                        {csvHeaders.map((h, i) => (
-                          <SelectItem key={i} value={i.toString()}>
-                            {h || `Coluna ${i + 1}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-              </div>
+
+            <ScrollArea className="w-full border rounded-md bg-white">
+              <Table className="w-full border-collapse">
+                <TableHeader>
+                  <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
+                    {TARGET_FIELDS.map((f) => (
+                      <TableHead
+                        key={f.key}
+                        className="min-w-[220px] max-w-[250px] border-r last:border-r-0 align-top p-4"
+                      >
+                        <div className="flex items-center gap-2 mb-3 text-gray-900 font-semibold">
+                          <Database className="w-4 h-4 text-gray-400" />
+                          {f.label}
+                        </div>
+                        <Select
+                          value={mapping[f.key] ?? 'none'}
+                          onValueChange={(val) =>
+                            setMapping((prev) => {
+                              const n = { ...prev }
+                              if (val === 'none') delete n[f.key]
+                              else n[f.key] = val
+                              return n
+                            })
+                          }
+                        >
+                          <SelectTrigger className="w-full bg-white">
+                            <SelectValue placeholder="Selecione uma coluna" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none" className="text-gray-400 italic">
+                              Ignorar coluna
+                            </SelectItem>
+                            {csvHeaders.map((h, i) => (
+                              <SelectItem key={i} value={i.toString()}>
+                                {h || `Coluna ${i + 1}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow className="bg-gray-100/50 hover:bg-gray-100/50">
+                    {TARGET_FIELDS.map((f) => {
+                      const colIdx = mapping[f.key]
+                      const isMapped = colIdx !== undefined && colIdx !== 'none'
+                      return (
+                        <TableCell
+                          key={f.key}
+                          className="border-r last:border-r-0 font-bold text-[11px] text-gray-500 uppercase tracking-wider bg-gray-50/80"
+                        >
+                          {isMapped
+                            ? csvHeaders[Number(colIdx)] || `COLUNA ${Number(colIdx) + 1}`
+                            : '-'}
+                        </TableCell>
+                      )
+                    })}
+                  </TableRow>
+                  {Array.from({ length: Math.min(3, csvData.length) }).map((_, rowIdx) => (
+                    <TableRow key={rowIdx} className="hover:bg-transparent">
+                      {TARGET_FIELDS.map((f) => {
+                        const colIdx = mapping[f.key]
+                        const val =
+                          colIdx !== undefined && colIdx !== 'none'
+                            ? csvData[rowIdx][Number(colIdx)]
+                            : ''
+                        return (
+                          <TableCell
+                            key={f.key}
+                            className="border-r last:border-r-0 text-sm text-gray-600"
+                          >
+                            <div className="truncate max-w-[200px]" title={val}>
+                              {val || <span className="text-gray-300 italic">vazio</span>}
+                            </div>
+                          </TableCell>
+                        )
+                      })}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <ScrollBar orientation="horizontal" />
             </ScrollArea>
+
             <DialogFooter>
               <Button variant="outline" onClick={reset}>
                 Cancelar
