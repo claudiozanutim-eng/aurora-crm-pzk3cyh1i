@@ -10,6 +10,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,12 +33,56 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { createClienteEContato } from '@/services/clientes'
 
+function isValidCPF(cpf: string) {
+  cpf = cpf.replace(/[^\d]+/g, '')
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false
+  let soma = 0,
+    resto
+  for (let i = 1; i <= 9; i++) soma = soma + parseInt(cpf.substring(i - 1, i)) * (11 - i)
+  resto = (soma * 10) % 11
+  if (resto === 10 || resto === 11) resto = 0
+  if (resto !== parseInt(cpf.substring(9, 10))) return false
+  soma = 0
+  for (let i = 1; i <= 10; i++) soma = soma + parseInt(cpf.substring(i - 1, i)) * (12 - i)
+  resto = (soma * 10) % 11
+  if (resto === 10 || resto === 11) resto = 0
+  if (resto !== parseInt(cpf.substring(10, 11))) return false
+  return true
+}
+
+function isValidCNPJ(cnpj: string) {
+  cnpj = cnpj.replace(/[^\d]+/g, '')
+  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false
+  let tamanho = cnpj.length - 2
+  let numeros = cnpj.substring(0, tamanho)
+  const digitos = cnpj.substring(tamanho)
+  let soma = 0
+  let pos = tamanho - 7
+  for (let i = tamanho; i >= 1; i--) {
+    soma += parseInt(numeros.charAt(tamanho - i)) * pos--
+    if (pos < 2) pos = 9
+  }
+  let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11)
+  if (resultado !== parseInt(digitos.charAt(0))) return false
+  tamanho = tamanho + 1
+  numeros = cnpj.substring(0, tamanho)
+  soma = 0
+  pos = tamanho - 7
+  for (let i = tamanho; i >= 1; i--) {
+    soma += parseInt(numeros.charAt(tamanho - i)) * pos--
+    if (pos < 2) pos = 9
+  }
+  resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11)
+  if (resultado !== parseInt(digitos.charAt(1))) return false
+  return true
+}
+
 const clientSchema = z
   .object({
     tipo: z.enum(['PF', 'PJ']),
     nome: z.string().min(3, 'Nome/Razão Social obrigatório'),
     nome_fantasia: z.string().optional(),
-    documento: z.string().min(11, 'Documento obrigatório'),
+    documento: z.string().optional(),
     segmento: z.enum(['Educação', 'Tecnologia', 'Varejo', 'Outro']),
     porte: z.enum(['Micro', 'Pequeno', 'Médio', 'Grande']),
     status: z.enum(['Ativo', 'Inativo', 'Lead']),
@@ -40,8 +94,11 @@ const clientSchema = z
   })
   .refine(
     (data) => {
-      const docsLength = data.documento.replace(/\D/g, '').length
-      return data.tipo === 'PJ' ? docsLength === 14 : docsLength === 11
+      const cleanDoc = data.documento?.replace(/\D/g, '') || ''
+      if (cleanDoc.length === 0) return true
+      return data.tipo === 'PJ'
+        ? cleanDoc.length === 14 && isValidCNPJ(cleanDoc)
+        : cleanDoc.length === 11 && isValidCPF(cleanDoc)
     },
     {
       message: 'Documento inválido',
@@ -87,6 +144,8 @@ interface ClienteFormSheetProps {
 export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormSheetProps) {
   const [step, setStep] = useState<1 | 2>(1)
   const [isLoading, setIsLoading] = useState(false)
+  const [showConfirmEmptyDoc, setShowConfirmEmptyDoc] = useState(false)
+  const [pendingData, setPendingData] = useState<FormData | null>(null)
 
   const {
     register,
@@ -134,6 +193,16 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
   }
 
   const onSubmit = async (data: FormData) => {
+    const cleanDoc = data.documento?.replace(/\D/g, '') || ''
+    if (cleanDoc.length === 0) {
+      setPendingData(data)
+      setShowConfirmEmptyDoc(true)
+      return
+    }
+    executeSubmit(data)
+  }
+
+  const executeSubmit = async (data: FormData) => {
     try {
       setIsLoading(true)
       await createClienteEContato(
@@ -141,7 +210,7 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
           tipo: data.tipo,
           nome: data.nome,
           nome_fantasia: data.nome_fantasia,
-          documento: data.documento,
+          documento: data.documento || '',
           segmento: data.segmento,
           porte: data.porte,
           status: data.status,
@@ -166,6 +235,8 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
       toast.error('Erro ao cadastrar cliente. Verifique se o documento já existe.')
     } finally {
       setIsLoading(false)
+      setShowConfirmEmptyDoc(false)
+      setPendingData(null)
     }
   }
 
@@ -216,7 +287,7 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="documento">{tipo === 'PJ' ? 'CNPJ' : 'CPF'} *</Label>
+                <Label htmlFor="documento">{tipo === 'PJ' ? 'CNPJ' : 'CPF'}</Label>
                 <Input
                   id="documento"
                   value={watch('documento') || ''}
@@ -375,6 +446,29 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
           )}
         </form>
       </SheetContent>
+      <AlertDialog open={showConfirmEmptyDoc} onOpenChange={setShowConfirmEmptyDoc}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Atenção</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to register this client without a CPF/CNPJ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                if (pendingData) executeSubmit(pendingData)
+              }}
+              disabled={isLoading}
+              className="bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
+            >
+              {isLoading ? 'Salvando...' : 'Confirmar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   )
 }
