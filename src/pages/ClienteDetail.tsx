@@ -27,6 +27,7 @@ export default function ClienteDetail() {
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const formRef = useRef<ClientDataFormRef>(null)
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const load = async () => {
     if (!id) return
@@ -60,7 +61,9 @@ export default function ClienteDetail() {
 
   const handleSaveAndExit = async () => {
     if (formRef.current) {
+      setIsSaving(true)
       const success = await formRef.current.saveChanges()
+      setIsSaving(false)
       if (success) {
         setShowUnsavedDialog(false)
         navigate(-1)
@@ -149,11 +152,17 @@ export default function ClienteDetail() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <Button variant="destructive" onClick={handleExitWithoutSaving}>
-              Não salvar
+            <AlertDialogCancel disabled={isSaving}>Cancelar</AlertDialogCancel>
+            <Button variant="destructive" onClick={handleExitWithoutSaving} disabled={isSaving}>
+              Sair sem Salvar
             </Button>
-            <AlertDialogAction onClick={handleSaveAndExit}>Sim, salvar</AlertDialogAction>
+            <Button
+              onClick={handleSaveAndExit}
+              disabled={isSaving}
+              className="bg-[#FF6B00] hover:bg-[#E66000] text-white"
+            >
+              {isSaving ? 'Salvando...' : 'Salvar e Sair'}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

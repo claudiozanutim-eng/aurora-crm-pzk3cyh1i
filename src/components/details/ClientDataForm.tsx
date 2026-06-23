@@ -33,11 +33,23 @@ export const ClientDataForm = forwardRef<ClientDataFormRef, { cliente: Cliente }
       tags: cliente.tags || [],
     })
 
-    const handleChange = (field: keyof Cliente, value: any) => {
-      setData((prev) => ({ ...prev, [field]: value }))
-    }
-
     const [isDirty, setIsDirty] = useState(false)
+
+    useEffect(() => {
+      if (!isDirty) {
+        setData({
+          tipo: cliente.tipo,
+          documento: cliente.documento || '',
+          nome: cliente.nome || '',
+          nome_fantasia: cliente.nome_fantasia || '',
+          segmento: cliente.segmento,
+          porte: cliente.porte,
+          status: cliente.status,
+          observacoes: cliente.observacoes || '',
+          tags: cliente.tags || [],
+        })
+      }
+    }, [cliente, isDirty])
 
     useEffect(() => {
       const dirty =
@@ -53,6 +65,10 @@ export const ClientDataForm = forwardRef<ClientDataFormRef, { cliente: Cliente }
       setIsDirty(dirty)
     }, [data, cliente])
 
+    const handleChange = (field: keyof Cliente, value: any) => {
+      setData((prev) => ({ ...prev, [field]: value }))
+    }
+
     const saveChanges = async () => {
       try {
         await updateCliente(cliente.id, data)
@@ -60,7 +76,11 @@ export const ClientDataForm = forwardRef<ClientDataFormRef, { cliente: Cliente }
         setIsDirty(false)
         return true
       } catch (error) {
-        toast({ title: 'Erro ao salvar', variant: 'destructive' })
+        toast({
+          title: 'Erro ao salvar as alterações',
+          description: 'Por favor, tente novamente.',
+          variant: 'destructive',
+        })
         return false
       }
     }
