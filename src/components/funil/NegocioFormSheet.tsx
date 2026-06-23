@@ -17,6 +17,18 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Check, ChevronsUpDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
 import { createNegocio } from '@/services/negocios'
 import { getClientes, Cliente } from '@/services/clientes'
 import { extractFieldErrors } from '@/lib/pocketbase/errors'
@@ -33,10 +45,13 @@ export function NegocioFormSheet({
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [clienteId, setClienteId] = useState<string>('')
+  const [openCombobox, setOpenCombobox] = useState(false)
 
   useEffect(() => {
     if (open) {
       getClientes().then(setClientes).catch(console.error)
+      setClienteId('')
     }
   }, [open])
 
@@ -44,14 +59,20 @@ export function NegocioFormSheet({
     e.preventDefault()
     setLoading(true)
     setErrors({})
-    const fd = new FormData(e.currentTarget)
 
+    if (!clienteId) {
+      setErrors({ cliente_id: 'Selecione um cliente.' })
+      setLoading(false)
+      return
+    }
+
+    const fd = new FormData(e.currentTarget)
     const prevDate = fd.get('data_prevista_fechamento') as string
 
     const data = {
-      cliente_id: fd.get('cliente_id') as string,
+      cliente_id: clienteId,
       valor_estimado: Number(fd.get('valor_estimado') || 0),
-      probabilidade: Number(fd.get('probabilidade') || 0),
+      probabilidade_nivel: fd.get('probabilidade_nivel') as any,
       data_prevista_fechamento: prevDate ? `${prevDate} 12:00:00.000Z` : undefined,
       status: fd.get('status') as any,
       prioridade: fd.get('prioridade') as any,
@@ -77,20 +98,54 @@ export function NegocioFormSheet({
           <SheetDescription>Crie uma nova oportunidade de negócio.</SheetDescription>
         </SheetHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div className="space-y-2">
+          <div className="space-y-2 flex flex-col">
             <Label htmlFor="cliente_id">Cliente</Label>
-            <Select name="cliente_id" required>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clientes.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openCombobox}
+                  className={cn(
+                    'w-full justify-between font-normal',
+                    !clienteId && 'text-muted-foreground',
+                  )}
+                >
+                  {clienteId
+                    ? clientes.find((c) => c.id === clienteId)?.nome
+                    : 'Selecione um cliente'}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar cliente..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {clientes.map((c) => (
+                        <CommandItem
+                          key={c.id}
+                          value={c.nome}
+                          onSelect={() => {
+                            setClienteId(c.id)
+                            setOpenCombobox(false)
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              clienteId === c.id ? 'opacity-100' : 'opacity-0',
+                            )}
+                          />
+                          {c.nome}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             {errors.cliente_id && <p className="text-red-500 text-sm">{errors.cliente_id}</p>}
           </div>
 
@@ -100,15 +155,17 @@ export function NegocioFormSheet({
               <Input type="number" step="0.01" min="0" name="valor_estimado" required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="probabilidade">Probabilidade (%)</Label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                name="probabilidade"
-                required
-                defaultValue="50"
-              />
+              <Label htmlFor="probabilidade_nivel">Probabilidade</Label>
+              <Select name="probabilidade_nivel" defaultValue="Média">
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Alta">Alta</SelectItem>
+                  <SelectItem value="Média">Média</SelectItem>
+                  <SelectItem value="Baixa">Baixa</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
