@@ -31,7 +31,7 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
       await convertLeadToSale(lead)
       toast({
         title: 'Lead convertido com sucesso!',
-        description: 'O novo negócio já está disponível no Funil de Vendas.',
+        description: 'O novo negócio já está na coluna Qualificação.',
       })
       onSuccess()
       onOpenChange(false)
@@ -61,7 +61,7 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
             Deseja converter este lead em cliente e abrir um novo negócio?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Isso irá gerar um novo cliente, um contato e um novo negócio na coluna "Prospecção".
+            Isso irá gerar um novo cliente, um contato e um novo negócio na coluna "Qualificação".
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
