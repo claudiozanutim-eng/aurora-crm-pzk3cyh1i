@@ -83,7 +83,16 @@ const clientSchema = z
     nome: z.string().min(3, 'Nome/Razão Social obrigatório'),
     nome_fantasia: z.string().optional(),
     documento: z.string().optional(),
-    segmento: z.enum(['Educação', 'Tecnologia', 'Varejo', 'Outro']),
+    segmento: z.enum([
+      'Educação',
+      'Tecnologia',
+      'Varejo',
+      'Agro',
+      'Indústria',
+      'Serviços',
+      'Cooperativa',
+      'Outro',
+    ]),
     porte: z.enum(['Micro', 'Pequeno', 'Médio', 'Grande']),
     status: z.enum(['Ativo', 'Inativo', 'Lead']),
     nome_contato: z.string().min(3, 'Nome do contato obrigatório'),
@@ -314,6 +323,10 @@ export function ClienteFormSheet({ open, onOpenChange, onSuccess }: ClienteFormS
                           <SelectItem value="Educação">Educação</SelectItem>
                           <SelectItem value="Tecnologia">Tecnologia</SelectItem>
                           <SelectItem value="Varejo">Varejo</SelectItem>
+                          <SelectItem value="Agro">Agro</SelectItem>
+                          <SelectItem value="Indústria">Indústria</SelectItem>
+                          <SelectItem value="Serviços">Serviços</SelectItem>
+                          <SelectItem value="Cooperativa">Cooperativa</SelectItem>
                           <SelectItem value="Outro">Outro</SelectItem>
                         </SelectContent>
                       </Select>
