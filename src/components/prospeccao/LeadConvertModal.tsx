@@ -29,20 +29,40 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
   const [valorEstimado, setValorEstimado] = useState('')
   const { toast } = useToast()
 
+  const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    const numbers = value.replace(/\D/g, '')
+    if (!numbers) {
+      setValorEstimado('')
+      return
+    }
+    const amount = Number(numbers) / 100
+    setValorEstimado(
+      amount.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+    )
+  }
+
   const handleConvert = async () => {
     setLoading(true)
     try {
+      const valorNum = valorEstimado
+        ? Number(valorEstimado.replace(/\./g, '').replace(',', '.'))
+        : null
+
       await pb.send('/backend/v1/convert-lead', {
         method: 'POST',
         body: JSON.stringify({
           lead_id: lead.id,
-          valor_estimado: valorEstimado ? Number(valorEstimado) : null,
+          valor_estimado: valorNum,
         }),
         headers: { 'Content-Type': 'application/json' },
       })
       toast({
         title: 'Lead convertido com sucesso!',
-        description: 'O novo negócio já está na coluna Qualificação.',
+        description: "O novo negócio foi criado em 'Qualificação'.",
       })
       onSuccess()
       onOpenChange(false)
@@ -57,7 +77,8 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
         errorMsg ||
         'Não foi possível realizar a conversão.'
       if (msg === 'Something went wrong.' || msg === 'An unexpected error occurred.') {
-        msg = 'Não foi possível realizar a conversão. Verifique os dados.'
+        msg =
+          'Não foi possível realizar a conversão. Verifique os campos obrigatórios (Cliente, Contato).'
       }
 
       toast({
@@ -87,12 +108,10 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
             <Label htmlFor="valor">Valor Estimado (Opcional)</Label>
             <Input
               id="valor"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="Ex: 5000"
+              type="text"
+              placeholder="0,00"
               value={valorEstimado}
-              onChange={(e) => setValorEstimado(e.target.value)}
+              onChange={handleValorChange}
               disabled={loading}
             />
           </div>
