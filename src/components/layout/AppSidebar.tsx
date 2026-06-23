@@ -9,6 +9,7 @@ import {
   Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import auroraLogoHorizontal from '@/assets/image69debc47-caaa-4a34-9b6b-8da340b6c9e7-53707.png'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -31,11 +32,8 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
   return (
     <div className={cn('flex h-full w-full flex-col bg-white border-r', className)}>
       <div className="flex h-16 items-center px-6 border-b">
-        <Link to="/" className="flex items-center gap-2" onClick={onNavigate}>
-          <div className="bg-primary rounded-lg p-1.5">
-            <LayoutDashboard className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-gray-900 tracking-tight">Aurora CRM</span>
+        <Link to="/" className="flex items-center" onClick={onNavigate}>
+          <img src={auroraLogoHorizontal} alt="Aurora CRM" className="h-10 w-auto object-contain" />
         </Link>
       </div>
 

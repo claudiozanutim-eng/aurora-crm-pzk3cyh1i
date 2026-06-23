@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
+import auroraLogo from '@/assets/aurora-logo-5bbbb.png'
 
 export default function Login() {
   const [email, setEmail] = useState('luizfelipe.pateo@iceduc.com.br')
@@ -25,7 +26,9 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-8 bg-white rounded-xl shadow-subtle border border-gray-100">
-        <h1 className="text-2xl font-bold text-center mb-6 text-gray-900">Aurora CRM</h1>
+        <div className="flex justify-center mb-6">
+          <img src={auroraLogo} alt="Aurora CRM" className="h-28 w-auto object-contain" />
+        </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">E-mail</Label>
