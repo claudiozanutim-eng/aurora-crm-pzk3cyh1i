@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { User, DollarSign } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useNavigate } from 'react-router-dom'
 
 const COLUMNS = [
   'Qualificação',
@@ -36,6 +37,7 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps) {
   const [activeColumn, setActiveColumn] = useState<Status | null>(null)
+  const navigate = useNavigate()
 
   const safeNegocios = Array.isArray(negocios) ? negocios : []
 
@@ -110,7 +112,8 @@ export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps)
                     key={deal.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, deal)}
-                    className="cursor-grab active:cursor-grabbing hover:border-orange-300 transition-colors shadow-sm border-gray-200"
+                    onClick={() => navigate(`/clientes/${deal.cliente_id}`)}
+                    className="cursor-pointer hover:border-orange-300 transition-colors shadow-sm border-gray-200"
                   >
                     <CardContent className="p-3">
                       <div className="flex justify-between items-start mb-2">

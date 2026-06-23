@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { User, Phone, Briefcase, CheckCircle2 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useNavigate } from 'react-router-dom'
 
 const COLUMNS = [
   'Novos Leads',
@@ -44,6 +45,7 @@ export function LeadsKanbanBoard({
   convertedClientNames = new Set(),
 }: LeadsKanbanBoardProps) {
   const [activeColumn, setActiveColumn] = useState<Status | null>(null)
+  const navigate = useNavigate()
 
   const safeLeads = Array.isArray(leads) ? leads : []
 
@@ -102,7 +104,8 @@ export function LeadsKanbanBoard({
                   key={lead.id}
                   draggable
                   onDragStart={(e) => handleDragStart(e, lead)}
-                  className="cursor-grab active:cursor-grabbing hover:border-orange-300 transition-colors shadow-sm border-gray-200"
+                  onClick={() => navigate(`/leads/${lead.id}`)}
+                  className="cursor-pointer hover:border-orange-300 transition-colors shadow-sm border-gray-200"
                 >
                   <CardContent className="p-3">
                     <div className="flex justify-between items-start mb-2">

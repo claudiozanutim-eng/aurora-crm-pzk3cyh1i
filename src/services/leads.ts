@@ -20,6 +20,11 @@ export interface Lead extends RecordModel {
   prioridade: 'Alta' | 'Média' | 'Baixa'
   status: 'Novos Leads' | 'Primeiro Contato' | 'Qualificando' | 'Não Qualificado' | 'Convertido'
   vendedor_id: string
+  observacoes?: string
+}
+
+export const getLeadById = async (id: string) => {
+  return pb.collection('leads').getOne<Lead>(id)
 }
 
 export const getLeads = async () => {

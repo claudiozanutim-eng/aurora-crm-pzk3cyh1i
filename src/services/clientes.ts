@@ -16,10 +16,19 @@ export interface Cliente extends RecordModel {
   documento: string
   nome: string
   nome_fantasia?: string
-  segmento: 'Educação' | 'Tecnologia' | 'Varejo' | 'Outro'
+  segmento:
+    | 'Educação'
+    | 'Tecnologia'
+    | 'Varejo'
+    | 'Agro'
+    | 'Indústria'
+    | 'Serviços'
+    | 'Cooperativa'
+    | 'Outro'
   porte: 'Micro' | 'Pequeno' | 'Médio' | 'Grande'
   status: 'Ativo' | 'Inativo' | 'Lead'
   data_cadastro: string
+  observacoes?: string
   expand?: {
     contatos_via_cliente_id?: Contato[]
   }
@@ -82,6 +91,14 @@ export const updateClienteEContatos = async (
   }
 
   return cliente
+}
+
+export const getClienteById = async (id: string) => {
+  return pb.collection('clientes').getOne<Cliente>(id, { expand: 'contatos_via_cliente_id' })
+}
+
+export const updateCliente = async (id: string, data: Partial<Cliente>) => {
+  return pb.collection('clientes').update<Cliente>(id, data)
 }
 
 export const deleteCliente = async (id: string) => {
