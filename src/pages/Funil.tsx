@@ -29,12 +29,14 @@ export default function Funil() {
     loadData()
   })
 
-  const totalDeals = negocios.length
-  const totalPipeline = negocios.reduce((acc, n) => acc + (n.valor_estimado || 0), 0)
-  const weightedPipeline = negocios.reduce(
-    (acc, n) => acc + ((n.valor_estimado || 0) * (n.probabilidade || 0)) / 100,
-    0,
-  )
+  const now = new Date()
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
+
+  let totalDeals = 0
+  let totalPipeline = 0
+  let totalGanhosMes = 0
+  let totalPerdidosMes = 0
 
   const statusCounts = {
     Prospecção: 0,
@@ -43,9 +45,31 @@ export default function Funil() {
     Negociação: 0,
     'Fechado/Ganho': 0,
     Perdido: 0,
-  }
+  } as Record<string, number>
+
+  const isActiveStatus = (status: string) =>
+    ['Prospecção', 'Qualificação', 'Proposta Enviada', 'Negociação'].includes(status)
+
   negocios.forEach((n) => {
-    if (statusCounts[n.status] !== undefined) statusCounts[n.status]++
+    totalDeals++
+    if (statusCounts[n.status] !== undefined) {
+      statusCounts[n.status]++
+    }
+
+    if (isActiveStatus(n.status)) {
+      totalPipeline += n.valor_estimado || 0
+    }
+
+    if (n.status === 'Fechado/Ganho' || n.status === 'Perdido') {
+      const dateStr = n.data_fechamento_real || n.updated
+      if (dateStr) {
+        const d = new Date(dateStr)
+        if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+          if (n.status === 'Fechado/Ganho') totalGanhosMes += n.valor_estimado || 0
+          if (n.status === 'Perdido') totalPerdidosMes += n.valor_estimado || 0
+        }
+      }
+    }
   })
 
   const handleStatusChange = async (deal: Negocio, newStatus: Negocio['status']) => {
@@ -85,28 +109,11 @@ export default function Funil() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0 px-1">
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Total de Negócios</p>
-          <p className="text-2xl font-bold text-gray-900">{totalDeals}</p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Valor Total do Pipeline</p>
-          <p className="text-2xl font-bold text-gray-900 truncate">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-              totalPipeline,
-            )}
-          </p>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">Valor Ponderado</p>
-          <p className="text-2xl font-bold text-gray-900 truncate">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-              weightedPipeline,
-            )}
-          </p>
-        </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-          <p className="text-sm font-medium text-gray-500 mb-2">Distribuição</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-gray-500">Total de Negócios</p>
+            <p className="text-2xl font-bold text-gray-900">{totalDeals}</p>
+          </div>
           <div className="flex flex-wrap gap-1">
             {Object.entries(statusCounts).map(([status, count]) => (
               <div
@@ -117,6 +124,30 @@ export default function Funil() {
               </div>
             ))}
           </div>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+          <p className="text-sm font-medium text-gray-500">Valor Total do Pipeline</p>
+          <p className="text-2xl font-bold text-gray-900 truncate">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+              totalPipeline,
+            )}
+          </p>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+          <p className="text-sm font-medium text-gray-500">Valor Total de Ganhos (mês)</p>
+          <p className="text-2xl font-bold text-emerald-600 truncate">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+              totalGanhosMes,
+            )}
+          </p>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
+          <p className="text-sm font-medium text-gray-500">Valor Total de Perdidos (mês)</p>
+          <p className="text-2xl font-bold text-red-600 truncate">
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+              totalPerdidosMes,
+            )}
+          </p>
         </div>
       </div>
 
