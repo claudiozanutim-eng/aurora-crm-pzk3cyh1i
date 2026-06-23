@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
+import { TagInput } from '@/components/ui/tag-input'
 
 export function ClientDataForm({ cliente }: { cliente: Cliente }) {
   const { toast } = useToast()
@@ -24,9 +25,10 @@ export function ClientDataForm({ cliente }: { cliente: Cliente }) {
     porte: cliente.porte,
     status: cliente.status,
     observacoes: cliente.observacoes || '',
+    tags: cliente.tags || [],
   })
 
-  const handleChange = (field: keyof Cliente, value: string) => {
+  const handleChange = (field: keyof Cliente, value: any) => {
     setData((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -133,6 +135,10 @@ export function ClientDataForm({ cliente }: { cliente: Cliente }) {
             </SelectContent>
           </Select>
         </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Tags</Label>
+        <TagInput value={data.tags} onChange={(val) => handleChange('tags', val)} />
       </div>
       <div className="space-y-2">
         <Label>Observações</Label>

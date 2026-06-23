@@ -6,6 +6,7 @@ import { User, Phone, Briefcase, CheckCircle2 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
+import { TagBadge } from '@/components/ui/tag-badge'
 
 const COLUMNS = [
   'Novos Leads',
@@ -135,6 +136,14 @@ export function LeadsKanbanBoard({
                         </div>
                       )}
                     </div>
+
+                    {lead.tags && lead.tags.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1">
+                        {lead.tags.map((tag) => (
+                          <TagBadge key={tag} tag={tag} />
+                        ))}
+                      </div>
+                    )}
 
                     {column === 'Convertido' && (
                       <div className="mt-3 pt-3 border-t border-gray-100">

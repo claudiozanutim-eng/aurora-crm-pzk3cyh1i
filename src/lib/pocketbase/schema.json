@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T21:46:51.754Z",
+  "generatedAt": "2026-06-23T21:52:18.959Z",
   "collections": [
     {
       "name": "users",
@@ -139,6 +139,12 @@
         {
           "name": "observacoes",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tags",
+          "type": "json",
           "required": false,
           "system": false
         }
@@ -446,6 +452,12 @@
         {
           "name": "observacoes",
           "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tags",
+          "type": "json",
           "required": false,
           "system": false
         }

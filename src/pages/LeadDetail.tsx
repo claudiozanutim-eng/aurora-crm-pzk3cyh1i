@@ -9,6 +9,7 @@ import { LeadDataForm } from '@/components/details/LeadDataForm'
 import { LeadContactsTab } from '@/components/details/LeadContactsTab'
 import { InteractionsTimeline } from '@/components/details/InteractionsTimeline'
 import { TasksList } from '@/components/details/TasksList'
+import { TagBadge } from '@/components/ui/tag-badge'
 
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>()
@@ -44,9 +45,18 @@ export default function LeadDetail() {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </Button>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">
-            {lead.nome}
-          </h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">
+              {lead.nome}
+            </h1>
+            {lead.tags && lead.tags.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap">
+                {lead.tags.map((tag) => (
+                  <TagBadge key={tag} tag={tag} />
+                ))}
+              </div>
+            )}
+          </div>
           <p className="text-gray-500 mt-1">Detalhes e gestão completa do lead.</p>
         </div>
       </div>

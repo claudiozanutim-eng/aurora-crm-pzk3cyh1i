@@ -29,6 +29,7 @@ export interface Cliente extends RecordModel {
   status: 'Ativo' | 'Inativo' | 'Lead'
   data_cadastro: string
   observacoes?: string
+  tags?: string[]
   expand?: {
     contatos_via_cliente_id?: Contato[]
   }

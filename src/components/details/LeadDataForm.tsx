@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
+import { TagInput } from '@/components/ui/tag-input'
 
 export function LeadDataForm({ lead }: { lead: Lead }) {
   const { toast } = useToast()
@@ -23,9 +24,10 @@ export function LeadDataForm({ lead }: { lead: Lead }) {
     prioridade: lead.prioridade,
     origem: lead.origem,
     observacoes: lead.observacoes || '',
+    tags: lead.tags || [],
   })
 
-  const handleChange = (field: keyof Lead, value: string) => {
+  const handleChange = (field: keyof Lead, value: any) => {
     setData((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -137,6 +139,10 @@ export function LeadDataForm({ lead }: { lead: Lead }) {
             </SelectContent>
           </Select>
         </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Tags</Label>
+        <TagInput value={data.tags} onChange={(val) => handleChange('tags', val)} />
       </div>
       <div className="space-y-2">
         <Label>Observações</Label>

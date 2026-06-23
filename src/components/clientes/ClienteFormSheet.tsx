@@ -33,6 +33,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useEffect } from 'react'
 import { createClienteEContatos, updateClienteEContatos, type Cliente } from '@/services/clientes'
+import { TagInput } from '@/components/ui/tag-input'
 
 function isValidCPF(cpf: string) {
   cpf = cpf.replace(/[^\d]+/g, '')
@@ -115,6 +116,7 @@ const clientSchema = z
       .string()
       .optional()
       .refine((val) => !val || val.length >= 14, 'Telefone inválido'),
+    tags: z.array(z.string()).default([]),
   })
   .refine(
     (data) => {
@@ -210,6 +212,7 @@ export function ClienteFormSheet({
       porte: 'Pequeno',
       pf_email: '',
       pf_telefone: '',
+      tags: [],
       contatos: [
         {
           nome_contato: '',
@@ -268,6 +271,7 @@ export function ClienteFormSheet({
           status: initialData.status,
           pf_email,
           pf_telefone,
+          tags: initialData.tags || [],
           contatos: mappedContatos,
         })
       } else {
@@ -281,6 +285,7 @@ export function ClienteFormSheet({
           documento: '',
           nome: '',
           nome_fantasia: '',
+          tags: [],
           contatos: [
             { nome_contato: '', email: '', telefone: '', cargo: '', data_aniversario: '' },
           ],
@@ -396,6 +401,7 @@ export function ClienteFormSheet({
             segmento: data.segmento,
             porte: data.porte,
             status: data.status,
+            tags: data.tags || [],
           },
           validContacts,
         )
@@ -410,6 +416,7 @@ export function ClienteFormSheet({
             segmento: data.segmento,
             porte: data.porte,
             status: data.status,
+            tags: data.tags || [],
             data_cadastro: new Date().toISOString(),
           },
           validContacts,
@@ -596,6 +603,15 @@ export function ClienteFormSheet({
                       </SelectContent>
                     </Select>
                   )}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tags</Label>
+                <Controller
+                  name="tags"
+                  control={control}
+                  render={({ field }) => <TagInput value={field.value} onChange={field.onChange} />}
                 />
               </div>
 

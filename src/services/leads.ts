@@ -21,6 +21,7 @@ export interface Lead extends RecordModel {
   status: 'Novos Leads' | 'Primeiro Contato' | 'Qualificando' | 'Não Qualificado' | 'Convertido'
   vendedor_id: string
   observacoes?: string
+  tags?: string[]
 }
 
 export const getLeadById = async (id: string) => {

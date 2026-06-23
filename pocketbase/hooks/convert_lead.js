@@ -75,6 +75,10 @@ routerAdd(
         cliente.set('data_conversao', now.toISOString())
         cliente.set('porte', 'Pequeno')
 
+        if (lead.get('tags')) {
+          cliente.set('tags', lead.get('tags'))
+        }
+
         try {
           txApp.save(cliente)
         } catch (err) {

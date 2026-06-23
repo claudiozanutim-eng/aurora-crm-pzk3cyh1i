@@ -33,6 +33,7 @@ import { useRealtime } from '@/hooks/use-realtime'
 import { ClienteFormSheet } from '@/components/clientes/ClienteFormSheet'
 import { ClienteImportDialog } from '@/components/clientes/ClienteImportDialog'
 import { ClienteDetailsSheet } from '@/components/clientes/ClienteDetailsSheet'
+import { TagBadge } from '@/components/ui/tag-badge'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -210,6 +211,7 @@ export default function Clientes() {
                 <TableHead>Contato Principal</TableHead>
                 <TableHead>E-mail</TableHead>
                 <TableHead>Segmento</TableHead>
+                <TableHead>Tags</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -217,7 +219,7 @@ export default function Clientes() {
             <TableBody>
               {filteredClientes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                     Nenhum cliente encontrado.
                   </TableCell>
                 </TableRow>
@@ -247,6 +249,15 @@ export default function Clientes() {
                         {contatoPrincipal?.email || '-'}
                       </TableCell>
                       <TableCell className="text-gray-500">{client.segmento}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-[150px]">
+                          {client.tags && client.tags.length > 0 ? (
+                            client.tags.map((t) => <TagBadge key={t} tag={t} />)
+                          ) : (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={
