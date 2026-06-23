@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, MoreHorizontal } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Download, Upload } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +30,7 @@ import { toast } from 'sonner'
 import { getClientes, deleteCliente, type Cliente } from '@/services/clientes'
 import { useRealtime } from '@/hooks/use-realtime'
 import { ClienteFormSheet } from '@/components/clientes/ClienteFormSheet'
+import { ClienteImportDialog } from '@/components/clientes/ClienteImportDialog'
 import { ClienteDetailsSheet } from '@/components/clientes/ClienteDetailsSheet'
 import {
   AlertDialog,
@@ -51,6 +52,45 @@ export default function Clientes() {
   const [clientToEdit, setClientToEdit] = useState<Cliente | null>(null)
   const [clientToView, setClientToView] = useState<Cliente | null>(null)
   const [clientToDelete, setClientToDelete] = useState<Cliente | null>(null)
+  const [isImportOpen, setIsImportOpen] = useState(false)
+
+  const exportCsv = () => {
+    const headers = [
+      'Tipo',
+      'Documento',
+      'Nome',
+      'Nome Fantasia',
+      'Segmento',
+      'Porte',
+      'Status',
+      'Data Cadastro',
+    ]
+    const rows = filteredClientes.map((c) => [
+      c.tipo,
+      c.documento || '',
+      c.nome,
+      c.nome_fantasia || '',
+      c.segmento,
+      c.porte,
+      c.status,
+      c.data_cadastro ? c.data_cadastro.substring(0, 10) : '',
+    ])
+
+    const escapeCsv = (str: string) => `"${String(str).replace(/"/g, '""')}"`
+    const csvContent = [
+      headers.map(escapeCsv).join(','),
+      ...rows.map((row) => row.map(escapeCsv).join(',')),
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `clientes_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   const loadData = async () => {
     try {
@@ -90,15 +130,23 @@ export default function Clientes() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">Clientes</h1>
           <p className="text-gray-500 mt-1">Gerencie sua base de clientes e contatos.</p>
         </div>
-        <Button
-          onClick={() => {
-            setClientToEdit(null)
-            setIsSheetOpen(true)
-          }}
-          className="bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Novo Cliente
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={exportCsv} variant="outline" className="bg-white">
+            <Download className="mr-2 h-4 w-4" /> Exportar
+          </Button>
+          <Button onClick={() => setIsImportOpen(true)} variant="outline" className="bg-white">
+            <Upload className="mr-2 h-4 w-4" /> Importar
+          </Button>
+          <Button
+            onClick={() => {
+              setClientToEdit(null)
+              setIsSheetOpen(true)
+            }}
+            className="bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
+          >
+            <Plus className="mr-2 h-4 w-4" /> Novo Cliente
+          </Button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-subtle border border-gray-100 overflow-hidden">
@@ -242,6 +290,12 @@ export default function Clientes() {
           </Table>
         </div>
       </div>
+
+      <ClienteImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        onSuccess={() => loadData()}
+      />
 
       <ClienteFormSheet
         open={isSheetOpen}
