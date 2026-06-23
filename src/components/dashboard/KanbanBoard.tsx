@@ -126,6 +126,31 @@ export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps)
                           <User className="h-4 w-4 text-gray-400" />
                           <span className="truncate">{mainContact}</span>
                         </div>
+                        {deal.status === 'Fechado/Ganho' && deal.data_fechamento_real && (
+                          <div className="mt-2 pt-2 border-t border-gray-100">
+                            <span className="text-xs text-green-700 font-medium block">
+                              Data de Ganho: {deal.data_fechamento_real.substring(8, 10)}/
+                              {deal.data_fechamento_real.substring(5, 7)}/
+                              {deal.data_fechamento_real.substring(0, 4)}
+                            </span>
+                          </div>
+                        )}
+                        {deal.status === 'Perdido' && (
+                          <div className="mt-2 pt-2 border-t border-gray-100 flex flex-col gap-1">
+                            {deal.data_fechamento_real && (
+                              <span className="text-xs text-red-600 font-medium block">
+                                Data de Perda: {deal.data_fechamento_real.substring(8, 10)}/
+                                {deal.data_fechamento_real.substring(5, 7)}/
+                                {deal.data_fechamento_real.substring(0, 4)}
+                              </span>
+                            )}
+                            {deal.motivo_perda && (
+                              <span className="text-xs text-red-600 font-medium block">
+                                Motivo: {deal.motivo_perda}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
