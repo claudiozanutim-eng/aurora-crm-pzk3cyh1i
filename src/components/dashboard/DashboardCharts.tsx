@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, LabelList } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
@@ -22,6 +22,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Link } from 'react-router-dom'
+import { XCircle, TrendingDown, Target, Trophy } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface DashboardChartsProps {
   data: {
@@ -33,20 +35,25 @@ interface DashboardChartsProps {
   loading: boolean
 }
 
-const funnelStages = [
+const activeStages = [
   'Prospecção',
   'Qualificação',
   'Proposta Enviada',
   'Negociação',
   'Fechado/Ganho',
-  'Perdido',
 ]
 
+const funnelColors = [
+  'bg-indigo-500',
+  'bg-blue-500',
+  'bg-cyan-500',
+  'bg-teal-500',
+  'bg-emerald-500',
+]
+
+const funnelWidths = ['100%', '90%', '80%', '70%', '60%']
+
 const chartConfig = {
-  volume: {
-    label: 'Volume de Negócios',
-    color: '#f97316',
-  },
   valor: {
     label: 'Valor (R$)',
     color: '#f97316',
@@ -66,15 +73,42 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
   } | null>(null)
 
   const funnelData = useMemo(() => {
-    if (!data.negocios) return []
-    return funnelStages.map((stage) => {
-      const count = data.negocios.filter((n) => n.status === stage).length
-      return {
-        stage,
-        volume: count,
-      }
+    if (!data.negocios)
+      return activeStages.map((stage) => ({ stage, count: 0, value: 0, color: '', width: '' }))
+    return activeStages.map((stage, idx) => {
+      const stageDeals = data.negocios.filter((n) => n.status === stage)
+      const count = stageDeals.length
+      const value = stageDeals.reduce((acc, n) => acc + (Number(n.valor_estimado) || 0), 0)
+      return { stage, count, value, color: funnelColors[idx], width: funnelWidths[idx] }
     })
   }, [data.negocios])
+
+  const lostDealsInfo = useMemo(() => {
+    const lost = (data.negocios || []).filter((n) => n.status === 'Perdido')
+    const count = lost.length
+    const value = lost.reduce((acc, n) => acc + (Number(n.valor_estimado) || 0), 0)
+    const reasonsMap = lost.reduce(
+      (acc, n) => {
+        const r = n.motivo_perda || 'Não informado'
+        acc[r] = (acc[r] || 0) + 1
+        return acc
+      },
+      {} as Record<string, number>,
+    )
+
+    const topReasons = Object.entries(reasonsMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+
+    const wonCount = funnelData[4].count
+    const totalFinished = wonCount + count
+    const winRate = totalFinished > 0 ? Math.round((wonCount / totalFinished) * 100) : 0
+
+    const topToBottom =
+      funnelData[0].count > 0 ? Math.round((wonCount / funnelData[0].count) * 100) : 0
+
+    return { count, value, topReasons, winRate, topToBottom }
+  }, [data.negocios, funnelData])
 
   const targetYear = data.year || new Date().getFullYear()
   const prevYear = targetYear - 1
@@ -126,31 +160,6 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
       )
   }, [selectedMonth, data.negociosAll])
 
-  if (loading) {
-    return (
-      <>
-        <Card className="shadow-subtle border-gray-100">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-800">Funil de Vendas</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px] flex items-center justify-center text-gray-400">
-            Carregando funil...
-          </CardContent>
-        </Card>
-        <Card className="shadow-subtle border-gray-100">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-gray-800">
-              Evolução de Vendas
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="h-[300px] flex items-center justify-center text-gray-400">
-            Carregando evolução...
-          </CardContent>
-        </Card>
-      </>
-    )
-  }
-
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -167,52 +176,177 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
       maximumFractionDigits: 1,
     }).format(value)
 
+  if (loading) {
+    return (
+      <>
+        <Card className="shadow-subtle border-gray-100 lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-800">
+              Pipeline de Vendas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="h-[400px] flex items-center justify-center text-gray-400">
+            Carregando pipeline...
+          </CardContent>
+        </Card>
+        <Card className="shadow-subtle border-gray-100 lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-800">
+              Evolução de Vendas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="h-[300px] flex items-center justify-center text-gray-400">
+            Carregando evolução...
+          </CardContent>
+        </Card>
+      </>
+    )
+  }
+
   const hasEvolutionData = evolutionData.some((d) => d.valor > 0 || d.valorPrev > 0)
 
   return (
     <>
-      <Card className="shadow-subtle border-gray-100">
+      <Card className="shadow-subtle border-gray-100 lg:col-span-2">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-800">Funil de Vendas</CardTitle>
+          <CardTitle className="text-lg font-semibold text-gray-800">Pipeline de Vendas</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] w-full">
-            <ChartContainer config={chartConfig} className="h-full w-full">
-              <BarChart
-                data={funnelData}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  horizontal={true}
-                  vertical={false}
-                  stroke="#f0f0f0"
-                />
-                <XAxis type="number" hide />
-                <YAxis
-                  dataKey="stage"
-                  type="category"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#6b7280', fontSize: 12 }}
-                  width={120}
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar
-                  dataKey="volume"
-                  fill="var(--color-volume)"
-                  radius={[0, 4, 4, 0]}
-                  barSize={24}
-                  label={{ position: 'right', fill: '#6b7280', fontSize: 12 }}
-                />
-              </BarChart>
-            </ChartContainer>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Funnel Area */}
+            <div className="lg:col-span-2 flex flex-col justify-center py-4 relative">
+              {/* TOP to BOTTOM Overall metric float */}
+              <div className="absolute top-0 right-0 lg:right-4 bg-orange-50 border border-orange-100 rounded-lg p-3 shadow-sm flex flex-col items-center">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-orange-600 mb-1">
+                  Conversão Funil
+                </span>
+                <div className="flex items-center gap-1.5 text-orange-700">
+                  <Target className="w-4 h-4" />
+                  <span className="text-xl font-extrabold">{lostDealsInfo.topToBottom}%</span>
+                </div>
+                <span className="text-[10px] text-orange-500/80 mt-0.5">Topo ao Fundo</span>
+              </div>
+
+              <div className="w-full max-w-lg mx-auto flex flex-col items-center mt-12 lg:mt-6">
+                {funnelData.map((item, idx) => {
+                  const prevItem = idx > 0 ? funnelData[idx - 1] : null
+                  const convRate =
+                    prevItem && prevItem.count > 0
+                      ? Math.round((item.count / prevItem.count) * 100)
+                      : 0
+
+                  return (
+                    <React.Fragment key={item.stage}>
+                      {idx > 0 && (
+                        <div className="flex flex-col items-center -my-1.5 relative z-0">
+                          <div className="w-px h-7 bg-gray-200" />
+                          <div className="bg-white border border-gray-200 shadow-sm text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full absolute top-1/2 -translate-y-1/2">
+                            {convRate}%
+                          </div>
+                        </div>
+                      )}
+                      <div
+                        className={cn(
+                          'relative z-10 flex items-center justify-between px-4 py-3.5 rounded-xl shadow-sm text-white transition-transform hover:scale-[1.02]',
+                          item.color,
+                        )}
+                        style={{ width: item.width }}
+                      >
+                        <span className="font-semibold text-sm md:text-base drop-shadow-sm truncate pr-2">
+                          {item.stage}
+                        </span>
+                        <div className="flex items-center gap-3 text-sm">
+                          <span className="font-medium opacity-90 hidden sm:inline-block">
+                            {formatCurrency(item.value)}
+                          </span>
+                          <span className="bg-black/15 font-bold px-2.5 py-1 rounded-lg drop-shadow-sm min-w-[2.5rem] text-center">
+                            {item.count}
+                          </span>
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Lost Deals Sidebar */}
+            <div className="bg-red-50/40 rounded-2xl p-5 border border-red-100 flex flex-col h-full shadow-sm relative overflow-hidden">
+              <div className="absolute -right-4 -top-4 opacity-5 pointer-events-none">
+                <TrendingDown className="w-32 h-32 text-red-600" />
+              </div>
+              <h3 className="font-bold text-red-900 mb-5 flex items-center gap-2 relative z-10">
+                <XCircle className="w-5 h-5 text-red-500" />
+                Negócios Perdidos
+              </h3>
+
+              <div className="grid grid-cols-2 gap-3 mb-6 relative z-10">
+                <div className="bg-white/80 rounded-xl p-3 border border-red-100/50">
+                  <div className="text-red-500/80 text-[10px] font-bold uppercase tracking-wider mb-1">
+                    Quantidade
+                  </div>
+                  <div className="text-2xl font-black text-gray-900">{lostDealsInfo.count}</div>
+                </div>
+                <div className="bg-white/80 rounded-xl p-3 border border-red-100/50 overflow-hidden">
+                  <div className="text-red-500/80 text-[10px] font-bold uppercase tracking-wider mb-1">
+                    Valor Perdido
+                  </div>
+                  <div
+                    className="text-xl font-black text-gray-900 truncate"
+                    title={formatCurrency(lostDealsInfo.value)}
+                  >
+                    {formatCompact(lostDealsInfo.value)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 relative z-10">
+                <h4 className="text-[11px] font-bold text-red-800/80 uppercase tracking-wider mb-3">
+                  Principais Motivos
+                </h4>
+                {lostDealsInfo.topReasons.length > 0 ? (
+                  <div className="space-y-3.5">
+                    {lostDealsInfo.topReasons.map(([reason, count]) => (
+                      <div key={reason} className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-700 font-medium truncate pr-2">{reason}</span>
+                          <span className="font-bold text-gray-900">{count}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-red-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-red-400 rounded-full"
+                            style={{ width: `${(count / lostDealsInfo.count) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 italic bg-white/50 p-3 rounded-lg border border-red-50 text-center">
+                    Nenhum dado registrado.
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-red-200/50 relative z-10">
+                <div className="flex items-center justify-between bg-white/80 p-3 rounded-xl border border-green-100 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-green-500" />
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Win Rate
+                    </span>
+                  </div>
+                  <span className="text-xl font-black text-green-600">
+                    {lostDealsInfo.winRate}%
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="shadow-subtle border-gray-100">
+      <Card className="shadow-subtle border-gray-100 lg:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-lg font-semibold text-gray-800">
             Evolução de Vendas (Ganhos)
