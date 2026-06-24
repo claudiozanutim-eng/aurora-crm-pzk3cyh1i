@@ -185,10 +185,17 @@ export default function Index() {
           : `((data_cadastro >= "${startStr}" && data_cadastro <= "${endStr}") || (created >= "${startStr}" && created <= "${endStr}"))`
       let filterLeads =
         period === 'all_time' ? '' : `(created >= "${startStr}" && created <= "${endStr}")`
+      const chartYearStartStr = new Date(startDate.getFullYear(), 0, 1)
+        .toISOString()
+        .replace('T', ' ')
+      const chartYearEndStr = new Date(startDate.getFullYear(), 11, 31, 23, 59, 59, 999)
+        .toISOString()
+        .replace('T', ' ')
+
       let filterNegocios =
         period === 'all_time'
           ? ''
-          : `((created >= "${startStr}" && created <= "${endStr}") || (data_fechamento_real >= "${startStr}" && data_fechamento_real <= "${endStr}") || (updated >= "${startStr}" && updated <= "${endStr}"))`
+          : `((created >= "${startStr}" && created <= "${endStr}") || (data_fechamento_real >= "${startStr}" && data_fechamento_real <= "${endStr}") || (updated >= "${startStr}" && updated <= "${endStr}") || (data_fechamento_real >= "${chartYearStartStr}" && data_fechamento_real <= "${chartYearEndStr}"))`
       let filterTarefas =
         period === 'all_time'
           ? ''
@@ -292,6 +299,7 @@ export default function Index() {
       charts: {
         negocios, // pass filtered for funnel
         negociosAll: data.negocios, // pass all for evolution, chart groups internally
+        year: period === 'all_time' ? new Date().getFullYear() : startDate.getFullYear(),
       },
       lists: {
         negocios: negocios,

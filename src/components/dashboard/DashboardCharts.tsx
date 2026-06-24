@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, LabelList } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { parseISO, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -9,6 +9,7 @@ interface DashboardChartsProps {
   data: {
     negocios: any[]
     negociosAll: any[]
+    year?: number
   }
   period: string
   loading: boolean
@@ -48,28 +49,31 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
 
   const evolutionData = useMemo(() => {
     if (!data.negociosAll) return []
+
+    const targetYear = data.year || new Date().getFullYear()
+
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const date = new Date(targetYear, i, 1)
+      return {
+        month: format(date, 'MMM/yy', { locale: ptBR }),
+        valor: 0,
+      }
+    })
+
     const wonDeals = data.negociosAll.filter(
       (n) => n.status === 'Fechado/Ganho' && n.data_fechamento_real,
     )
 
-    // Group by month
-    const grouped = wonDeals.reduce(
-      (acc, deal) => {
-        const date = parseISO(deal.data_fechamento_real)
-        const monthYear = format(date, 'MMM/yy', { locale: ptBR })
-        if (!acc[monthYear]) {
-          acc[monthYear] = { month: monthYear, valor: 0, date }
-        }
-        acc[monthYear].valor += deal.valor_estimado || 0
-        return acc
-      },
-      {} as Record<string, { month: string; valor: number; date: Date }>,
-    )
+    wonDeals.forEach((deal) => {
+      const date = parseISO(deal.data_fechamento_real)
+      if (date.getFullYear() === targetYear) {
+        const monthIndex = date.getMonth()
+        months[monthIndex].valor += deal.valor_estimado || 0
+      }
+    })
 
-    return Object.values(grouped)
-      .sort((a, b) => a.date.getTime() - b.date.getTime())
-      .slice(-12)
-  }, [data.negociosAll])
+    return months
+  }, [data.negociosAll, data.year])
 
   if (loading) {
     return (
@@ -155,7 +159,7 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
               <ChartContainer config={chartConfig} className="h-full w-full">
                 <BarChart
                   data={evolutionData}
-                  margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
+                  margin={{ top: 30, right: 10, left: 10, bottom: 20 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis
@@ -178,12 +182,24 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
                       />
                     }
                   />
-                  <Bar
-                    dataKey="valor"
-                    fill="var(--color-valor)"
-                    radius={[4, 4, 0, 0]}
-                    barSize={32}
-                  />
+                  <Bar dataKey="valor" fill="var(--color-valor)" radius={[4, 4, 0, 0]} barSize={32}>
+                    <LabelList
+                      dataKey="valor"
+                      position="top"
+                      formatter={(value: number) =>
+                        value > 0
+                          ? new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                              maximumFractionDigits: 0,
+                            }).format(value)
+                          : ''
+                      }
+                      fill="#4b5563"
+                      fontSize={11}
+                      fontWeight={500}
+                    />
+                  </Bar>
                 </BarChart>
               </ChartContainer>
             )}
