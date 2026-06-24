@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-24T01:28:29.533Z",
+  "generatedAt": "2026-06-24T01:40:02.344Z",
   "collections": [
     {
       "name": "users",
@@ -719,6 +719,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "validade_ate",
+          "type": "date",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [

@@ -4,6 +4,10 @@ import { getPropostaById, createProposta, updateProposta } from '@/services/prop
 import { getClientes, type Cliente } from '@/services/clientes'
 import { getNegocios, type Negocio } from '@/services/negocios'
 import { toast } from 'sonner'
+import { format } from 'date-fns'
+import { CalendarIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -16,6 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 export default function PropostaForm() {
   const { id } = useParams()
@@ -31,7 +37,7 @@ export default function PropostaForm() {
     cliente_id: '',
     negocio_id: '',
     valor_total: '',
-    validade_dias: '15',
+    validade_ate: undefined as Date | undefined,
     descricao_servicos: '',
     condicoes_comerciais: '',
   })
@@ -50,7 +56,7 @@ export default function PropostaForm() {
             cliente_id: p.cliente_id,
             negocio_id: p.negocio_id || '',
             valor_total: p.valor_total.toString(),
-            validade_dias: p.validade_dias.toString(),
+            validade_ate: p.validade_ate ? new Date(p.validade_ate) : undefined,
             descricao_servicos: p.descricao_servicos,
             condicoes_comerciais: p.condicoes_comerciais,
           })
@@ -70,7 +76,8 @@ export default function PropostaForm() {
       !formData.cliente_id ||
       !formData.valor_total ||
       !formData.descricao_servicos ||
-      !formData.condicoes_comerciais
+      !formData.condicoes_comerciais ||
+      !formData.validade_ate
     ) {
       toast.error('Preencha todos os campos obrigatórios em todas as etapas.')
       return
@@ -83,7 +90,7 @@ export default function PropostaForm() {
         cliente_id: formData.cliente_id,
         negocio_id: formData.negocio_id || undefined,
         valor_total: parseFloat(formData.valor_total),
-        validade_dias: parseInt(formData.validade_dias, 10) || 15,
+        validade_ate: formData.validade_ate.toISOString(),
         descricao_servicos: formData.descricao_servicos,
         condicoes_comerciais: formData.condicoes_comerciais,
       }
@@ -217,14 +224,34 @@ export default function PropostaForm() {
                 </div>
                 <div className="space-y-2">
                   <Label>
-                    Validade (Dias) <span className="text-red-500">*</span>
+                    Validade <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    type="number"
-                    value={formData.validade_dias}
-                    onChange={(e) => setFormData({ ...formData, validade_dias: e.target.value })}
-                    placeholder="15"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={'outline'}
+                        className={cn(
+                          'w-full justify-start text-left font-normal',
+                          !formData.validade_ate && 'text-muted-foreground',
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formData.validade_ate ? (
+                          format(formData.validade_ate, 'dd/MM/yyyy')
+                        ) : (
+                          <span>Selecione uma data</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={formData.validade_ate}
+                        onSelect={(date) => setFormData({ ...formData, validade_ate: date })}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             </div>

@@ -259,7 +259,18 @@ routerAdd(
     pdf.addLine(50, pdf.y, 545, pdf.y, orange)
     pdf.y -= 20
 
-    const valMsg = `Validade desta proposta: ${proposta.getInt('validade_dias')} dias a partir da data de envio.`
+    const validadeStr = proposta.getString('validade_ate')
+    let valMsg = 'Proposta válida até a data combinada'
+    if (validadeStr) {
+      const vDate = new Date(validadeStr)
+      const vDateFormatted =
+        ('0' + vDate.getDate()).slice(-2) +
+        '/' +
+        ('0' + (vDate.getMonth() + 1)).slice(-2) +
+        '/' +
+        vDate.getFullYear()
+      valMsg = `Proposta válida até ${vDateFormatted}`
+    }
     pdf.addText(valMsg, 160, pdf.y, 10, 'F1', gray)
     pdf.y -= 15
     pdf.addText(
