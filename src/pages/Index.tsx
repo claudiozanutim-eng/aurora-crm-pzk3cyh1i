@@ -307,6 +307,7 @@ export default function Index() {
       charts: {
         negocios, // pass filtered for funnel
         negociosAll: data.negocios, // pass all for evolution, chart groups internally
+        leads, // pass filtered for funnel
         year: period === 'all_time' ? new Date().getFullYear() : startDate.getFullYear(),
       },
       lists: {

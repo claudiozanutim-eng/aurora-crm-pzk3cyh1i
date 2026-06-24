@@ -29,29 +29,21 @@ interface DashboardChartsProps {
   data: {
     negocios: any[]
     negociosAll: any[]
+    leads: any[]
     year?: number
   }
   period: string
   loading: boolean
 }
 
-const activeStages = [
-  'Prospecção',
-  'Qualificação',
-  'Proposta Enviada',
-  'Negociação',
-  'Fechado/Ganho',
-]
-
 const funnelColors = [
+  'bg-slate-500',
   'bg-indigo-500',
   'bg-blue-500',
   'bg-cyan-500',
   'bg-teal-500',
   'bg-emerald-500',
 ]
-
-const funnelWidths = ['100%', '90%', '80%', '70%', '60%']
 
 const chartConfig = {
   valorPrev: {
@@ -73,15 +65,44 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
   } | null>(null)
 
   const funnelData = useMemo(() => {
-    if (!data.negocios)
-      return activeStages.map((stage) => ({ stage, count: 0, value: 0, color: '', width: '' }))
-    return activeStages.map((stage, idx) => {
-      const stageDeals = data.negocios.filter((n) => n.status === stage)
-      const count = stageDeals.length
-      const value = stageDeals.reduce((acc, n) => acc + (Number(n.valor_estimado) || 0), 0)
-      return { stage, count, value, color: funnelColors[idx], width: funnelWidths[idx] }
+    if (!data.negocios || !data.leads) return []
+
+    const novosLeads = data.leads.filter((l) => l.status === 'Novos Leads')
+    const leadsConvertidos = data.leads.filter((l) => l.status === 'Convertido')
+    const qualificacao = data.negocios.filter((n) => n.status === 'Qualificação')
+    const propostaEnviada = data.negocios.filter((n) => n.status === 'Proposta Enviada')
+    const negociacao = data.negocios.filter((n) => n.status === 'Negociação')
+    const ganhos = data.negocios.filter((n) => n.status === 'Fechado/Ganho')
+
+    const stages = [
+      { stage: 'Novos Leads', items: novosLeads, isLead: true },
+      { stage: 'Leads Convertidos', items: leadsConvertidos, isLead: true },
+      { stage: 'Qualificação', items: qualificacao, isLead: false },
+      { stage: 'Proposta Enviada', items: propostaEnviada, isLead: false },
+      { stage: 'Negociação', items: negociacao, isLead: false },
+      { stage: 'Ganhos', items: ganhos, isLead: false },
+    ]
+
+    const maxCount = Math.max(...stages.map((s) => s.items.length), 1)
+
+    return stages.map((s, idx) => {
+      const count = s.items.length
+      const value = s.isLead
+        ? 0
+        : s.items.reduce((acc, n) => acc + (Number(n.valor_estimado) || 0), 0)
+
+      const widthPct = Math.max(30, (count / maxCount) * 100)
+
+      return {
+        stage: s.stage,
+        count,
+        value,
+        color: funnelColors[idx],
+        width: `${widthPct}%`,
+        isLead: s.isLead,
+      }
     })
-  }, [data.negocios])
+  }, [data.negocios, data.leads])
 
   const lostDealsInfo = useMemo(() => {
     const lost = (data.negocios || []).filter((n) => n.status === 'Perdido')
@@ -100,12 +121,14 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 4)
 
-    const wonCount = funnelData[4].count
+    const wonCount = funnelData.length > 5 ? funnelData[5].count : 0
     const totalFinished = wonCount + count
     const winRate = totalFinished > 0 ? Math.round((wonCount / totalFinished) * 100) : 0
 
     const topToBottom =
-      funnelData[0].count > 0 ? Math.round((wonCount / funnelData[0].count) * 100) : 0
+      funnelData.length > 0 && funnelData[0].count > 0
+        ? Math.round((wonCount / funnelData[0].count) * 100)
+        : 0
 
     return { count, value, topReasons, winRate, topToBottom }
   }, [data.negocios, funnelData])
@@ -214,20 +237,8 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Funnel Area */}
-            <div className="lg:col-span-2 flex flex-col justify-center py-4 relative">
-              {/* TOP to BOTTOM Overall metric float */}
-              <div className="absolute top-0 right-0 lg:right-4 bg-orange-50 border border-orange-100 rounded-lg p-3 shadow-sm flex flex-col items-center">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-orange-600 mb-1">
-                  Conversão Funil
-                </span>
-                <div className="flex items-center gap-1.5 text-orange-700">
-                  <Target className="w-4 h-4" />
-                  <span className="text-xl font-extrabold">{lostDealsInfo.topToBottom}%</span>
-                </div>
-                <span className="text-[10px] text-orange-500/80 mt-0.5">Topo ao Fundo</span>
-              </div>
-
-              <div className="w-full max-w-lg mx-auto flex flex-col items-center mt-12 lg:mt-6">
+            <div className="lg:col-span-2 flex flex-col justify-center py-2 relative">
+              <div className="w-full max-w-lg mx-auto flex flex-col items-center mt-2 lg:mt-2">
                 {funnelData.map((item, idx) => {
                   const prevItem = idx > 0 ? funnelData[idx - 1] : null
                   const convRate =
@@ -240,26 +251,28 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
                       {idx > 0 && (
                         <div className="flex flex-col items-center -my-1.5 relative z-0">
                           <div className="w-px h-7 bg-gray-200" />
-                          <div className="bg-white border border-gray-200 shadow-sm text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full absolute top-1/2 -translate-y-1/2">
+                          <div className="bg-white border border-gray-200 shadow-sm text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full absolute top-1/2 -translate-y-1/2 z-10">
                             {convRate}%
                           </div>
                         </div>
                       )}
                       <div
                         className={cn(
-                          'relative z-10 flex items-center justify-between px-4 py-3.5 rounded-xl shadow-sm text-white transition-transform hover:scale-[1.02]',
+                          'relative z-10 flex items-center justify-between px-4 py-2.5 rounded-xl shadow-sm text-white transition-transform hover:scale-[1.02]',
                           item.color,
                         )}
                         style={{ width: item.width }}
                       >
-                        <span className="font-semibold text-sm md:text-base drop-shadow-sm truncate pr-2">
+                        <span className="font-semibold text-sm drop-shadow-sm truncate pr-2">
                           {item.stage}
                         </span>
-                        <div className="flex items-center gap-3 text-sm">
-                          <span className="font-medium opacity-90 hidden sm:inline-block">
-                            {formatCurrency(item.value)}
-                          </span>
-                          <span className="bg-black/15 font-bold px-2.5 py-1 rounded-lg drop-shadow-sm min-w-[2.5rem] text-center">
+                        <div className="flex items-center gap-2 text-xs md:text-sm">
+                          {!item.isLead && (
+                            <span className="font-medium opacity-90 hidden sm:inline-block">
+                              {formatCurrency(item.value)}
+                            </span>
+                          )}
+                          <span className="bg-black/15 font-bold px-2 py-0.5 rounded-lg drop-shadow-sm min-w-[2rem] text-center">
                             {item.count}
                           </span>
                         </div>
