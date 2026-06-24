@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { getClienteById, Cliente } from '@/services/clientes'
 import { useRealtime } from '@/hooks/use-realtime'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -25,6 +25,7 @@ import {
 export default function ClienteDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const formRef = useRef<ClientDataFormRef>(null)
   const negocioFormRef = useRef<NegocioDataFormRef>(null)
@@ -53,11 +54,13 @@ export default function ClienteDetail() {
       </div>
     )
 
+  const from = location.state?.from || '/funil'
+
   const handleBack = () => {
     if (formRef.current?.isDirty || negocioFormRef.current?.isDirty) {
       setShowUnsavedDialog(true)
     } else {
-      navigate('/funil')
+      navigate(from)
     }
   }
 
@@ -73,13 +76,13 @@ export default function ClienteDetail() {
     setIsSaving(false)
     if (success) {
       setShowUnsavedDialog(false)
-      navigate('/funil')
+      navigate(from)
     }
   }
 
   const handleExitWithoutSaving = () => {
     setShowUnsavedDialog(false)
-    navigate('/funil')
+    navigate(from)
   }
 
   return (
@@ -141,7 +144,7 @@ export default function ClienteDetail() {
           </TabsList>
 
           <TabsContent value="dados" className="focus-visible:outline-none">
-            <ClientDataForm ref={formRef} cliente={cliente} onExit={() => navigate('/funil')} />
+            <ClientDataForm ref={formRef} cliente={cliente} onExit={() => navigate(from)} />
           </TabsContent>
           <TabsContent value="contatos" className="focus-visible:outline-none">
             <ContactsList clienteId={cliente.id} />
@@ -156,7 +159,7 @@ export default function ClienteDetail() {
             <NegocioDataForm
               ref={negocioFormRef}
               clienteId={cliente.id}
-              onExit={() => navigate('/funil')}
+              onExit={() => navigate(from)}
             />
           </TabsContent>
         </Tabs>

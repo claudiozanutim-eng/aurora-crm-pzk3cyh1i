@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -32,7 +33,6 @@ import { getClientes, deleteCliente, type Cliente } from '@/services/clientes'
 import { useRealtime } from '@/hooks/use-realtime'
 import { ClienteFormSheet } from '@/components/clientes/ClienteFormSheet'
 import { ClienteImportDialog } from '@/components/clientes/ClienteImportDialog'
-import { ClienteDetailsSheet } from '@/components/clientes/ClienteDetailsSheet'
 import { TagBadge } from '@/components/ui/tag-badge'
 import {
   AlertDialog,
@@ -52,9 +52,10 @@ export default function Clientes() {
   const [tipoFilter, setTipoFilter] = useState('Todos')
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [clientToEdit, setClientToEdit] = useState<Cliente | null>(null)
-  const [clientToView, setClientToView] = useState<Cliente | null>(null)
   const [clientToDelete, setClientToDelete] = useState<Cliente | null>(null)
   const [isImportOpen, setIsImportOpen] = useState(false)
+
+  const navigate = useNavigate()
 
   const handleExport = async (format: 'csv' | 'xlsx') => {
     try {
@@ -287,14 +288,17 @@ export default function Clientes() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => setClientToView(client)}>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                navigate(`/clientes/${client.id}`, { state: { from: '/clientes' } })
+                              }
+                            >
                               Ver detalhes
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => {
-                                setClientToEdit(client)
-                                setIsSheetOpen(true)
-                              }}
+                              onClick={() =>
+                                navigate(`/clientes/${client.id}`, { state: { from: '/clientes' } })
+                              }
                             >
                               Editar
                             </DropdownMenuItem>
@@ -328,12 +332,6 @@ export default function Clientes() {
         onOpenChange={setIsSheetOpen}
         onSuccess={() => loadData()}
         initialData={clientToEdit}
-      />
-
-      <ClienteDetailsSheet
-        open={!!clientToView}
-        onOpenChange={(o) => !o && setClientToView(null)}
-        cliente={clientToView}
       />
 
       <AlertDialog open={!!clientToDelete} onOpenChange={(o) => !o && setClientToDelete(null)}>
