@@ -72,7 +72,6 @@ export const NegocioDataForm = forwardRef<
         ? selectedNegocio.data_prevista_fechamento.split(' ')[0]
         : '',
       prioridade: selectedNegocio.prioridade,
-      motivo_perda: selectedNegocio.motivo_perda || undefined,
     })
     setIsDirty(false)
   }, [selectedNegocio])
@@ -86,7 +85,6 @@ export const NegocioDataForm = forwardRef<
       probabilidade: data.probabilidade,
       data_prevista_fechamento: data.data_prevista_fechamento,
       prioridade: data.prioridade,
-      motivo_perda: data.motivo_perda,
     })
     const initialDataStr = JSON.stringify({
       descricao: selectedNegocio.descricao || '',
@@ -97,7 +95,6 @@ export const NegocioDataForm = forwardRef<
         ? selectedNegocio.data_prevista_fechamento.split(' ')[0]
         : '',
       prioridade: selectedNegocio.prioridade,
-      motivo_perda: selectedNegocio.motivo_perda || undefined,
     })
     setIsDirty(currentDataStr !== initialDataStr)
   }, [data, selectedNegocio])
@@ -115,10 +112,6 @@ export const NegocioDataForm = forwardRef<
         payload.data_prevista_fechamento = `${payload.data_prevista_fechamento} 12:00:00.000Z`
       } else {
         payload.data_prevista_fechamento = '' as any
-      }
-
-      if (selectedNegocio?.status !== 'Perdido') {
-        payload.motivo_perda = '' as any
       }
 
       await updateNegocio(selectedNegocioId, payload)
@@ -254,29 +247,6 @@ export const NegocioDataForm = forwardRef<
             </SelectContent>
           </Select>
         </div>
-
-        {selectedNegocio?.status === 'Perdido' && (
-          <div className="space-y-2">
-            <Label>Motivo da Perda</Label>
-            <Select
-              value={data.motivo_perda || ''}
-              onValueChange={(val) => handleChange('motivo_perda', val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o motivo" />
-              </SelectTrigger>
-              <SelectContent>
-                {['Desistiu do Projeto', 'Preço', 'Preferiu Concorrente', 'Cliente Sumiu'].map(
-                  (s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ),
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
       </div>
 
       <div className="space-y-2">
