@@ -80,9 +80,14 @@ export default function PropostaView() {
       let fileName = `Proposta_${proposta.id.substring(0, 8).toUpperCase()}.pdf`
 
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/)
-        if (filenameMatch && filenameMatch.length === 2) {
-          fileName = filenameMatch[1]
+        const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
+        if (utf8Match && utf8Match[1]) {
+          fileName = decodeURIComponent(utf8Match[1])
+        } else {
+          const filenameMatch = contentDisposition.match(/filename="([^"]+)"/)
+          if (filenameMatch && filenameMatch[1]) {
+            fileName = filenameMatch[1]
+          }
         }
       } else {
         const clientName = cliente?.nome || 'Cliente'

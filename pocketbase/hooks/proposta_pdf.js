@@ -287,6 +287,10 @@ routerAdd(
     })
 
     const pdfBytes = await pdfDoc.save()
+    const exactBuffer = pdfBytes.buffer.slice(
+      pdfBytes.byteOffset,
+      pdfBytes.byteOffset + pdfBytes.byteLength,
+    )
 
     // Dynamic Filename Header
     const now = new Date()
@@ -310,9 +314,15 @@ routerAdd(
     const safeClientName = rawClientName.replace(/[^a-zA-Z0-9À-ÿ -]/g, '').trim()
     const fileName = `Proposta ${safeClientName} ${monthName} ${year}.pdf`
 
-    e.response.header().set('Content-Disposition', `attachment; filename="${fileName}"`)
+    e.response.header().set('Access-Control-Expose-Headers', 'Content-Disposition')
+    e.response
+      .header()
+      .set(
+        'Content-Disposition',
+        `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}; filename="${safeClientName.replace(/[^a-zA-Z0-9 -]/g, '')}.pdf"`,
+      )
 
-    return e.blob(200, 'application/pdf', pdfBytes.buffer)
+    return e.blob(200, 'application/pdf', exactBuffer)
   },
   $apis.requireAuth(),
 )
