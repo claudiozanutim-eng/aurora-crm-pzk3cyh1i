@@ -74,8 +74,7 @@ export default function PropostaView() {
         throw new Error(errorMsg)
       }
 
-      const arrayBuffer = await response.arrayBuffer()
-      const blob = new Blob([new Uint8Array(arrayBuffer)], { type: 'application/pdf' })
+      const blob = await response.blob()
 
       const contentDisposition = response.headers.get('Content-Disposition')
       let fileName = `Proposta_${proposta.id.substring(0, 8).toUpperCase()}.pdf`

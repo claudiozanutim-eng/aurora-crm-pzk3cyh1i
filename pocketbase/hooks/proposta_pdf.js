@@ -289,7 +289,6 @@ routerAdd(
     })
 
     const pdfBytes = await pdfDoc.save()
-    const bytesArray = Array.from(pdfBytes)
 
     // Dynamic Filename Header
     const now = new Date()
@@ -321,7 +320,7 @@ routerAdd(
         `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}; filename="${safeClientName.replace(/[^a-zA-Z0-9 -]/g, '')}.pdf"`,
       )
 
-    return e.blob(200, 'application/pdf', bytesArray)
+    return e.blob(200, 'application/pdf', pdfBytes.buffer)
   },
   $apis.requireAuth(),
 )
