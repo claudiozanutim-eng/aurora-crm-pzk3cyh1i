@@ -13,6 +13,7 @@ export default function PropostaView() {
   const [proposta, setProposta] = useState<any>(null)
   const [cliente, setCliente] = useState<any>(null)
   const [negocio, setNegocio] = useState<any>(null)
+  const [vendedor, setVendedor] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
 
@@ -34,8 +35,13 @@ export default function PropostaView() {
 
         if (p.negocio_id) {
           try {
-            const n = await pb.collection('negocios').getOne(p.negocio_id)
+            const n = await pb.collection('negocios').getOne(p.negocio_id, {
+              expand: 'vendedor_id',
+            })
             setNegocio(n)
+            if (n.expand?.vendedor_id) {
+              setVendedor(n.expand.vendedor_id)
+            }
           } catch {
             /* intentionally ignored */
           }
@@ -144,7 +150,7 @@ export default function PropostaView() {
               <h1 className="text-3xl font-bold text-orange-500">IC Educ</h1>
             </div>
             <div className="text-right text-sm text-muted-foreground print:text-black">
-              <p>contato@iceduc.com.br</p>
+              <p>{vendedor?.email || 'contato@iceduc.com.br'}</p>
               <p>Data de emissão: {new Date(proposta.created).toLocaleDateString('pt-BR')}</p>
               <p>Ref: #{proposta.id.substring(0, 8).toUpperCase()}</p>
             </div>
