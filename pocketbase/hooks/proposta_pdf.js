@@ -1,10 +1,7 @@
-// @deps pdf-lib@1.17.1
 routerAdd(
   'GET',
   '/backend/v1/propostas/{id}/pdf',
-  async (e) => {
-    const { PDFDocument, StandardFonts, rgb } = require('pdf-lib')
-
+  (e) => {
     if (!e.auth?.id) {
       return e.unauthorizedError('Autenticação necessária.')
     }
@@ -34,57 +31,6 @@ routerAdd(
       } catch (err) {}
     }
 
-    const pdfDoc = await PDFDocument.create()
-    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
-    const fontNormal = await pdfDoc.embedFont(StandardFonts.Helvetica)
-
-    let page = pdfDoc.addPage([595.28, 841.89]) // A4
-    const margin = 50
-    const maxWidth = page.getWidth() - margin * 2
-    let cursorY = page.getHeight() - margin
-
-    const orange = rgb(0.976, 0.451, 0.086)
-    const gray = rgb(0.4, 0.4, 0.4)
-    const black = rgb(0, 0, 0)
-
-    const drawText = (text, font, size, color, x, y) => {
-      page.drawText(text, { x, y, size, font, color })
-    }
-
-    function breakText(text, font, size, maxW) {
-      const lines = []
-      const paragraphs = (text || '').split('\n')
-      for (const p of paragraphs) {
-        if (!p.trim()) {
-          lines.push('')
-          continue
-        }
-        const words = p.split(/\s+/)
-        let currentLine = words[0] || ''
-        for (let i = 1; i < words.length; i++) {
-          const word = words[i]
-          const width = font.widthOfTextAtSize(currentLine + ' ' + word, size)
-          if (width < maxW) {
-            currentLine += ' ' + word
-          } else {
-            lines.push(currentLine)
-            currentLine = word
-          }
-        }
-        lines.push(currentLine)
-      }
-      return lines
-    }
-
-    const checkPageBreak = (neededHeight) => {
-      if (cursorY - neededHeight < margin) {
-        page = pdfDoc.addPage([595.28, 841.89])
-        cursorY = page.getHeight() - margin
-      }
-    }
-
-    drawText('IC Educ', fontBold, 24, orange, margin, cursorY)
-
     const createdStr = proposta.getString('created')
     const d = new Date(createdStr)
     const dateStr =
@@ -94,76 +40,17 @@ routerAdd(
       '/' +
       d.getFullYear()
 
-    const rightTexts = [
-      'contato@iceduc.com.br',
-      'Data de emissão: ' + dateStr,
-      'Ref: #' + proposta.id.substring(0, 8).toUpperCase(),
-    ]
-    let ry = cursorY
-    for (const rt of rightTexts) {
-      const w = fontNormal.widthOfTextAtSize(rt, 10)
-      drawText(rt, fontNormal, 10, gray, page.getWidth() - margin - w, ry)
-      ry -= 14
-    }
-
-    cursorY -= 40
-    page.drawLine({
-      start: { x: margin, y: cursorY },
-      end: { x: page.getWidth() - margin, y: cursorY },
-      thickness: 1,
-      color: orange,
-    })
-    cursorY -= 30
-
-    drawText('PREPARADO PARA', fontBold, 10, orange, margin, cursorY)
-    cursorY -= 20
     const clientName = cliente ? cliente.getString('nome') : 'Cliente não informado'
-    drawText(clientName, fontBold, 16, black, margin, cursorY)
-    cursorY -= 16
+    let clienteDoc = ''
     if (cliente && cliente.getString('documento')) {
       const tipo = cliente.getString('tipo') === 'PJ' ? 'CNPJ: ' : 'CPF: '
-      drawText(tipo + cliente.getString('documento'), fontNormal, 10, gray, margin, cursorY)
-      cursorY -= 14
+      clienteDoc = tipo + cliente.getString('documento')
     }
+
+    let negocioDesc = ''
     if (negocio && negocio.getString('descricao')) {
-      drawText('Negócio: ' + negocio.getString('descricao'), fontNormal, 10, gray, margin, cursorY)
-      cursorY -= 14
+      negocioDesc = negocio.getString('descricao')
     }
-
-    cursorY -= 40
-
-    const tituloLines = breakText(proposta.getString('titulo'), fontBold, 20, maxWidth)
-    for (const line of tituloLines) {
-      checkPageBreak(30)
-      drawText(line, fontBold, 20, orange, margin, cursorY)
-      cursorY -= 24
-    }
-    cursorY -= 16
-
-    const writeSection = (title, content) => {
-      checkPageBreak(50)
-      drawText(title, fontBold, 14, orange, margin, cursorY)
-      cursorY -= 10
-      page.drawLine({
-        start: { x: margin, y: cursorY },
-        end: { x: margin + 200, y: cursorY },
-        thickness: 1,
-        color: rgb(0.99, 0.8, 0.6),
-      })
-      cursorY -= 20
-
-      const lines = breakText(content, fontNormal, 11, maxWidth)
-      for (const line of lines) {
-        checkPageBreak(15)
-        if (line.trim()) {
-          drawText(line, fontNormal, 11, black, margin, cursorY)
-        }
-        cursorY -= 15
-      }
-      cursorY -= 20
-    }
-
-    writeSection('Escopo e Descrição dos Serviços', proposta.getString('descricao_servicos'))
 
     const valorTotal = proposta.getFloat('valor_total')
     const formattedValor =
@@ -172,49 +59,188 @@ routerAdd(
         .toFixed(2)
         .replace('.', ',')
         .replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-    checkPageBreak(50)
-    drawText('Investimento', fontBold, 14, orange, margin, cursorY)
-    cursorY -= 10
-    page.drawLine({
-      start: { x: margin, y: cursorY },
-      end: { x: margin + 200, y: cursorY },
-      thickness: 1,
-      color: rgb(0.99, 0.8, 0.6),
-    })
-    cursorY -= 20
-    drawText(formattedValor, fontBold, 16, black, margin, cursorY)
-    cursorY -= 40
 
-    writeSection('Condições Comerciais', proposta.getString('condicoes_comerciais'))
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Proposta ${proposta.id.substring(0, 8).toUpperCase()}</title>
+  <style>
+    :root {
+      --orange: #f97316;
+      --light-orange: #fdba74;
+      --gray: #666666;
+      --black: #000000;
+    }
+    body { 
+      font-family: Helvetica, Arial, sans-serif; 
+      color: #333; 
+      margin: 0; 
+      padding: 0; 
+      background: #f4f4f5;
+    }
+    .page { 
+      max-width: 210mm;
+      min-height: 297mm;
+      margin: 20px auto; 
+      padding: 50px; 
+      background: #fff;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      box-sizing: border-box;
+    }
+    .header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: flex-start; 
+      margin-bottom: 40px;
+    }
+    .header-left h1 { 
+      color: var(--orange);
+      font-size: 32px; 
+      margin: 0;
+    }
+    .header-right { 
+      text-align: right; 
+      color: var(--gray); 
+      font-size: 14px; 
+      line-height: 1.5;
+    }
+    .divider {
+      height: 1px;
+      background-color: var(--orange);
+      margin-bottom: 30px;
+    }
+    .prep-para { 
+      color: var(--orange); 
+      font-size: 12px; 
+      font-weight: bold; 
+      text-transform: uppercase; 
+      margin-bottom: 5px; 
+    }
+    .cliente-nome { 
+      font-size: 20px; 
+      font-weight: bold; 
+      color: var(--black); 
+      margin: 0 0 5px 0; 
+    }
+    .cliente-doc { 
+      color: var(--gray); 
+      font-size: 14px; 
+      margin: 0 0 5px 0; 
+    }
+    .titulo { 
+      font-size: 28px; 
+      font-weight: bold; 
+      color: var(--orange); 
+      margin: 50px 0 30px 0; 
+    }
+    .section {
+      margin-bottom: 40px;
+    }
+    .section-title { 
+      font-size: 18px; 
+      font-weight: bold; 
+      color: var(--orange); 
+      margin: 0 0 10px 0; 
+    }
+    .section-divider {
+      height: 1px;
+      background-color: var(--light-orange);
+      width: 250px;
+      margin-bottom: 20px;
+    }
+    .content { 
+      font-size: 15px; 
+      line-height: 1.6; 
+      white-space: pre-wrap; 
+      color: var(--black);
+    }
+    .valor { 
+      font-size: 24px; 
+      font-weight: bold; 
+      color: var(--black); 
+      margin: 10px 0; 
+    }
+    .footer { 
+      margin-top: 80px; 
+      border-top: 1px solid var(--orange); 
+      padding-top: 20px; 
+      text-align: center; 
+      color: var(--gray); 
+      font-size: 14px; 
+    }
+    
+    @media print {
+      body { 
+        background: #fff;
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact;
+      }
+      .page { 
+        margin: 0;
+        padding: 20px;
+        box-shadow: none;
+        width: 100%;
+        max-width: 100%;
+      }
+      @page { margin: 1cm; size: A4; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="header-left">
+        <h1>IC Educ</h1>
+      </div>
+      <div class="header-right">
+        <div>contato@iceduc.com.br</div>
+        <div>Data de emissão: ${dateStr}</div>
+        <div>Ref: #${proposta.id.substring(0, 8).toUpperCase()}</div>
+      </div>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="prep-para">PREPARADO PARA</div>
+    <div class="cliente-nome">${clientName}</div>
+    ${clienteDoc ? `<div class="cliente-doc">${clienteDoc}</div>` : ''}
+    ${negocioDesc ? `<div class="cliente-doc">Negócio: ${negocioDesc}</div>` : ''}
+    
+    <div class="titulo">${proposta.getString('titulo')}</div>
+    
+    <div class="section">
+      <div class="section-title">Escopo e Descrição dos Serviços</div>
+      <div class="section-divider"></div>
+      <div class="content">${proposta.getString('descricao_servicos')}</div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Investimento</div>
+      <div class="section-divider"></div>
+      <div class="valor">${formattedValor}</div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Condições Comerciais</div>
+      <div class="section-divider"></div>
+      <div class="content">${proposta.getString('condicoes_comerciais')}</div>
+    </div>
+    
+    <div class="footer">
+      <div>Validade desta proposta: ${proposta.getInt('validade_dias')} dias a partir da data de envio.</div>
+      <div style="margin-top: 5px;">Agradecemos a oportunidade de apresentar esta proposta comercial.</div>
+    </div>
+  </div>
+  <script>
+    window.onload = () => { 
+      setTimeout(() => { window.print(); }, 500);
+    }
+  </script>
+</body>
+</html>`
 
-    checkPageBreak(100)
-    cursorY -= 20
-    page.drawLine({
-      start: { x: margin, y: cursorY },
-      end: { x: page.getWidth() - margin, y: cursorY },
-      thickness: 1,
-      color: orange,
-    })
-    cursorY -= 30
-
-    const validadeStr =
-      'Validade desta proposta: ' +
-      proposta.getInt('validade_dias') +
-      ' dias a partir da data de envio.'
-    const w1 = fontNormal.widthOfTextAtSize(validadeStr, 10)
-    drawText(validadeStr, fontNormal, 10, gray, (page.getWidth() - w1) / 2, cursorY)
-    cursorY -= 15
-
-    const thanksStr = 'Agradecemos a oportunidade de apresentar esta proposta comercial.'
-    const w2 = fontNormal.widthOfTextAtSize(thanksStr, 10)
-    drawText(thanksStr, fontNormal, 10, gray, (page.getWidth() - w2) / 2, cursorY)
-
-    const pdfBytes = await pdfDoc.save()
-
-    e.response
-      .header()
-      .set('Content-Disposition', 'attachment; filename="Proposta_' + proposta.id + '.pdf"')
-    return e.blob(200, 'application/pdf', pdfBytes)
+    return e.html(200, html)
   },
   $apis.requireAuth(),
 )
