@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { KanbanBoard } from '@/components/dashboard/KanbanBoard'
 import { Button } from '@/components/ui/button'
 import { Plus, Filter } from 'lucide-react'
-import { getNegocios, Negocio, updateNegocio } from '@/services/negocios'
+import { getNegocios, Negocio, updateNegocio, deleteNegocio } from '@/services/negocios'
 import { useRealtime } from '@/hooks/use-realtime'
+import { useToast } from '@/hooks/use-toast'
 import { NegocioFormSheet } from '@/components/funil/NegocioFormSheet'
 import { FechamentoModal } from '@/components/funil/FechamentoModal'
 import { PerdaModal } from '@/components/funil/PerdaModal'
@@ -25,6 +26,7 @@ export default function Funil() {
   const [lostDeal, setLostDeal] = useState<Negocio | null>(null)
 
   const { vendedorId, periodo, setVendedorId, setPeriodo } = useDashboardStore()
+  const { toast } = useToast()
 
   const loadData = async () => {
     try {
@@ -125,6 +127,24 @@ export default function Funil() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(val)
+
+  const handleDeleteDeal = async (deal: Negocio) => {
+    try {
+      await deleteNegocio(deal.id)
+      setNegocios((prev) => prev.filter((n) => n.id !== deal.id))
+      toast({
+        title: 'Negócio excluído',
+        description: 'O negócio foi removido com sucesso.',
+      })
+    } catch (error) {
+      console.error(error)
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível excluir o negócio.',
+        variant: 'destructive',
+      })
+    }
+  }
 
   const handleStatusChange = async (deal: Negocio, newStatus: Negocio['status']) => {
     if (deal.status === newStatus) return
@@ -235,7 +255,11 @@ export default function Funil() {
       </div>
 
       <div className="flex-1 min-h-0 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
-        <KanbanBoard negocios={visibleNegocios} onStatusChange={handleStatusChange} />
+        <KanbanBoard
+          negocios={visibleNegocios}
+          onStatusChange={handleStatusChange}
+          onDeleteDeal={handleDeleteDeal}
+        />
       </div>
 
       <NegocioFormSheet open={isNewDealOpen} onOpenChange={setIsNewDealOpen} onSuccess={loadData} />
