@@ -6,10 +6,12 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { ArrowLeft, Download, Loader2 } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function PropostaView() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [proposta, setProposta] = useState<any>(null)
   const [cliente, setCliente] = useState<any>(null)
   const [negocio, setNegocio] = useState<any>(null)
@@ -150,7 +152,7 @@ export default function PropostaView() {
               <h1 className="text-3xl font-bold text-orange-500">IC Educ</h1>
             </div>
             <div className="text-right text-sm text-muted-foreground print:text-black">
-              <p>{vendedor?.email || 'contato@iceduc.com.br'}</p>
+              <p>{vendedor?.email || user?.email}</p>
               <p>Data de emissão: {new Date(proposta.created).toLocaleDateString('pt-BR')}</p>
               <p>Ref: #{proposta.id.substring(0, 8).toUpperCase()}</p>
             </div>
