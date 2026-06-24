@@ -55,7 +55,7 @@ export default function PropostaView() {
     try {
       setDownloading(true)
       const response = await fetch(
-        `${import.meta.env.VITE_POCKETBASE_URL}/backend/v1/propostas/${id}/pdf`,
+        `${import.meta.env.VITE_POCKETBASE_URL}/backend/v1/proposta/pdf/${id}`,
         {
           headers: {
             Authorization: pb.authStore.token,
@@ -68,73 +68,23 @@ export default function PropostaView() {
         try {
           const errData = await response.json()
           if (errData.message) errorMsg = errData.message
+          else if (errData.error) errorMsg = errData.error
         } catch {
           /* intentionally ignored */
         }
         throw new Error(errorMsg)
       }
 
-      const buffer = await response.arrayBuffer()
-      const bytes = new Uint8Array(buffer)
-
-      let blob: Blob
-      // Check for PDF magic number "%PDF" (37, 80, 68, 70)
-      if (
-        bytes.length > 4 &&
-        bytes[0] === 37 &&
-        bytes[1] === 80 &&
-        bytes[2] === 68 &&
-        bytes[3] === 70
-      ) {
-        blob = new Blob([buffer], { type: 'application/pdf' })
-      } else {
-        try {
-          // Decode base64
-          const textData = new TextDecoder().decode(buffer).trim()
-          const binaryString = window.atob(textData)
-          const pdfBytes = new Uint8Array(binaryString.length)
-          for (let i = 0; i < binaryString.length; i++) {
-            pdfBytes[i] = binaryString.charCodeAt(i)
-          }
-          blob = new Blob([pdfBytes], { type: 'application/pdf' })
-        } catch (err) {
-          console.error('Failed to decode PDF data', err)
-          throw new Error('Falha ao decodificar o documento PDF recebido.')
-        }
-      }
+      const blob = await response.blob()
 
       const contentDisposition = response.headers.get('Content-Disposition')
       let fileName = `Proposta_${proposta.id.substring(0, 8).toUpperCase()}.pdf`
 
       if (contentDisposition) {
-        const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
-        if (utf8Match && utf8Match[1]) {
-          fileName = decodeURIComponent(utf8Match[1])
-        } else {
-          const filenameMatch = contentDisposition.match(/filename="([^"]+)"/)
-          if (filenameMatch && filenameMatch[1]) {
-            fileName = filenameMatch[1]
-          }
+        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/)
+        if (filenameMatch && filenameMatch[1]) {
+          fileName = filenameMatch[1]
         }
-      } else {
-        const clientName = cliente?.nome_fantasia || cliente?.nome || 'Cliente'
-        const safeClientName = clientName.replace(/[^a-zA-Z0-9À-ÿ -]/g, '').trim()
-        const now = new Date()
-        const months = [
-          'Janeiro',
-          'Fevereiro',
-          'Março',
-          'Abril',
-          'Maio',
-          'Junho',
-          'Julho',
-          'Agosto',
-          'Setembro',
-          'Outubro',
-          'Novembro',
-          'Dezembro',
-        ]
-        fileName = `Proposta ${safeClientName} ${months[now.getMonth()]} ${now.getFullYear()}.pdf`
       }
 
       const url = window.URL.createObjectURL(blob)
