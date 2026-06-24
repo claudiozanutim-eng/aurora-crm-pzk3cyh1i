@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { ClientDataForm, ClientDataFormRef } from '@/components/details/ClientDataForm'
+import { NegocioDataForm, NegocioDataFormRef } from '@/components/details/NegocioDataForm'
 import { ContactsList } from '@/components/details/ContactsList'
 import { InteractionsTimeline } from '@/components/details/InteractionsTimeline'
 import { TasksList } from '@/components/details/TasksList'
@@ -26,6 +27,7 @@ export default function ClienteDetail() {
   const navigate = useNavigate()
   const [cliente, setCliente] = useState<Cliente | null>(null)
   const formRef = useRef<ClientDataFormRef>(null)
+  const negocioFormRef = useRef<NegocioDataFormRef>(null)
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -52,7 +54,7 @@ export default function ClienteDetail() {
     )
 
   const handleBack = () => {
-    if (formRef.current?.isDirty) {
+    if (formRef.current?.isDirty || negocioFormRef.current?.isDirty) {
       setShowUnsavedDialog(true)
     } else {
       navigate('/funil')
@@ -60,14 +62,18 @@ export default function ClienteDetail() {
   }
 
   const handleSaveAndExit = async () => {
-    if (formRef.current) {
-      setIsSaving(true)
-      const success = await formRef.current.saveChanges()
-      setIsSaving(false)
-      if (success) {
-        setShowUnsavedDialog(false)
-        navigate('/funil')
-      }
+    setIsSaving(true)
+    let success = true
+    if (formRef.current?.isDirty) {
+      success = (await formRef.current.saveChanges()) && success
+    }
+    if (negocioFormRef.current?.isDirty) {
+      success = (await negocioFormRef.current.saveChanges()) && success
+    }
+    setIsSaving(false)
+    if (success) {
+      setShowUnsavedDialog(false)
+      navigate('/funil')
     }
   }
 
@@ -126,6 +132,12 @@ export default function ClienteDetail() {
             >
               Tarefas
             </TabsTrigger>
+            <TabsTrigger
+              value="negocios"
+              className="data-[state=active]:border-b-2 data-[state=active]:border-[#FF6B00] data-[state=active]:text-[#FF6B00] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
+            >
+              Dados do Negócio
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="dados" className="focus-visible:outline-none">
@@ -139,6 +151,13 @@ export default function ClienteDetail() {
           </TabsContent>
           <TabsContent value="tarefas" className="focus-visible:outline-none">
             <TasksList targetId={cliente.id} targetType="cliente" />
+          </TabsContent>
+          <TabsContent value="negocios" className="focus-visible:outline-none">
+            <NegocioDataForm
+              ref={negocioFormRef}
+              clienteId={cliente.id}
+              onExit={() => navigate('/funil')}
+            />
           </TabsContent>
         </Tabs>
       </div>
