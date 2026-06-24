@@ -389,6 +389,7 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
                   <YAxis hide />
                   <ChartTooltip
                     cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                    itemSorter={(item) => (item.dataKey === 'valorPrev' ? 1 : 2)}
                     content={
                       <ChartTooltipContent
                         formatter={(value: number, name: string) => {
@@ -399,31 +400,30 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
                       />
                     }
                   />
-                  {compareYear && (
-                    <Bar
+                  <Bar
+                    dataKey="valorPrev"
+                    hide={!compareYear}
+                    fill="var(--color-valorPrev)"
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={40}
+                    cursor="pointer"
+                    onClick={(data: any) =>
+                      setSelectedMonth({
+                        month: data.monthIndex,
+                        year: prevYear,
+                        label: `${data.monthShort}/${prevYear}`,
+                      })
+                    }
+                  >
+                    <LabelList
                       dataKey="valorPrev"
-                      fill="var(--color-valorPrev)"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={40}
-                      cursor="pointer"
-                      onClick={(data: any) =>
-                        setSelectedMonth({
-                          month: data.monthIndex,
-                          year: prevYear,
-                          label: `${data.monthShort}/${prevYear}`,
-                        })
-                      }
-                    >
-                      <LabelList
-                        dataKey="valorPrev"
-                        position="top"
-                        formatter={(value: number) => (value > 0 ? formatCompact(value) : '')}
-                        fill="#6b7280"
-                        fontSize={10}
-                        fontWeight={500}
-                      />
-                    </Bar>
-                  )}
+                      position="top"
+                      formatter={(value: number) => (value > 0 ? formatCompact(value) : '')}
+                      fill="#6b7280"
+                      fontSize={10}
+                      fontWeight={500}
+                    />
+                  </Bar>
                   <Bar
                     dataKey="valor"
                     fill="var(--color-valor)"
