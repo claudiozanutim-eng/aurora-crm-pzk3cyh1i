@@ -151,7 +151,7 @@ export default function PropostaView() {
           ) : (
             <Download className="mr-2 h-4 w-4" />
           )}
-          {downloading ? 'Gerando...' : 'Gerar PDF'}
+          Gerar PDF
         </Button>
       </div>
 

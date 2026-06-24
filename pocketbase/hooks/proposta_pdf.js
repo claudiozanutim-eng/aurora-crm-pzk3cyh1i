@@ -312,7 +312,7 @@ routerAdd(
 
     e.response.header().set('Content-Disposition', `attachment; filename="${fileName}"`)
 
-    return e.blob(200, 'application/pdf', pdfBytes)
+    return e.blob(200, 'application/pdf', pdfBytes.buffer)
   },
   $apis.requireAuth(),
 )
