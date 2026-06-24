@@ -1,5 +1,15 @@
 import { Card, CardContent } from '@/components/ui/card'
-import { Users, UserPlus, Briefcase, DollarSign, Target, Receipt, Percent } from 'lucide-react'
+import {
+  Users,
+  UserPlus,
+  Briefcase,
+  DollarSign,
+  Target,
+  Receipt,
+  Percent,
+  TrendingUp,
+  TrendingDown,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -11,6 +21,8 @@ export interface KpiData {
   valorPonderadoPipeline: number
   taxaConversao: number
   ticketMedio: number
+  valorTotalGanhos: number
+  valorTotalPerdidos: number
 }
 
 interface DashboardKpisProps {
@@ -25,25 +37,11 @@ export function DashboardKpis({ data, loading }: DashboardKpisProps) {
 
   const kpiConfig = [
     {
-      title: 'Total de Clientes',
-      value: data.totalClientes,
-      icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
-    },
-    {
-      title: 'Leads Ativos',
-      value: data.leadsAtivos,
-      icon: UserPlus,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100',
-    },
-    {
-      title: 'Negócios em Andamento',
-      value: data.negociosAndamento,
-      icon: Briefcase,
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-100',
+      title: 'Valor Total de Ganhos',
+      value: formatCurrency(data.valorTotalGanhos),
+      icon: TrendingUp,
+      color: 'text-green-600',
+      bgColor: 'bg-green-100',
     },
     {
       title: 'Valor Total do Pipeline',
@@ -73,16 +71,44 @@ export function DashboardKpis({ data, loading }: DashboardKpisProps) {
       color: 'text-rose-600',
       bgColor: 'bg-rose-100',
     },
+    {
+      title: 'Valor Total de Perdidos',
+      value: formatCurrency(data.valorTotalPerdidos),
+      icon: TrendingDown,
+      color: 'text-red-600',
+      bgColor: 'bg-red-100',
+    },
+    {
+      title: 'Negócios em Andamento',
+      value: data.negociosAndamento,
+      icon: Briefcase,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-100',
+    },
+    {
+      title: 'Leads Ativos',
+      value: data.leadsAtivos,
+      icon: UserPlus,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100',
+    },
+    {
+      title: 'Total de Clientes',
+      value: data.totalClientes,
+      icon: Users,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+    },
   ]
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {kpiConfig.map((item, index) => {
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {kpiConfig.map((item) => {
         const Icon = item.icon
         return (
           <Card
             key={item.title}
-            className="border-gray-100 shadow-subtle hover:shadow-elevation transition-all duration-200 group"
+            className="bg-white border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 group rounded-xl"
           >
             <CardContent className="p-5">
               <div className="flex justify-between items-start">

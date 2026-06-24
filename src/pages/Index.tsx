@@ -82,6 +82,8 @@ export default function Index() {
 
     // Apply period filters where appropriate
     const clientes = data.clientes.filter((c) => isDateInPeriod(c.data_cadastro || c.created))
+    const clientesAtivos = clientes.filter((c) => c.status === 'Ativo')
+
     const leads = data.leads.filter((l) => isDateInPeriod(l.created))
     const negocios = data.negocios.filter((n) => isDateInPeriod(n.created))
 
@@ -105,23 +107,26 @@ export default function Index() {
         isDateInPeriod(n.data_fechamento_real || n.updated),
     )
     const wonInPeriod = resolvedInPeriod.filter((n) => n.status === 'Fechado/Ganho')
+    const lostInPeriod = resolvedInPeriod.filter((n) => n.status === 'Perdido')
+
+    const valorTotalGanhos = wonInPeriod.reduce((acc, n) => acc + (n.valor_estimado || 0), 0)
+    const valorTotalPerdidos = lostInPeriod.reduce((acc, n) => acc + (n.valor_estimado || 0), 0)
 
     const taxaConversao =
       resolvedInPeriod.length > 0 ? (wonInPeriod.length / resolvedInPeriod.length) * 100 : 0
-    const ticketMedio =
-      wonInPeriod.length > 0
-        ? wonInPeriod.reduce((acc, n) => acc + (n.valor_estimado || 0), 0) / wonInPeriod.length
-        : 0
+    const ticketMedio = wonInPeriod.length > 0 ? valorTotalGanhos / wonInPeriod.length : 0
 
     return {
       kpis: {
-        totalClientes: clientes.length,
+        totalClientes: clientesAtivos.length,
         leadsAtivos: leadsAtivos.length,
         negociosAndamento: negociosAndamento.length,
         valorTotalPipeline,
         valorPonderadoPipeline,
         taxaConversao,
         ticketMedio,
+        valorTotalGanhos,
+        valorTotalPerdidos,
       },
       charts: {
         negocios, // pass filtered for funnel
