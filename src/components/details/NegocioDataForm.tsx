@@ -71,7 +71,6 @@ export const NegocioDataForm = forwardRef<
       data_prevista_fechamento: selectedNegocio.data_prevista_fechamento
         ? selectedNegocio.data_prevista_fechamento.split(' ')[0]
         : '',
-      status: selectedNegocio.status,
       prioridade: selectedNegocio.prioridade,
       motivo_perda: selectedNegocio.motivo_perda || undefined,
     })
@@ -80,7 +79,15 @@ export const NegocioDataForm = forwardRef<
 
   useEffect(() => {
     if (!selectedNegocio) return
-    const currentDataStr = JSON.stringify(data)
+    const currentDataStr = JSON.stringify({
+      descricao: data.descricao,
+      vendedor_id: data.vendedor_id,
+      valor_estimado: data.valor_estimado,
+      probabilidade: data.probabilidade,
+      data_prevista_fechamento: data.data_prevista_fechamento,
+      prioridade: data.prioridade,
+      motivo_perda: data.motivo_perda,
+    })
     const initialDataStr = JSON.stringify({
       descricao: selectedNegocio.descricao || '',
       vendedor_id: selectedNegocio.vendedor_id,
@@ -89,7 +96,6 @@ export const NegocioDataForm = forwardRef<
       data_prevista_fechamento: selectedNegocio.data_prevista_fechamento
         ? selectedNegocio.data_prevista_fechamento.split(' ')[0]
         : '',
-      status: selectedNegocio.status,
       prioridade: selectedNegocio.prioridade,
       motivo_perda: selectedNegocio.motivo_perda || undefined,
     })
@@ -104,12 +110,17 @@ export const NegocioDataForm = forwardRef<
     if (!selectedNegocioId) return false
     try {
       const payload: Partial<Negocio> = { ...data }
+
       if (payload.data_prevista_fechamento) {
         payload.data_prevista_fechamento = `${payload.data_prevista_fechamento} 12:00:00.000Z`
+      } else {
+        payload.data_prevista_fechamento = '' as any
       }
-      if (payload.status !== 'Perdido') {
+
+      if (selectedNegocio?.status !== 'Perdido') {
         payload.motivo_perda = '' as any
       }
+
       await updateNegocio(selectedNegocioId, payload)
       toast({ title: 'Dados do negócio atualizados com sucesso.' })
       setIsDirty(false)
@@ -229,29 +240,6 @@ export const NegocioDataForm = forwardRef<
         </div>
 
         <div className="space-y-2">
-          <Label>Status</Label>
-          <Select value={data.status} onValueChange={(val) => handleChange('status', val)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[
-                'Prospecção',
-                'Qualificação',
-                'Proposta Enviada',
-                'Negociação',
-                'Fechado/Ganho',
-                'Perdido',
-              ].map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
           <Label>Prioridade</Label>
           <Select value={data.prioridade} onValueChange={(val) => handleChange('prioridade', val)}>
             <SelectTrigger>
@@ -267,7 +255,7 @@ export const NegocioDataForm = forwardRef<
           </Select>
         </div>
 
-        {data.status === 'Perdido' && (
+        {selectedNegocio?.status === 'Perdido' && (
           <div className="space-y-2">
             <Label>Motivo da Perda</Label>
             <Select
