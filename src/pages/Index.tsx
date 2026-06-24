@@ -3,7 +3,7 @@ import { DashboardKpis } from '@/components/dashboard/DashboardKpis'
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts'
 import { DashboardLists } from '@/components/dashboard/DashboardLists'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Plus, CalendarIcon, X } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -14,7 +14,111 @@ import {
 import { Link } from 'react-router-dom'
 import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
-import { startOfMonth, endOfMonth, subMonths, startOfYear, parseISO } from 'date-fns'
+import {
+  startOfMonth,
+  endOfMonth,
+  subMonths,
+  startOfYear,
+  parseISO,
+  format,
+  parse,
+  isValid,
+} from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+
+function CustomDatePicker({
+  date,
+  setDate,
+  placeholder,
+  minDate,
+  maxDate,
+}: {
+  date?: Date
+  setDate: (d?: Date) => void
+  placeholder: string
+  minDate?: Date
+  maxDate?: Date
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [inputValue, setInputValue] = useState(date ? format(date, 'dd/MM/yyyy') : '')
+
+  useEffect(() => {
+    if (date) setInputValue(format(date, 'dd/MM/yyyy'))
+    else setInputValue('')
+  }, [date])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/[^0-9/]/g, '')
+
+    // simple auto slash insertion
+    if (val.length === 2 && inputValue.length < val.length) val += '/'
+    if (val.length === 5 && inputValue.length < val.length) val += '/'
+    if (val.length > 10) val = val.substring(0, 10)
+
+    setInputValue(val)
+    if (val.length === 10) {
+      const parsed = parse(val, 'dd/MM/yyyy', new Date())
+      if (isValid(parsed)) {
+        if (minDate && parsed < minDate) return
+        if (maxDate && parsed > maxDate) return
+        setDate(parsed)
+      }
+    } else if (val.length === 0) {
+      setDate(undefined)
+    }
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <div className="relative">
+        <Input
+          value={inputValue}
+          onChange={handleInputChange}
+          placeholder={placeholder}
+          maxLength={10}
+          className="w-[130px] pr-8 text-sm focus-visible:ring-orange-500 border-transparent shadow-none bg-gray-50 focus-visible:bg-white transition-colors"
+        />
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0 h-full w-8 hover:bg-transparent text-gray-500 hover:text-orange-500"
+          >
+            <CalendarIcon className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+      </div>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={(d) => {
+            if (d) {
+              setDate(d)
+              setInputValue(format(d, 'dd/MM/yyyy'))
+              setIsOpen(false)
+            }
+          }}
+          disabled={(d) => {
+            if (minDate && d < minDate) return true
+            if (maxDate && d > maxDate) return true
+            return false
+          }}
+          locale={ptBR}
+          classNames={{
+            day_selected:
+              'bg-orange-500 text-white hover:bg-orange-600 hover:text-white focus:bg-orange-500 focus:text-white',
+            day_today: 'bg-orange-50 text-orange-600',
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 export default function Index() {
   const [data, setData] = useState({
@@ -25,33 +129,10 @@ export default function Index() {
   })
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('current_month')
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined)
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined)
 
-  const loadData = async () => {
-    try {
-      const [clientes, leads, negocios, tarefas] = await Promise.all([
-        pb.collection('clientes').getFullList(),
-        pb.collection('leads').getFullList(),
-        pb.collection('negocios').getFullList({ expand: 'cliente_id' }),
-        pb.collection('tarefas').getFullList({ expand: 'cliente_id,lead_id' }),
-      ])
-      setData({ clientes, leads, negocios, tarefas })
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  useRealtime('clientes', loadData)
-  useRealtime('leads', loadData)
-  useRealtime('negocios', loadData)
-  useRealtime('tarefas', loadData)
-
-  const filteredData = useMemo(() => {
+  const queryDates = useMemo(() => {
     const now = new Date()
     let startDate: Date
     let endDate: Date = now
@@ -68,11 +149,71 @@ export default function Index() {
       case 'ytd':
         startDate = startOfYear(now)
         break
+      case 'custom':
+        startDate = customStartDate || new Date(2000, 0, 1)
+        endDate = customEndDate || now
+        if (customEndDate) {
+          endDate = new Date(customEndDate)
+          endDate.setHours(23, 59, 59, 999)
+        }
+        break
       case 'all_time':
       default:
         startDate = new Date(2000, 0, 1)
         break
     }
+    return { startDate, endDate }
+  }, [period, customStartDate, customEndDate])
+
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const { startDate, endDate } = queryDates
+      const startStr = startDate.toISOString().replace('T', ' ')
+      const endStr = endDate.toISOString().replace('T', ' ')
+
+      const filterClientes =
+        period === 'all_time'
+          ? ''
+          : `(data_cadastro >= "${startStr}" && data_cadastro <= "${endStr}") || (created >= "${startStr}" && created <= "${endStr}")`
+      const filterLeads =
+        period === 'all_time' ? '' : `created >= "${startStr}" && created <= "${endStr}"`
+      const filterNegocios =
+        period === 'all_time'
+          ? ''
+          : `(created >= "${startStr}" && created <= "${endStr}") || (data_fechamento_real >= "${startStr}" && data_fechamento_real <= "${endStr}") || (updated >= "${startStr}" && updated <= "${endStr}")`
+      const filterTarefas =
+        period === 'all_time'
+          ? ''
+          : `(data_limite >= "${startStr}" && data_limite <= "${endStr}") || (created >= "${startStr}" && created <= "${endStr}")`
+
+      const [clientes, leads, negocios, tarefas] = await Promise.all([
+        pb.collection('clientes').getFullList({ filter: filterClientes }),
+        pb.collection('leads').getFullList({ filter: filterLeads }),
+        pb.collection('negocios').getFullList({ expand: 'cliente_id', filter: filterNegocios }),
+        pb
+          .collection('tarefas')
+          .getFullList({ expand: 'cliente_id,lead_id', filter: filterTarefas }),
+      ])
+      setData({ clientes, leads, negocios, tarefas })
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [queryDates])
+
+  useRealtime('clientes', loadData)
+  useRealtime('leads', loadData)
+  useRealtime('negocios', loadData)
+  useRealtime('tarefas', loadData)
+
+  const filteredData = useMemo(() => {
+    const { startDate, endDate } = queryDates
 
     const isDateInPeriod = (dateStr?: string) => {
       if (!dateStr) return false
@@ -80,7 +221,6 @@ export default function Index() {
       return date >= startDate && date <= endDate
     }
 
-    // Apply period filters where appropriate
     const clientes = data.clientes.filter((c) => isDateInPeriod(c.data_cadastro || c.created))
     const clientesAtivos = clientes.filter((c) => c.status === 'Ativo')
 
@@ -133,11 +273,11 @@ export default function Index() {
         negociosAll: data.negocios, // pass all for evolution, chart groups internally
       },
       lists: {
-        negocios: data.negocios,
-        tarefas: data.tarefas,
+        negocios: negocios,
+        tarefas: data.tarefas.filter((t) => isDateInPeriod(t.data_limite || t.created)),
       },
     }
-  }, [data, period])
+  }, [data, queryDates])
 
   return (
     <div className="space-y-6 h-full flex flex-col pb-8">
@@ -151,17 +291,45 @@ export default function Index() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-full sm:w-[200px] bg-white shadow-subtle border-gray-200 text-gray-700">
-              <SelectValue placeholder="Selecione o período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="current_month">Mês Atual</SelectItem>
-              <SelectItem value="previous_month">Mês Anterior</SelectItem>
-              <SelectItem value="ytd">Acumulado do Ano</SelectItem>
-              <SelectItem value="all_time">Todo o Período</SelectItem>
-            </SelectContent>
-          </Select>
+          {period !== 'custom' ? (
+            <Select value={period} onValueChange={setPeriod}>
+              <SelectTrigger className="w-full sm:w-[200px] bg-white shadow-subtle border-gray-200 text-gray-700">
+                <SelectValue placeholder="Selecione o período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="current_month">Mês Atual</SelectItem>
+                <SelectItem value="previous_month">Mês Anterior</SelectItem>
+                <SelectItem value="ytd">Acumulado do Ano</SelectItem>
+                <SelectItem value="all_time">Todo o Período</SelectItem>
+                <SelectItem value="custom">Outro Período</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-white rounded-md border border-gray-200 p-1 shadow-subtle animate-fade-in w-full sm:w-auto">
+              <CustomDatePicker
+                date={customStartDate}
+                setDate={setCustomStartDate}
+                placeholder="Data Inicial"
+                maxDate={customEndDate}
+              />
+              <span className="text-gray-400 text-sm font-medium">até</span>
+              <CustomDatePicker
+                date={customEndDate}
+                setDate={setCustomEndDate}
+                placeholder="Data Final"
+                minDate={customStartDate}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setPeriod('current_month')}
+                className="text-gray-400 hover:text-red-500 h-9 w-9 flex-shrink-0"
+                title="Cancelar"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
           <Button
             asChild
             className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white shadow-sm transition-all hover:scale-105 active:scale-95"
