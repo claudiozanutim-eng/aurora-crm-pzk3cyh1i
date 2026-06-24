@@ -10,7 +10,18 @@ export interface Tarefa extends RecordModel {
   tipo?: 'E-mail' | 'WhatsApp' | 'Telefonema' | 'Reunião' | 'Proposta Enviada' | 'Enviar Proposta'
   prioridade: 'Alta' | 'Média' | 'Baixa'
   status: 'Pendente' | 'Em andamento' | 'Concluída' | 'Atrasada'
-  expand?: { vendedor_id?: { name: string } }
+  expand?: {
+    vendedor_id?: { id: string; name: string }
+    cliente_id?: { id: string; nome: string }
+    lead_id?: { id: string; nome: string }
+  }
+}
+
+export const getAllTarefas = async () => {
+  return pb.collection('tarefas').getFullList<Tarefa>({
+    sort: 'data_limite',
+    expand: 'vendedor_id,cliente_id,lead_id',
+  })
 }
 
 export const getTarefas = async (targetId: string, targetType: 'cliente' | 'lead') => {
