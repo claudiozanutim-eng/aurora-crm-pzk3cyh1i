@@ -74,7 +74,8 @@ export default function PropostaView() {
         throw new Error(errorMsg)
       }
 
-      const blob = await response.blob()
+      const arrayBuffer = await response.arrayBuffer()
+      const blob = new Blob([new Uint8Array(arrayBuffer)], { type: 'application/pdf' })
 
       const contentDisposition = response.headers.get('Content-Disposition')
       let fileName = `Proposta_${proposta.id.substring(0, 8).toUpperCase()}.pdf`
@@ -90,7 +91,7 @@ export default function PropostaView() {
           }
         }
       } else {
-        const clientName = cliente?.nome || 'Cliente'
+        const clientName = cliente?.nome_fantasia || cliente?.nome || 'Cliente'
         const safeClientName = clientName.replace(/[^a-zA-Z0-9À-ÿ -]/g, '').trim()
         const now = new Date()
         const months = [

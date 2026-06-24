@@ -74,7 +74,9 @@ routerAdd(
       '/' +
       d.getFullYear()
 
-    const rawClientName = cliente ? cliente.getString('nome') : 'Cliente não informado'
+    const rawClientName = cliente
+      ? cliente.getString('nome_fantasia') || cliente.getString('nome')
+      : 'Cliente não informado'
     const clientName = sanitize(rawClientName)
     let clienteDoc = ''
     if (cliente && cliente.getString('documento')) {
@@ -287,10 +289,7 @@ routerAdd(
     })
 
     const pdfBytes = await pdfDoc.save()
-    const exactBuffer = pdfBytes.buffer.slice(
-      pdfBytes.byteOffset,
-      pdfBytes.byteOffset + pdfBytes.byteLength,
-    )
+    const bytesArray = Array.from(pdfBytes)
 
     // Dynamic Filename Header
     const now = new Date()
@@ -322,7 +321,7 @@ routerAdd(
         `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}; filename="${safeClientName.replace(/[^a-zA-Z0-9 -]/g, '')}.pdf"`,
       )
 
-    return e.blob(200, 'application/pdf', exactBuffer)
+    return e.blob(200, 'application/pdf', bytesArray)
   },
   $apis.requireAuth(),
 )
