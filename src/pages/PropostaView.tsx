@@ -64,23 +64,60 @@ export default function PropostaView() {
       )
 
       if (!response.ok) {
-        throw new Error('Falha ao gerar o documento')
+        let errorMsg = 'Falha ao gerar o documento'
+        try {
+          const errData = await response.json()
+          if (errData.message) errorMsg = errData.message
+        } catch {
+          /* intentionally ignored */
+        }
+        throw new Error(errorMsg)
       }
 
       const blob = await response.blob()
+
+      const contentDisposition = response.headers.get('Content-Disposition')
+      let fileName = `Proposta_${proposta.id.substring(0, 8).toUpperCase()}.pdf`
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/)
+        if (filenameMatch && filenameMatch.length === 2) {
+          fileName = filenameMatch[1]
+        }
+      } else {
+        const clientName = cliente?.nome || 'Cliente'
+        const safeClientName = clientName.replace(/[^a-zA-Z0-9À-ÿ -]/g, '').trim()
+        const now = new Date()
+        const months = [
+          'Janeiro',
+          'Fevereiro',
+          'Março',
+          'Abril',
+          'Maio',
+          'Junho',
+          'Julho',
+          'Agosto',
+          'Setembro',
+          'Outubro',
+          'Novembro',
+          'Dezembro',
+        ]
+        fileName = `Proposta ${safeClientName} ${months[now.getMonth()]} ${now.getFullYear()}.pdf`
+      }
+
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `Proposta_${proposta.id.substring(0, 8).toUpperCase()}.pdf`
+      a.download = fileName
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
 
       toast.success('PDF gerado e baixado com sucesso.')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao gerar PDF:', error)
-      toast.error('Não foi possível gerar o PDF. Tente novamente.')
+      toast.error(error.message || 'Não foi possível gerar o PDF. Tente novamente.')
     } finally {
       setDownloading(false)
     }
