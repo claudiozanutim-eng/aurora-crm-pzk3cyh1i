@@ -1,15 +1,36 @@
-// @deps pdf-lib@1.17.1
 routerAdd(
   'GET',
   '/backend/v1/propostas/{id}/pdf',
   async (e) => {
-    const { PDFDocument, rgb, StandardFonts } = require('pdf-lib')
-
     if (!e.auth?.id) {
       return e.unauthorizedError('Autenticação necessária.')
     }
 
     const id = e.request.pathValue('id')
+
+    let pdfLibRes
+    try {
+      // Fetch the pre-bundled UMD version of pdf-lib to bypass the bundler
+      pdfLibRes = $http.send({
+        url: 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js',
+        method: 'GET',
+      })
+    } catch (err) {
+      return e.internalServerError('Falha ao baixar dependência de PDF.')
+    }
+
+    if (pdfLibRes.statusCode !== 200) {
+      return e.internalServerError('Falha ao carregar biblioteca de PDF.')
+    }
+
+    // Evaluate the UMD source code with an injected CommonJS module/exports scope
+    const source = new TextDecoder().decode(pdfLibRes.body)
+    const moduleObj = { exports: {} }
+
+    const loadLib = new Function('module', 'exports', source)
+    loadLib(moduleObj, moduleObj.exports)
+
+    const { PDFDocument, rgb, StandardFonts } = moduleObj.exports
 
     let proposta
     try {
