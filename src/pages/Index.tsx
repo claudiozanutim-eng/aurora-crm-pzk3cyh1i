@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Link } from 'react-router-dom'
 import pb from '@/lib/pocketbase/client'
+import { getUsers, User } from '@/services/users'
 import { useRealtime } from '@/hooks/use-realtime'
 import {
   startOfMonth,
@@ -129,8 +130,14 @@ export default function Index() {
   })
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('current_month')
+  const [vendedorId, setVendedorId] = useState<string>('all')
+  const [users, setUsers] = useState<User[]>([])
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined)
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined)
+
+  useEffect(() => {
+    getUsers().then(setUsers).catch(console.error)
+  }, [])
 
   const queryDates = useMemo(() => {
     const now = new Date()
@@ -172,20 +179,27 @@ export default function Index() {
       const startStr = startDate.toISOString().replace('T', ' ')
       const endStr = endDate.toISOString().replace('T', ' ')
 
-      const filterClientes =
+      let filterClientes =
         period === 'all_time'
           ? ''
-          : `(data_cadastro >= "${startStr}" && data_cadastro <= "${endStr}") || (created >= "${startStr}" && created <= "${endStr}")`
-      const filterLeads =
-        period === 'all_time' ? '' : `created >= "${startStr}" && created <= "${endStr}"`
-      const filterNegocios =
+          : `((data_cadastro >= "${startStr}" && data_cadastro <= "${endStr}") || (created >= "${startStr}" && created <= "${endStr}"))`
+      let filterLeads =
+        period === 'all_time' ? '' : `(created >= "${startStr}" && created <= "${endStr}")`
+      let filterNegocios =
         period === 'all_time'
           ? ''
-          : `(created >= "${startStr}" && created <= "${endStr}") || (data_fechamento_real >= "${startStr}" && data_fechamento_real <= "${endStr}") || (updated >= "${startStr}" && updated <= "${endStr}")`
-      const filterTarefas =
+          : `((created >= "${startStr}" && created <= "${endStr}") || (data_fechamento_real >= "${startStr}" && data_fechamento_real <= "${endStr}") || (updated >= "${startStr}" && updated <= "${endStr}"))`
+      let filterTarefas =
         period === 'all_time'
           ? ''
-          : `(data_limite >= "${startStr}" && data_limite <= "${endStr}") || (created >= "${startStr}" && created <= "${endStr}")`
+          : `((data_limite >= "${startStr}" && data_limite <= "${endStr}") || (created >= "${startStr}" && created <= "${endStr}"))`
+
+      if (vendedorId !== 'all') {
+        const vFilter = `vendedor_id = "${vendedorId}"`
+        filterLeads = filterLeads ? `(${filterLeads}) && ${vFilter}` : vFilter
+        filterNegocios = filterNegocios ? `(${filterNegocios}) && ${vFilter}` : vFilter
+        filterTarefas = filterTarefas ? `(${filterTarefas}) && ${vFilter}` : vFilter
+      }
 
       const [clientes, leads, negocios, tarefas] = await Promise.all([
         pb.collection('clientes').getFullList({ filter: filterClientes }),
@@ -195,7 +209,14 @@ export default function Index() {
           .collection('tarefas')
           .getFullList({ expand: 'cliente_id,lead_id', filter: filterTarefas }),
       ])
-      setData({ clientes, leads, negocios, tarefas })
+
+      let finalClientes = clientes
+      if (vendedorId !== 'all') {
+        const clientIds = new Set(negocios.map((n) => n.cliente_id).filter(Boolean))
+        finalClientes = clientes.filter((c) => clientIds.has(c.id))
+      }
+
+      setData({ clientes: finalClientes, leads, negocios, tarefas })
     } catch (e) {
       console.error(e)
     } finally {
@@ -205,7 +226,7 @@ export default function Index() {
 
   useEffect(() => {
     loadData()
-  }, [queryDates])
+  }, [queryDates, vendedorId])
 
   useRealtime('clientes', loadData)
   useRealtime('leads', loadData)
@@ -290,54 +311,71 @@ export default function Index() {
             Acompanhe seus indicadores e funil de vendas em tempo real.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-          {period !== 'custom' ? (
-            <Select value={period} onValueChange={setPeriod}>
+        <div className="flex flex-col items-end gap-3 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            {period !== 'custom' ? (
+              <Select value={period} onValueChange={setPeriod}>
+                <SelectTrigger className="w-full sm:w-[200px] bg-white shadow-subtle border-gray-200 text-gray-700">
+                  <SelectValue placeholder="Selecione o período" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current_month">Mês Atual</SelectItem>
+                  <SelectItem value="previous_month">Mês Anterior</SelectItem>
+                  <SelectItem value="ytd">Acumulado do Ano</SelectItem>
+                  <SelectItem value="all_time">Todo o Período</SelectItem>
+                  <SelectItem value="custom">Outro Período</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="flex items-center gap-1.5 bg-white rounded-md border border-gray-200 p-1 shadow-subtle animate-fade-in w-full sm:w-auto">
+                <CustomDatePicker
+                  date={customStartDate}
+                  setDate={setCustomStartDate}
+                  placeholder="Data Inicial"
+                  maxDate={customEndDate}
+                />
+                <span className="text-gray-400 text-sm font-medium">até</span>
+                <CustomDatePicker
+                  date={customEndDate}
+                  setDate={setCustomEndDate}
+                  placeholder="Data Final"
+                  minDate={customStartDate}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setPeriod('current_month')}
+                  className="text-gray-400 hover:text-red-500 h-9 w-9 flex-shrink-0"
+                  title="Cancelar"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            <Select value={vendedorId} onValueChange={setVendedorId}>
               <SelectTrigger className="w-full sm:w-[200px] bg-white shadow-subtle border-gray-200 text-gray-700">
-                <SelectValue placeholder="Selecione o período" />
+                <SelectValue placeholder="Vendedor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="current_month">Mês Atual</SelectItem>
-                <SelectItem value="previous_month">Mês Anterior</SelectItem>
-                <SelectItem value="ytd">Acumulado do Ano</SelectItem>
-                <SelectItem value="all_time">Todo o Período</SelectItem>
-                <SelectItem value="custom">Outro Período</SelectItem>
+                <SelectItem value="all">Todos os Vendedores</SelectItem>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name || u.email}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-          ) : (
-            <div className="flex items-center gap-1.5 bg-white rounded-md border border-gray-200 p-1 shadow-subtle animate-fade-in w-full sm:w-auto">
-              <CustomDatePicker
-                date={customStartDate}
-                setDate={setCustomStartDate}
-                placeholder="Data Inicial"
-                maxDate={customEndDate}
-              />
-              <span className="text-gray-400 text-sm font-medium">até</span>
-              <CustomDatePicker
-                date={customEndDate}
-                setDate={setCustomEndDate}
-                placeholder="Data Final"
-                minDate={customStartDate}
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setPeriod('current_month')}
-                className="text-gray-400 hover:text-red-500 h-9 w-9 flex-shrink-0"
-                title="Cancelar"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-          <Button
-            asChild
-            className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white shadow-sm transition-all hover:scale-105 active:scale-95"
-          >
-            <Link to="/funil">
-              <Plus className="mr-2 h-4 w-4" /> Novo Negócio
-            </Link>
-          </Button>
+
+            <Button
+              asChild
+              className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white shadow-sm transition-all hover:scale-105 active:scale-95"
+            >
+              <Link to="/funil">
+                <Plus className="mr-2 h-4 w-4" /> Novo Negócio
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 

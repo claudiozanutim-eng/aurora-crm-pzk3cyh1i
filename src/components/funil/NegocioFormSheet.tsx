@@ -304,7 +304,7 @@ export function NegocioFormSheet({
             <Button
               type="submit"
               disabled={loading}
-              className="bg-[#FF6B00] hover:bg-[#E66000] text-white"
+              className="bg-orange-500 hover:bg-orange-600 text-white"
             >
               {loading ? 'Salvando...' : 'Salvar Negócio'}
             </Button>

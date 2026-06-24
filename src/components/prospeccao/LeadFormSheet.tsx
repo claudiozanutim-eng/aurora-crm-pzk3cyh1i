@@ -29,6 +29,8 @@ import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { createLead } from '@/services/leads'
 import { useAuth } from '@/hooks/use-auth'
+import { getUsers, User } from '@/services/users'
+import { useEffect } from 'react'
 
 const formSchema = z.object({
   nome: z.string().min(1, 'Obrigatório'),
@@ -49,6 +51,7 @@ const formSchema = z.object({
   ]),
   prioridade: z.enum(['Alta', 'Média', 'Baixa']),
   tags: z.array(z.string()).default([]),
+  vendedor_id: z.string().min(1, 'Selecione um vendedor'),
 })
 
 interface LeadFormSheetProps {
@@ -59,6 +62,7 @@ interface LeadFormSheetProps {
 
 export function LeadFormSheet({ open, onOpenChange, onSuccess }: LeadFormSheetProps) {
   const [loading, setLoading] = useState(false)
+  const [users, setUsers] = useState<User[]>([])
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -74,16 +78,24 @@ export function LeadFormSheet({ open, onOpenChange, onSuccess }: LeadFormSheetPr
       segmento: 'Outro',
       prioridade: 'Média',
       tags: [],
+      vendedor_id: '',
     },
   })
 
+  useEffect(() => {
+    if (open) {
+      getUsers().then(setUsers).catch(console.error)
+      if (user?.id) {
+        form.setValue('vendedor_id', user.id)
+      }
+    }
+  }, [open, user, form])
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user) return
     setLoading(true)
     try {
       await createLead({
         ...values,
-        vendedor_id: user.id,
         status: 'Novos Leads',
       })
       toast({ title: 'Lead criado com sucesso' })
@@ -299,11 +311,35 @@ export function LeadFormSheet({ open, onOpenChange, onSuccess }: LeadFormSheetPr
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="vendedor_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Vendedor Responsável *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || undefined}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o vendedor" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {users.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name || u.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="pt-6">
-              {' '}
               <Button
                 type="submit"
-                className="w-full bg-[#F97316] hover:bg-[#EA580C] text-white"
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                 disabled={loading}
               >
                 {loading ? 'Salvando...' : 'Salvar Lead'}
