@@ -158,6 +158,14 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
       maximumFractionDigits: 0,
     }).format(value)
 
+  const formatCompact = (value: number) =>
+    new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(value)
+
   const hasEvolutionData = evolutionData.some((d) => d.valor > 0 || d.valorPrev > 0)
 
   return (
@@ -209,12 +217,17 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
             Evolução de Vendas (Ganhos)
           </CardTitle>
           <div className="flex items-center space-x-2">
-            <Switch id="compare-year" checked={compareYear} onCheckedChange={setCompareYear} />
+            <Switch
+              id="compare-year"
+              checked={compareYear}
+              onCheckedChange={setCompareYear}
+              className="data-[state=checked]:bg-orange-500"
+            />
             <Label
               htmlFor="compare-year"
               className="text-sm font-medium text-gray-600 cursor-pointer select-none"
             >
-              Comparar com {prevYear}
+              Comparar com ano anterior ({prevYear})
             </Label>
           </div>
         </CardHeader>
@@ -265,7 +278,16 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
                           label: `${data.monthShort}/${prevYear}`,
                         })
                       }
-                    ></Bar>
+                    >
+                      <LabelList
+                        dataKey="valorPrev"
+                        position="top"
+                        formatter={(value: number) => (value > 0 ? formatCompact(value) : '')}
+                        fill="#6b7280"
+                        fontSize={10}
+                        fontWeight={500}
+                      />
+                    </Bar>
                   )}
                   <Bar
                     dataKey="valor"
@@ -281,16 +303,14 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
                       })
                     }
                   >
-                    {!compareYear && (
-                      <LabelList
-                        dataKey="valor"
-                        position="top"
-                        formatter={(value: number) => (value > 0 ? formatCurrency(value) : '')}
-                        fill="#4b5563"
-                        fontSize={11}
-                        fontWeight={500}
-                      />
-                    )}
+                    <LabelList
+                      dataKey="valor"
+                      position="top"
+                      formatter={(value: number) => (value > 0 ? formatCompact(value) : '')}
+                      fill="#4b5563"
+                      fontSize={10}
+                      fontWeight={500}
+                    />
                   </Bar>
                 </BarChart>
               </ChartContainer>
