@@ -1,23 +1,37 @@
 import { useEffect, useState } from 'react'
 import { KanbanBoard } from '@/components/dashboard/KanbanBoard'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Plus, Filter } from 'lucide-react'
 import { getNegocios, Negocio, updateNegocio } from '@/services/negocios'
 import { useRealtime } from '@/hooks/use-realtime'
 import { NegocioFormSheet } from '@/components/funil/NegocioFormSheet'
 import { FechamentoModal } from '@/components/funil/FechamentoModal'
 import { PerdaModal } from '@/components/funil/PerdaModal'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { getUsers, User } from '@/services/users'
+import useDashboardStore from '@/stores/use-dashboard-store'
 
 export default function Funil() {
   const [negocios, setNegocios] = useState<Negocio[]>([])
+  const [vendedores, setVendedores] = useState<User[]>([])
   const [isNewDealOpen, setIsNewDealOpen] = useState(false)
   const [closingDeal, setClosingDeal] = useState<Negocio | null>(null)
   const [lostDeal, setLostDeal] = useState<Negocio | null>(null)
+
+  const { vendedorId, periodo, setVendedorId, setPeriodo } = useDashboardStore()
 
   const loadData = async () => {
     try {
       const data = await getNegocios()
       setNegocios(data)
+      const usersData = await getUsers()
+      setVendedores(usersData)
     } catch (e) {
       console.error(e)
     }
@@ -31,14 +45,46 @@ export default function Funil() {
     loadData()
   })
 
-  const now = new Date()
-  const currentMonth = now.getMonth()
-  const currentYear = now.getFullYear()
+  const getPeriodFilter = (dateStr: string) => {
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    const now = new Date()
+
+    if (periodo === 'este_mes') {
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    }
+    if (periodo === 'mes_passado') {
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      return d.getMonth() === lastMonth.getMonth() && d.getFullYear() === lastMonth.getFullYear()
+    }
+    if (periodo === 'este_ano') {
+      return d.getFullYear() === now.getFullYear()
+    }
+    return true
+  }
+
+  const parseValor = (val: any) => {
+    const num = Number(val)
+    return isNaN(num) ? 0 : num
+  }
+
+  const filteredNegocios = negocios.filter((n) => {
+    if (vendedorId !== 'todos' && n.vendedor_id !== vendedorId) return false
+
+    if (n.status === 'Fechado/Ganho' || n.status === 'Perdido') {
+      if (periodo !== 'todos' && !getPeriodFilter(n.data_fechamento_real || n.updated)) {
+        return false
+      }
+    }
+    return true
+  })
+
+  const visibleNegocios = filteredNegocios.filter((n) => n.status !== 'Prospecção')
 
   let totalDeals = 0
   let totalPipeline = 0
-  let totalGanhosMes = 0
-  let totalPerdidosMes = 0
+  let totalGanhos = 0
+  let totalPerdidos = 0
 
   const statusCounts = {
     Qualificação: 0,
@@ -51,29 +97,34 @@ export default function Funil() {
   const isActiveStatus = (status: string) =>
     ['Qualificação', 'Proposta Enviada', 'Negociação'].includes(status)
 
-  const visibleNegocios = negocios.filter((n) => n.status !== 'Prospecção')
-
   visibleNegocios.forEach((n) => {
     totalDeals++
     if (statusCounts[n.status] !== undefined) {
       statusCounts[n.status]++
     }
 
+    const valor = parseValor(n.valor_estimado)
+
     if (isActiveStatus(n.status)) {
-      totalPipeline += Number(n.valor_estimado) || 0
+      totalPipeline += valor
     }
 
-    if (n.status === 'Fechado/Ganho' || n.status === 'Perdido') {
-      const dateStr = n.data_fechamento_real || n.updated
-      if (dateStr) {
-        const d = new Date(dateStr)
-        if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-          if (n.status === 'Fechado/Ganho') totalGanhosMes += Number(n.valor_estimado) || 0
-          if (n.status === 'Perdido') totalPerdidosMes += Number(n.valor_estimado) || 0
-        }
-      }
+    if (n.status === 'Fechado/Ganho') {
+      totalGanhos += valor
+    }
+
+    if (n.status === 'Perdido') {
+      totalPerdidos += valor
     }
   })
+
+  const formatCurrency = (val: number) =>
+    new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(val)
 
   const handleStatusChange = async (deal: Negocio, newStatus: Negocio['status']) => {
     if (deal.status === newStatus) return
@@ -99,16 +150,46 @@ export default function Funil() {
 
   return (
     <div className="h-[calc(100vh-6rem)] flex flex-col space-y-4 max-w-full overflow-hidden">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 px-1">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 shrink-0 px-1">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">
             Funil de Vendas
           </h1>
           <p className="text-gray-500 mt-1">Visão completa do pipeline de negócios.</p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full lg:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
+            <Filter className="w-4 h-4 text-gray-400 ml-2" />
+            <Select value={periodo} onValueChange={setPeriodo}>
+              <SelectTrigger className="w-[140px] border-0 focus:ring-0 shadow-none bg-transparent">
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todo o período</SelectItem>
+                <SelectItem value="este_mes">Este Mês</SelectItem>
+                <SelectItem value="mes_passado">Mês Passado</SelectItem>
+                <SelectItem value="este_ano">Este Ano</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="w-px h-6 bg-gray-200 mx-1"></div>
+            <Select value={vendedorId} onValueChange={setVendedorId}>
+              <SelectTrigger className="w-[160px] border-0 focus:ring-0 shadow-none bg-transparent">
+                <SelectValue placeholder="Vendedor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos Vendedores</SelectItem>
+                {vendedores.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.name || v.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Button
-            className="bg-[#FF6B00] hover:bg-[#E66000] text-white"
+            className="bg-[#FF6B00] hover:bg-[#E66000] text-white w-full sm:w-auto"
             onClick={() => setIsNewDealOpen(true)}
           >
             <Plus className="mr-2 h-4 w-4" /> Novo Negócio
@@ -136,34 +217,19 @@ export default function Funil() {
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
           <p className="text-sm font-medium text-gray-500">Valor Total do Pipeline</p>
           <p className="text-2xl font-bold text-gray-900 truncate">
-            {new Intl.NumberFormat('pt-BR', {
-              style: 'currency',
-              currency: 'BRL',
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(totalPipeline)}
+            {formatCurrency(totalPipeline)}
           </p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-          <p className="text-sm font-medium text-gray-500">Valor Total de Ganhos (mês)</p>
+          <p className="text-sm font-medium text-gray-500">Valor Total de Ganhos</p>
           <p className="text-2xl font-bold text-emerald-600 truncate">
-            {new Intl.NumberFormat('pt-BR', {
-              style: 'currency',
-              currency: 'BRL',
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(totalGanhosMes)}
+            {formatCurrency(totalGanhos)}
           </p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
-          <p className="text-sm font-medium text-gray-500">Valor Total de Perdidos (mês)</p>
+          <p className="text-sm font-medium text-gray-500">Valor Total de Perdidos</p>
           <p className="text-2xl font-bold text-red-600 truncate">
-            {new Intl.NumberFormat('pt-BR', {
-              style: 'currency',
-              currency: 'BRL',
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(totalPerdidosMes)}
+            {formatCurrency(totalPerdidos)}
           </p>
         </div>
       </div>
@@ -178,7 +244,7 @@ export default function Funil() {
         <FechamentoModal
           deal={closingDeal}
           open={!!closingDeal}
-          onOpenChange={(v) => !v && setClosingDeal(null)}
+          onOpenChange={(v: boolean) => !v && setClosingDeal(null)}
           onSuccess={loadData}
         />
       )}
@@ -187,7 +253,7 @@ export default function Funil() {
         <PerdaModal
           deal={lostDeal}
           open={!!lostDeal}
-          onOpenChange={(v) => !v && setLostDeal(null)}
+          onOpenChange={(v: boolean) => !v && setLostDeal(null)}
           onSuccess={loadData}
         />
       )}

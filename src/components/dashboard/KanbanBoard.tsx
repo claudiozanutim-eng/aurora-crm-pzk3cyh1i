@@ -35,6 +35,19 @@ interface KanbanBoardProps {
   onStatusChange?: (deal: Negocio, status: Status) => void
 }
 
+const parseValor = (val: any) => {
+  const num = Number(val)
+  return isNaN(num) ? 0 : num
+}
+
+const formatCurrency = (val: number) =>
+  new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(val)
+
 export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps) {
   const [activeColumn, setActiveColumn] = useState<Status | null>(null)
   const navigate = useNavigate()
@@ -71,6 +84,10 @@ export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps)
       {COLUMNS.map((column) => {
         const columnDeals = safeNegocios.filter((n) => n.status === column)
         const isActive = activeColumn === column
+        const columnTotal = columnDeals.reduce(
+          (sum, deal) => sum + parseValor(deal.valor_estimado),
+          0,
+        )
 
         return (
           <div
@@ -87,15 +104,7 @@ export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps)
               <div className="flex flex-col">
                 <h3 className="font-semibold text-gray-700">{column}</h3>
                 <span className="text-xs font-medium text-gray-500 mt-0.5">
-                  Total:{' '}
-                  {new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL',
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  }).format(
-                    columnDeals.reduce((sum, deal) => sum + (Number(deal.valor_estimado) || 0), 0),
-                  )}
+                  Total: {formatCurrency(columnTotal)}
                 </span>
               </div>
               <span className="bg-white text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full border border-gray-200 shadow-sm">
@@ -108,9 +117,10 @@ export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps)
                 const clientName = deal.expand?.cliente_id?.nome || 'Cliente Desconhecido'
                 const contatos = deal.expand?.cliente_id?.expand?.contatos_via_cliente_id
                 const mainContact =
-                  contatos?.find((c) => c.is_principal)?.nome ||
+                  contatos?.find((c: any) => c.is_principal)?.nome ||
                   contatos?.[0]?.nome ||
                   'Sem Contato'
+                const dealValor = parseValor(deal.valor_estimado)
 
                 return (
                   <Card
@@ -133,12 +143,7 @@ export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps)
                             <DollarSign className="h-4 w-4" />
                           </div>
                           <span className="font-bold text-gray-900 text-base">
-                            {new Intl.NumberFormat('pt-BR', {
-                              style: 'currency',
-                              currency: 'BRL',
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            }).format(Number(deal.valor_estimado) || 0)}
+                            {formatCurrency(dealValor)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
