@@ -91,7 +91,11 @@ export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps)
                   {new Intl.NumberFormat('pt-BR', {
                     style: 'currency',
                     currency: 'BRL',
-                  }).format(columnDeals.reduce((sum, deal) => sum + (deal.valor_estimado || 0), 0))}
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }).format(
+                    columnDeals.reduce((sum, deal) => sum + (Number(deal.valor_estimado) || 0), 0),
+                  )}
                 </span>
               </div>
               <span className="bg-white text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full border border-gray-200 shadow-sm">
@@ -132,7 +136,9 @@ export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps)
                             {new Intl.NumberFormat('pt-BR', {
                               style: 'currency',
                               currency: 'BRL',
-                            }).format(deal.valor_estimado || 0)}
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            }).format(Number(deal.valor_estimado) || 0)}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">

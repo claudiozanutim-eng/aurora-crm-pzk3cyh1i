@@ -263,11 +263,11 @@ export default function Index() {
     )
 
     const valorTotalPipeline = negociosAndamento.reduce(
-      (acc, n) => acc + (n.valor_estimado || 0),
+      (acc, n) => acc + (Number(n.valor_estimado) || 0),
       0,
     )
     const valorPonderadoPipeline = negociosAndamento.reduce(
-      (acc, n) => acc + ((n.valor_estimado || 0) * (n.probabilidade || 0)) / 100,
+      (acc, n) => acc + ((Number(n.valor_estimado) || 0) * (Number(n.probabilidade) || 0)) / 100,
       0,
     )
 
@@ -279,8 +279,14 @@ export default function Index() {
     const wonInPeriod = resolvedInPeriod.filter((n) => n.status === 'Fechado/Ganho')
     const lostInPeriod = resolvedInPeriod.filter((n) => n.status === 'Perdido')
 
-    const valorTotalGanhos = wonInPeriod.reduce((acc, n) => acc + (n.valor_estimado || 0), 0)
-    const valorTotalPerdidos = lostInPeriod.reduce((acc, n) => acc + (n.valor_estimado || 0), 0)
+    const valorTotalGanhos = wonInPeriod.reduce(
+      (acc, n) => acc + (Number(n.valor_estimado) || 0),
+      0,
+    )
+    const valorTotalPerdidos = lostInPeriod.reduce(
+      (acc, n) => acc + (Number(n.valor_estimado) || 0),
+      0,
+    )
 
     const taxaConversao =
       resolvedInPeriod.length > 0 ? (wonInPeriod.length / resolvedInPeriod.length) * 100 : 0

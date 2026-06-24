@@ -32,7 +32,12 @@ interface DashboardKpisProps {
 
 export function DashboardKpis({ data, loading }: DashboardKpisProps) {
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(val) || 0)
   }
 
   const kpiConfig = [

@@ -103,9 +103,9 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
       const monthIndex = date.getMonth()
 
       if (dealYear === targetYear) {
-        months[monthIndex].valor += deal.valor_estimado || 0
+        months[monthIndex].valor += Number(deal.valor_estimado) || 0
       } else if (dealYear === prevYear) {
-        months[monthIndex].valorPrev += deal.valor_estimado || 0
+        months[monthIndex].valorPrev += Number(deal.valor_estimado) || 0
       }
     })
 
@@ -155,7 +155,8 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
     new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value)
 
   const formatCompact = (value: number) =>
@@ -373,7 +374,7 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
                         {format(parseISO(deal.data_fechamento_real), 'dd/MM/yyyy')}
                       </TableCell>
                       <TableCell className="text-right font-medium text-green-600">
-                        {formatCurrency(deal.valor_estimado || 0)}
+                        {formatCurrency(Number(deal.valor_estimado) || 0)}
                       </TableCell>
                     </TableRow>
                   ))}

@@ -60,7 +60,7 @@ export default function Funil() {
     }
 
     if (isActiveStatus(n.status)) {
-      totalPipeline += n.valor_estimado || 0
+      totalPipeline += Number(n.valor_estimado) || 0
     }
 
     if (n.status === 'Fechado/Ganho' || n.status === 'Perdido') {
@@ -68,8 +68,8 @@ export default function Funil() {
       if (dateStr) {
         const d = new Date(dateStr)
         if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-          if (n.status === 'Fechado/Ganho') totalGanhosMes += n.valor_estimado || 0
-          if (n.status === 'Perdido') totalPerdidosMes += n.valor_estimado || 0
+          if (n.status === 'Fechado/Ganho') totalGanhosMes += Number(n.valor_estimado) || 0
+          if (n.status === 'Perdido') totalPerdidosMes += Number(n.valor_estimado) || 0
         }
       }
     }
@@ -136,25 +136,34 @@ export default function Funil() {
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
           <p className="text-sm font-medium text-gray-500">Valor Total do Pipeline</p>
           <p className="text-2xl font-bold text-gray-900 truncate">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-              totalPipeline,
-            )}
+            {new Intl.NumberFormat('pt-BR', {
+              style: 'currency',
+              currency: 'BRL',
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(totalPipeline)}
           </p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
           <p className="text-sm font-medium text-gray-500">Valor Total de Ganhos (mês)</p>
           <p className="text-2xl font-bold text-emerald-600 truncate">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-              totalGanhosMes,
-            )}
+            {new Intl.NumberFormat('pt-BR', {
+              style: 'currency',
+              currency: 'BRL',
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(totalGanhosMes)}
           </p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center">
           <p className="text-sm font-medium text-gray-500">Valor Total de Perdidos (mês)</p>
           <p className="text-2xl font-bold text-red-600 truncate">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-              totalPerdidosMes,
-            )}
+            {new Intl.NumberFormat('pt-BR', {
+              style: 'currency',
+              currency: 'BRL',
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(totalPerdidosMes)}
           </p>
         </div>
       </div>
