@@ -185,7 +185,7 @@ export default function Index() {
           : `((data_cadastro >= "${startStr}" && data_cadastro <= "${endStr}") || (created >= "${startStr}" && created <= "${endStr}"))`
       let filterLeads =
         period === 'all_time' ? '' : `(created >= "${startStr}" && created <= "${endStr}")`
-      const chartYearStartStr = new Date(startDate.getFullYear(), 0, 1)
+      const chartYearStartStr = new Date(startDate.getFullYear() - 1, 0, 1)
         .toISOString()
         .replace('T', ' ')
       const chartYearEndStr = new Date(startDate.getFullYear(), 11, 31, 23, 59, 59, 999)
@@ -211,7 +211,9 @@ export default function Index() {
       const [clientes, leads, negocios, tarefas] = await Promise.all([
         pb.collection('clientes').getFullList({ filter: filterClientes }),
         pb.collection('leads').getFullList({ filter: filterLeads }),
-        pb.collection('negocios').getFullList({ expand: 'cliente_id', filter: filterNegocios }),
+        pb
+          .collection('negocios')
+          .getFullList({ expand: 'cliente_id,vendedor_id', filter: filterNegocios }),
         pb
           .collection('tarefas')
           .getFullList({ expand: 'cliente_id,lead_id', filter: filterTarefas }),
