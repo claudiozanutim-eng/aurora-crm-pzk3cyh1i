@@ -13,6 +13,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   Table,
   TableBody,
@@ -105,7 +106,8 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
   }, [data.negocios, data.leads])
 
   const lostDealsInfo = useMemo(() => {
-    const lost = (data.negocios || []).filter((n) => n.status === 'Perdido')
+    const negocios = data.negocios || []
+    const lost = negocios.filter((n) => n.status === 'Perdido')
     const count = lost.length
     const value = lost.reduce((acc, n) => acc + (Number(n.valor_estimado) || 0), 0)
     const reasonsMap = lost.reduce(
@@ -121,16 +123,22 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 4)
 
-    const wonCount = funnelData.length > 5 ? funnelData[5].count : 0
+    const wonCount = negocios.filter((n) => n.status === 'Fechado/Ganho').length
     const totalFinished = wonCount + count
     const winRate = totalFinished > 0 ? Math.round((wonCount / totalFinished) * 100) : 0
 
+    const totalQualified = negocios.filter((n) =>
+      ['Qualificação', 'Proposta Enviada', 'Negociação', 'Fechado/Ganho', 'Perdido'].includes(
+        n.status,
+      ),
+    ).length
+
     const topToBottom =
-      funnelData.length > 0 && funnelData[0].count > 0
+      totalQualified > 0
         ? new Intl.NumberFormat('pt-BR', {
             minimumFractionDigits: 1,
             maximumFractionDigits: 1,
-          }).format((wonCount / funnelData[0].count) * 100)
+          }).format((wonCount / totalQualified) * 100)
         : '0,0'
 
     return { count, value, topReasons, winRate, topToBottom }
@@ -239,15 +247,21 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
             <CardTitle className="text-lg font-semibold text-gray-800">
               Pipeline de Vendas
             </CardTitle>
-            <div
-              className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-200/60 shadow-sm"
-              title="Taxa de conversão (Novos Leads para Ganhos)"
-            >
-              <Target className="w-4 h-4" />
-              <span className="text-sm font-bold tracking-wide">
-                Conversão: {lostDealsInfo.topToBottom}%
-              </span>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-200/60 shadow-sm cursor-help">
+                  <Target className="w-4 h-4" />
+                  <span className="text-sm font-bold tracking-wide">
+                    Conversão (Ganhos/Qualif.): {lostDealsInfo.topToBottom}%
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  Percentual de negócios ganhos em relação aos que atingiram a etapa de qualificação
+                </p>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </CardHeader>
         <CardContent>
