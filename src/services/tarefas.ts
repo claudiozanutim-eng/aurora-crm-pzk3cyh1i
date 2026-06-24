@@ -40,3 +40,7 @@ export const createTarefa = async (data: Partial<Tarefa>) => {
 export const updateTarefa = async (id: string, data: Partial<Tarefa>) => {
   return pb.collection('tarefas').update<Tarefa>(id, data)
 }
+
+export const deleteTarefa = async (id: string) => {
+  return pb.collection('tarefas').delete(id)
+}

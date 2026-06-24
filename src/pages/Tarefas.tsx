@@ -9,9 +9,11 @@ import {
   Users,
   AlertCircle,
   Loader2,
+  Trash2,
 } from 'lucide-react'
 
-import { Tarefa, getAllTarefas, createTarefa, updateTarefa } from '@/services/tarefas'
+import { Tarefa, getAllTarefas, createTarefa, updateTarefa, deleteTarefa } from '@/services/tarefas'
+import { createInteracao } from '@/services/interacoes'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
@@ -36,8 +38,18 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Textarea } from '@/components/ui/textarea'
 
 export default function Tarefas() {
@@ -55,7 +67,21 @@ export default function Tarefas() {
   const [clienteId, setClienteId] = useState('all')
   const [mostrarConcluidas, setMostrarConcluidas] = useState(false)
 
-  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [taskFormOpen, setTaskFormOpen] = useState(false)
+  const [taskToEdit, setTaskToEdit] = useState<Tarefa | null>(null)
+
+  const [interactionTask, setInteractionTask] = useState<{
+    id?: string
+    payload: any
+    interactionContext: {
+      cliente_id?: string
+      lead_id?: string
+      tipo: string
+      vendedor_id: string
+    }
+  } | null>(null)
+
+  const [taskToDelete, setTaskToDelete] = useState<Tarefa | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   const loadData = async () => {
@@ -81,32 +107,119 @@ export default function Tarefas() {
   }, [])
   useRealtime('tarefas', loadData)
 
-  const handleCreateTarefa = async (e: React.FormEvent<HTMLFormElement>) => {
+  const formatDateForInput = (dateString?: string) => {
+    if (!dateString) return ''
+    const d = new Date(dateString)
+    return format(d, "yyyy-MM-dd'T'HH:mm")
+  }
+
+  const handleSaveTask = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
-    const data = Object.fromEntries(fd.entries())
+    const data = Object.fromEntries(fd.entries()) as any
+    data.data_limite = new Date(data.data_limite as string).toISOString()
 
-    try {
-      await createTarefa({
-        ...data,
-        data_limite: new Date(data.data_limite as string).toISOString(),
+    if (data.cliente_id === 'none') {
+      data.cliente_id = ''
+    }
+
+    const isCompleting = data.status === 'Concluída' && taskToEdit?.status !== 'Concluída'
+
+    if (isCompleting) {
+      setTaskFormOpen(false)
+      setInteractionTask({
+        id: taskToEdit?.id,
+        payload: data,
+        interactionContext: {
+          cliente_id: data.cliente_id,
+          lead_id: data.lead_id,
+          tipo: data.tipo,
+          vendedor_id: data.vendedor_id,
+        },
       })
-      setIsCreateOpen(false)
-      toast({ title: 'Tarefa criada com sucesso!' })
-      loadData()
-    } catch (error) {
-      toast({ title: 'Erro ao criar tarefa', variant: 'destructive' })
+    } else {
+      try {
+        if (taskToEdit) {
+          await updateTarefa(taskToEdit.id, data)
+          toast({ title: 'Tarefa atualizada com sucesso!' })
+        } else {
+          await createTarefa(data)
+          toast({ title: 'Tarefa criada com sucesso!' })
+        }
+        setTaskFormOpen(false)
+        loadData()
+      } catch (error) {
+        toast({ title: 'Erro ao salvar tarefa', variant: 'destructive' })
+      }
     }
   }
 
-  const handleStatusChange = async (id: string, newStatus: string) => {
-    const previous = [...tarefas]
-    setTarefas(tarefas.map((t) => (t.id === id ? { ...t, status: newStatus as any } : t)))
+  const handleStatusChange = async (t: Tarefa, v: string) => {
+    if (v === 'Concluída') {
+      setInteractionTask({
+        id: t.id,
+        payload: { status: 'Concluída' },
+        interactionContext: {
+          cliente_id: t.cliente_id,
+          lead_id: t.lead_id,
+          tipo: t.tipo || 'E-mail',
+          vendedor_id: t.vendedor_id,
+        },
+      })
+    } else {
+      const prev = [...tarefas]
+      setTarefas(tarefas.map((x) => (x.id === t.id ? { ...x, status: v as any } : x)))
+      try {
+        await updateTarefa(t.id, { status: v as any })
+      } catch (error) {
+        setTarefas(prev)
+        toast({ title: 'Erro ao atualizar status', variant: 'destructive' })
+      }
+    }
+  }
+
+  const handleInteractionSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!interactionTask) return
+
+    const fd = new FormData(e.currentTarget)
+    const resumo = fd.get('resumo') as string
+
     try {
-      await updateTarefa(id, { status: newStatus as any })
+      let savedTask
+      if (interactionTask.id) {
+        savedTask = await updateTarefa(interactionTask.id, interactionTask.payload)
+      } else {
+        savedTask = await createTarefa(interactionTask.payload)
+      }
+
+      await createInteracao({
+        cliente_id: interactionTask.interactionContext.cliente_id,
+        lead_id: interactionTask.interactionContext.lead_id,
+        tipo: interactionTask.interactionContext.tipo as any,
+        data_hora: new Date().toISOString(),
+        vendedor_id: interactionTask.interactionContext.vendedor_id,
+        resumo,
+      })
+
+      setInteractionTask(null)
+      toast({ title: 'Tarefa concluída e interação registrada!' })
+      loadData()
     } catch (error) {
-      setTarefas(previous)
-      toast({ title: 'Erro ao atualizar status', variant: 'destructive' })
+      toast({ title: 'Erro ao registrar interação', variant: 'destructive' })
+    }
+  }
+
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return
+    try {
+      await deleteTarefa(taskToDelete.id)
+      toast({ title: 'Tarefa excluída com sucesso!' })
+      loadData()
+    } catch (error) {
+      toast({ title: 'Erro ao excluir tarefa', variant: 'destructive' })
+    } finally {
+      setTaskToDelete(null)
     }
   }
 
@@ -145,8 +258,12 @@ export default function Tarefas() {
     return (
       <Card
         key={t.id}
-        className={cn('transition-all hover:shadow-md border-l-4', {
-          'opacity-60 bg-gray-50 border-l-gray-300': isCompleted,
+        onClick={() => {
+          setTaskToEdit(t)
+          setTaskFormOpen(true)
+        }}
+        className={cn('cursor-pointer transition-all hover:shadow-md border-l-4', {
+          'opacity-50 bg-gray-50 border-l-gray-300': isCompleted,
           'border-l-red-500 bg-red-50/30': isOverdue,
           'border-l-blue-500': !isCompleted && !isOverdue,
         })}
@@ -160,22 +277,39 @@ export default function Tarefas() {
             >
               {t.descricao}
             </h3>
-            <Select value={t.status} onValueChange={(v) => handleStatusChange(t.id, v)}>
-              <SelectTrigger className="h-7 text-xs w-[120px] px-2 flex-shrink-0 bg-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Pendente">Pendente</SelectItem>
-                <SelectItem value="Em andamento">Em andamento</SelectItem>
-                <SelectItem value="Concluída">Concluída</SelectItem>
-                <SelectItem value="Atrasada">Atrasada</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-1">
+              <Select value={t.status} onValueChange={(v) => handleStatusChange(t, v)}>
+                <SelectTrigger
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-7 text-xs w-[120px] px-2 flex-shrink-0 bg-white"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pendente">Pendente</SelectItem>
+                  <SelectItem value="Em andamento">Em andamento</SelectItem>
+                  <SelectItem value="Concluída">Concluída</SelectItem>
+                  <SelectItem value="Atrasada">Atrasada</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setTaskToDelete(t)
+                }}
+                className="h-7 w-7 text-gray-400 hover:text-red-500 bg-white border border-gray-200"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
           {t.expand?.cliente_id && (
             <Link
               to={`/clientes/${t.cliente_id}`}
+              onClick={(e) => e.stopPropagation()}
               className="text-xs text-[#FF6B00] hover:underline font-medium inline-flex items-center gap-1 w-fit"
             >
               <Users className="w-3 h-3" />
@@ -229,118 +363,194 @@ export default function Tarefas() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Action Modals */}
+      <Dialog open={!!interactionTask} onOpenChange={(o) => !o && setInteractionTask(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Resumo da Interação</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleInteractionSubmit} className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Como foi a interação?</Label>
+              <Textarea
+                name="resumo"
+                required
+                placeholder="Descreva os detalhes importantes da tarefa concluída..."
+                rows={4}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setInteractionTask(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="bg-[#FF6B00] hover:bg-[#E66000] text-white">
+                Salvar Interação
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!taskToDelete} onOpenChange={(o) => !o && setTaskToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Tarefa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a tarefa "{taskToDelete?.descricao}"? Esta ação não
+              pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTask}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={taskFormOpen} onOpenChange={setTaskFormOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{taskToEdit ? 'Editar Tarefa' : 'Nova Tarefa'}</DialogTitle>
+          </DialogHeader>
+          <form key={taskToEdit?.id || 'new'} onSubmit={handleSaveTask} className="space-y-4 pt-4">
+            <div className="space-y-1">
+              <Label>Cliente</Label>
+              <Select name="cliente_id" defaultValue={taskToEdit?.cliente_id || 'none'}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {clientes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Descrição</Label>
+              <Textarea
+                name="descricao"
+                required
+                defaultValue={taskToEdit?.descricao}
+                placeholder="Descreva a atividade..."
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>Data Limite</Label>
+                <Input
+                  name="data_limite"
+                  type="datetime-local"
+                  required
+                  defaultValue={formatDateForInput(taskToEdit?.data_limite)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Responsável</Label>
+                <Select
+                  name="vendedor_id"
+                  required
+                  defaultValue={taskToEdit?.vendedor_id || user?.id}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>Prioridade</Label>
+                <Select name="prioridade" defaultValue={taskToEdit?.prioridade || 'Média'} required>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Alta">Alta</SelectItem>
+                    <SelectItem value="Média">Média</SelectItem>
+                    <SelectItem value="Baixa">Baixa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Tipo / Ação</Label>
+                <Select name="tipo" defaultValue={taskToEdit?.tipo || 'WhatsApp'} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="E-mail">E-mail</SelectItem>
+                    <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                    <SelectItem value="Telefonema">Telefonema</SelectItem>
+                    <SelectItem value="Reunião">Reunião</SelectItem>
+                    <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
+                    <SelectItem value="Enviar Proposta">Enviar Proposta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Status</Label>
+              <Select name="status" defaultValue={taskToEdit?.status || 'Pendente'} required>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pendente">Pendente</SelectItem>
+                  <SelectItem value="Em andamento">Em andamento</SelectItem>
+                  <SelectItem value="Concluída">Concluída</SelectItem>
+                  <SelectItem value="Atrasada">Atrasada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="pt-4 flex justify-end gap-2 border-t border-gray-100">
+              <Button type="button" variant="outline" onClick={() => setTaskFormOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="bg-[#FF6B00] hover:bg-[#E66000] text-white">
+                Salvar Tarefa
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-col gap-4 mb-2">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">Tarefas</h1>
             <p className="text-gray-500 mt-1">Suas atividades e follow-ups agendados.</p>
           </div>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-[#FF6B00] hover:bg-[#E66000] text-white">
-                <Plus className="mr-2 h-4 w-4" /> Nova Tarefa
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Nova Tarefa</DialogTitle>
-              </DialogHeader>
-              <form
-                key={isCreateOpen ? 'open' : 'closed'}
-                onSubmit={handleCreateTarefa}
-                className="space-y-4 pt-4"
-              >
-                <div className="space-y-1">
-                  <Label>Cliente</Label>
-                  <Select name="cliente_id" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clientes.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1">
-                  <Label>Descrição</Label>
-                  <Textarea
-                    name="descricao"
-                    required
-                    placeholder="Descreva a atividade..."
-                    rows={3}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label>Data Limite</Label>
-                    <Input name="data_limite" type="datetime-local" required />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Responsável</Label>
-                    <Select name="vendedor_id" required defaultValue={user?.id}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {users.map((u) => (
-                          <SelectItem key={u.id} value={u.id}>
-                            {u.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label>Prioridade</Label>
-                    <Select name="prioridade" defaultValue="Média" required>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Alta">Alta</SelectItem>
-                        <SelectItem value="Média">Média</SelectItem>
-                        <SelectItem value="Baixa">Baixa</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Tipo / Ação</Label>
-                    <Select name="tipo" required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="E-mail">E-mail</SelectItem>
-                        <SelectItem value="WhatsApp">WhatsApp</SelectItem>
-                        <SelectItem value="Telefonema">Telefonema</SelectItem>
-                        <SelectItem value="Reunião">Reunião</SelectItem>
-                        <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
-                        <SelectItem value="Enviar Proposta">Enviar Proposta</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="pt-4 flex justify-end gap-2 border-t border-gray-100">
-                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" className="bg-[#FF6B00] hover:bg-[#E66000] text-white">
-                    Salvar Tarefa
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Button
+            className="bg-[#FF6B00] hover:bg-[#E66000] text-white"
+            onClick={() => {
+              setTaskToEdit(null)
+              setTaskFormOpen(true)
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" /> Nova Tarefa
+          </Button>
         </div>
 
         <div className="flex flex-col gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
@@ -420,7 +630,7 @@ export default function Tarefas() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Atrasadas */}
         <div className="space-y-4">
           <div className="flex items-center justify-between pb-2 border-b-2 border-red-500">
