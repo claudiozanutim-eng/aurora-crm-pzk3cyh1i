@@ -262,16 +262,21 @@ routerAdd(
     const validadeStr = proposta.getString('validade_ate')
     let valMsg = 'Proposta válida até a data combinada'
     if (validadeStr) {
-      const vDate = new Date(validadeStr)
-      const vDateFormatted =
-        ('0' + vDate.getDate()).slice(-2) +
-        '/' +
-        ('0' + (vDate.getMonth() + 1)).slice(-2) +
-        '/' +
-        vDate.getFullYear()
-      valMsg = `Proposta válida até ${vDateFormatted}`
+      const parts = validadeStr.split(' ')[0].split('-')
+      if (parts.length === 3) {
+        valMsg = `Proposta válida até ${parts[2]}/${parts[1]}/${parts[0]}`
+      } else {
+        const vDate = new Date(validadeStr)
+        const vDateFormatted =
+          ('0' + vDate.getUTCDate()).slice(-2) +
+          '/' +
+          ('0' + (vDate.getUTCMonth() + 1)).slice(-2) +
+          '/' +
+          vDate.getUTCFullYear()
+        valMsg = `Proposta válida até ${vDateFormatted}`
+      }
     }
-    pdf.addText(valMsg, 160, pdf.y, 10, 'F1', gray)
+    pdf.addText(valMsg, 210, pdf.y, 10, 'F1', gray)
     pdf.y -= 15
     pdf.addText(
       'Agradecemos a oportunidade de apresentar esta proposta comercial.',

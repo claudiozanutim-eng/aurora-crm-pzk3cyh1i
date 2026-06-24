@@ -204,9 +204,18 @@ export default function PropostaView() {
 
           <div className="text-center text-sm text-muted-foreground print:text-gray-800">
             <p className="mb-2">
-              Validade desta proposta:{' '}
-              <span className="font-semibold">{proposta.validade_dias} dias</span> a partir da data
-              de envio.
+              {proposta.validade_ate ? (
+                <>
+                  Proposta válida até{' '}
+                  <span className="font-semibold">
+                    {new Date(proposta.validade_ate).toLocaleDateString('pt-BR', {
+                      timeZone: 'UTC',
+                    })}
+                  </span>
+                </>
+              ) : (
+                'Proposta válida até a data combinada'
+              )}
             </p>
             <p>Agradecemos a oportunidade de apresentar esta proposta comercial.</p>
           </div>
