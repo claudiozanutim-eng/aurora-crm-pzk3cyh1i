@@ -160,7 +160,7 @@ export default function ClienteDetail() {
             <NegocioDataForm
               ref={negocioFormRef}
               clienteId={cliente.id}
-              onExit={() => navigate(`/clientes/${cliente.id}`)}
+              onExit={() => navigate('/funil')}
             />
           </TabsContent>
         </Tabs>
