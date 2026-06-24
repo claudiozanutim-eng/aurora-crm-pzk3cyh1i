@@ -127,8 +127,11 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
 
     const topToBottom =
       funnelData.length > 0 && funnelData[0].count > 0
-        ? Math.round((wonCount / funnelData[0].count) * 100)
-        : 0
+        ? new Intl.NumberFormat('pt-BR', {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          }).format((wonCount / funnelData[0].count) * 100)
+        : '0,0'
 
     return { count, value, topReasons, winRate, topToBottom }
   }, [data.negocios, funnelData])
@@ -231,8 +234,17 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
   return (
     <>
       <Card className="shadow-subtle border-gray-100 lg:col-span-2">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-lg font-semibold text-gray-800">Pipeline de Vendas</CardTitle>
+          <div
+            className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-200/60 shadow-sm"
+            title="Taxa de conversão (Novos Leads para Ganhos)"
+          >
+            <Target className="w-4 h-4" />
+            <span className="text-sm font-bold tracking-wide">
+              Conversão: {lostDealsInfo.topToBottom}%
+            </span>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
