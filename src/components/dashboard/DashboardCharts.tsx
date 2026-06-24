@@ -54,13 +54,13 @@ const funnelColors = [
 const funnelWidths = ['100%', '90%', '80%', '70%', '60%']
 
 const chartConfig = {
-  valor: {
-    label: 'Valor (R$)',
-    color: '#f97316',
-  },
   valorPrev: {
     label: 'Ano Anterior (R$)',
     color: '#9ca3af',
+  },
+  valor: {
+    label: 'Valor (R$)',
+    color: '#f97316',
   },
 }
 
@@ -122,8 +122,8 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
         monthIndex: i,
         month: format(date, 'MMM/yy', { locale: ptBR }),
         monthShort: format(date, 'MMM', { locale: ptBR }),
-        valor: 0,
         valorPrev: 0,
+        valor: 0,
       }
     })
 
