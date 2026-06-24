@@ -234,16 +234,20 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
   return (
     <>
       <Card className="shadow-subtle border-gray-100 lg:col-span-2">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-lg font-semibold text-gray-800">Pipeline de Vendas</CardTitle>
-          <div
-            className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-200/60 shadow-sm"
-            title="Taxa de conversão (Novos Leads para Ganhos)"
-          >
-            <Target className="w-4 h-4" />
-            <span className="text-sm font-bold tracking-wide">
-              Conversão: {lostDealsInfo.topToBottom}%
-            </span>
+        <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <CardTitle className="text-lg font-semibold text-gray-800">
+              Pipeline de Vendas
+            </CardTitle>
+            <div
+              className="flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-200/60 shadow-sm"
+              title="Taxa de conversão (Novos Leads para Ganhos)"
+            >
+              <Target className="w-4 h-4" />
+              <span className="text-sm font-bold tracking-wide">
+                Conversão: {lostDealsInfo.topToBottom}%
+              </span>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
