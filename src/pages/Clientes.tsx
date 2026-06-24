@@ -295,13 +295,6 @@ export default function Clientes() {
                             >
                               Ver detalhes
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                navigate(`/clientes/${client.id}`, { state: { from: '/clientes' } })
-                              }
-                            >
-                              Editar
-                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-red-600 focus:text-red-600 focus:bg-red-50"
