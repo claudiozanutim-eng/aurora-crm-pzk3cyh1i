@@ -2,7 +2,7 @@ import { Lead } from '@/services/leads'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { User, Phone, Briefcase, CheckCircle2 } from 'lucide-react'
+import { User, Phone, Briefcase, CheckCircle2, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
@@ -36,6 +36,8 @@ interface LeadsKanbanBoardProps {
   leads?: Lead[]
   onStatusChange?: (lead: Lead, status: Status) => void
   onConvertLead?: (lead: Lead) => void
+  onEditLead?: (lead: Lead) => void
+  onDeleteLead?: (lead: Lead) => void
   convertedClientNames?: Set<string>
 }
 
@@ -43,6 +45,8 @@ export function LeadsKanbanBoard({
   leads = [],
   onStatusChange,
   onConvertLead,
+  onEditLead,
+  onDeleteLead,
   convertedClientNames = new Set(),
 }: LeadsKanbanBoardProps) {
   const [activeColumn, setActiveColumn] = useState<Status | null>(null)
@@ -106,9 +110,9 @@ export function LeadsKanbanBoard({
                   draggable
                   onDragStart={(e) => handleDragStart(e, lead)}
                   onClick={() => navigate(`/leads/${lead.id}`)}
-                  className="cursor-pointer hover:border-orange-300 transition-colors shadow-sm border-gray-200"
+                  className="cursor-pointer hover:border-orange-300 transition-colors shadow-sm border-gray-200 relative group"
                 >
-                  <CardContent className="p-3">
+                  <CardContent className="p-3 pb-8">
                     <div className="flex justify-between items-start mb-2">
                       <PriorityBadge priority={lead.prioridade} />
                       <Badge variant="outline" className="text-[10px] uppercase text-gray-500">
@@ -165,6 +169,31 @@ export function LeadsKanbanBoard({
                         )}
                       </div>
                     )}
+
+                    <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white/90 p-1 rounded-md shadow-sm backdrop-blur-sm">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-500 hover:text-blue-600"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onEditLead?.(lead)
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-500 hover:text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDeleteLead?.(lead)
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}

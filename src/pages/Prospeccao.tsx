@@ -2,16 +2,38 @@ import { useEffect, useState } from 'react'
 import { LeadsKanbanBoard } from '@/components/prospeccao/LeadsKanbanBoard'
 import { LeadFormSheet } from '@/components/prospeccao/LeadFormSheet'
 import { LeadConvertModal } from '@/components/prospeccao/LeadConvertModal'
-import { getLeads, Lead, updateLead } from '@/services/leads'
+import { LeadImportDialog } from '@/components/prospeccao/LeadImportDialog'
+import { getLeads, Lead, updateLead, deleteLead } from '@/services/leads'
 import { useRealtime } from '@/hooks/use-realtime'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Plus, Download, Upload } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
+import { useToast } from '@/hooks/use-toast'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export default function Prospeccao() {
+  const { toast } = useToast()
   const [leads, setLeads] = useState<Lead[]>([])
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
   const [convertingLead, setConvertingLead] = useState<Lead | null>(null)
+  const [leadToEdit, setLeadToEdit] = useState<Lead | null>(null)
+  const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null)
   const [convertedClientNames, setConvertedClientNames] = useState<Set<string>>(new Set())
 
   const loadData = async () => {
@@ -75,6 +97,63 @@ export default function Prospeccao() {
 
   const taxaConversao = totalLeads ? Math.round((leadsConvertidos / totalLeads) * 100) : 0
 
+  const handleExport = async (format: 'csv' | 'xlsx') => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_POCKETBASE_URL}/backend/v1/spreadsheet/export`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: pb.authStore.token,
+          },
+          body: JSON.stringify({ collection: 'leads', format }),
+        },
+      )
+
+      if (!res.ok) throw new Error('Falha na exportação')
+
+      const contentType = res.headers.get('content-type')
+      if (contentType?.includes('application/json')) {
+        const data = await res.json()
+        if (data.file && data.filename) {
+          const link = document.createElement('a')
+          link.href = `data:application/octet-stream;base64,${data.file}`
+          link.download = data.filename
+          link.click()
+          return
+        }
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `leads.${format}`
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      toast({
+        title: 'Erro ao exportar',
+        description: 'Não foi possível exportar os dados. Tente novamente.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!leadToDelete) return
+    try {
+      await deleteLead(leadToDelete.id)
+      toast({ title: 'Lead excluído com sucesso' })
+      loadData()
+    } catch (error) {
+      toast({ title: 'Erro ao excluir lead', variant: 'destructive' })
+    } finally {
+      setLeadToDelete(null)
+    }
+  }
+
   return (
     <div className="h-[calc(100vh-6rem)] flex flex-col space-y-4 max-w-full overflow-hidden">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0 px-1">
@@ -86,10 +165,31 @@ export default function Prospeccao() {
             Gerencie leads em fase inicial e cadência de contatos.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Download className="h-4 w-4" /> Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('csv')}>Exportar CSV</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+                Exportar Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button variant="outline" className="gap-2" onClick={() => setIsImportOpen(true)}>
+            <Upload className="h-4 w-4" /> Importar
+          </Button>
+
           <Button
             className="bg-[#F97316] hover:bg-[#EA580C] text-white"
-            onClick={() => setIsNewLeadOpen(true)}
+            onClick={() => {
+              setLeadToEdit(null)
+              setIsNewLeadOpen(true)
+            }}
           >
             <Plus className="mr-2 h-4 w-4" /> Novo Lead
           </Button>
@@ -120,11 +220,47 @@ export default function Prospeccao() {
           leads={leads}
           onStatusChange={handleStatusChange}
           onConvertLead={setConvertingLead}
+          onEditLead={(lead) => {
+            setLeadToEdit(lead)
+            setIsNewLeadOpen(true)
+          }}
+          onDeleteLead={(lead) => setLeadToDelete(lead)}
           convertedClientNames={convertedClientNames}
         />
       </div>
 
-      <LeadFormSheet open={isNewLeadOpen} onOpenChange={setIsNewLeadOpen} onSuccess={loadData} />
+      <LeadFormSheet
+        open={isNewLeadOpen}
+        onOpenChange={(o) => {
+          setIsNewLeadOpen(o)
+          if (!o) setLeadToEdit(null)
+        }}
+        onSuccess={loadData}
+        leadToEdit={leadToEdit}
+      />
+
+      <LeadImportDialog open={isImportOpen} onOpenChange={setIsImportOpen} onSuccess={loadData} />
+
+      <AlertDialog open={!!leadToDelete} onOpenChange={(o) => !o && setLeadToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Lead</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o lead <strong>{leadToDelete?.nome}</strong>? Esta ação
+              não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleDeleteConfirm}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {convertingLead && (
         <LeadConvertModal

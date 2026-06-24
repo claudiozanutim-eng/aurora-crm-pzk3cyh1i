@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select'
 import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
-import { createLead } from '@/services/leads'
+import { createLead, updateLead, Lead } from '@/services/leads'
 import { useAuth } from '@/hooks/use-auth'
 import { getUsers, User } from '@/services/users'
 import { useEffect } from 'react'
@@ -58,9 +58,10 @@ interface LeadFormSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  leadToEdit?: Lead | null
 }
 
-export function LeadFormSheet({ open, onOpenChange, onSuccess }: LeadFormSheetProps) {
+export function LeadFormSheet({ open, onOpenChange, onSuccess, leadToEdit }: LeadFormSheetProps) {
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const { toast } = useToast()
@@ -85,26 +86,55 @@ export function LeadFormSheet({ open, onOpenChange, onSuccess }: LeadFormSheetPr
   useEffect(() => {
     if (open) {
       getUsers().then(setUsers).catch(console.error)
-      if (user?.id) {
-        form.setValue('vendedor_id', user.id)
+      if (leadToEdit) {
+        form.reset({
+          nome: leadToEdit.nome,
+          contato_nome: leadToEdit.contato_nome || '',
+          tipo: leadToEdit.tipo,
+          telefone: leadToEdit.telefone || '',
+          email: leadToEdit.email || '',
+          origem: leadToEdit.origem,
+          segmento: leadToEdit.segmento,
+          prioridade: leadToEdit.prioridade,
+          tags: leadToEdit.tags || [],
+          vendedor_id: leadToEdit.vendedor_id,
+        })
+      } else {
+        form.reset({
+          nome: '',
+          contato_nome: '',
+          tipo: 'PJ',
+          telefone: '',
+          email: '',
+          origem: 'Outro',
+          segmento: 'Outro',
+          prioridade: 'Média',
+          tags: [],
+          vendedor_id: user?.id || '',
+        })
       }
     }
-  }, [open, user, form])
+  }, [open, leadToEdit, user, form])
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true)
     try {
-      await createLead({
-        ...values,
-        status: 'Novos Leads',
-      })
-      toast({ title: 'Lead criado com sucesso' })
+      if (leadToEdit) {
+        await updateLead(leadToEdit.id, values)
+        toast({ title: 'Lead atualizado com sucesso' })
+      } else {
+        await createLead({
+          ...values,
+          status: 'Novos Leads',
+        })
+        toast({ title: 'Lead criado com sucesso' })
+      }
       form.reset()
       onSuccess()
       onOpenChange(false)
     } catch (error) {
       toast({
-        title: 'Erro ao criar lead',
+        title: leadToEdit ? 'Erro ao atualizar lead' : 'Erro ao criar lead',
         description: 'Tente novamente.',
         variant: 'destructive',
       })
@@ -117,8 +147,12 @@ export function LeadFormSheet({ open, onOpenChange, onSuccess }: LeadFormSheetPr
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="overflow-y-auto sm:max-w-[500px]">
         <SheetHeader className="mb-6">
-          <SheetTitle>Novo Lead</SheetTitle>
-          <SheetDescription>Cadastre um novo lead no funil de prospecção.</SheetDescription>
+          <SheetTitle>{leadToEdit ? 'Editar Lead' : 'Novo Lead'}</SheetTitle>
+          <SheetDescription>
+            {leadToEdit
+              ? 'Atualize as informações do lead.'
+              : 'Cadastre um novo lead no funil de prospecção.'}
+          </SheetDescription>
         </SheetHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -342,7 +376,7 @@ export function LeadFormSheet({ open, onOpenChange, onSuccess }: LeadFormSheetPr
                 className="w-full bg-orange-500 hover:bg-orange-600 text-white"
                 disabled={loading}
               >
-                {loading ? 'Salvando...' : 'Salvar Lead'}
+                {loading ? 'Salvando...' : leadToEdit ? 'Salvar Alterações' : 'Salvar Lead'}
               </Button>
             </div>
           </form>
