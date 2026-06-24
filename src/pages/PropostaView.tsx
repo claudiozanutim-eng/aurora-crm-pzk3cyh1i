@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getPropostaById, type Proposta } from '@/services/propostas'
+import pb from '@/lib/pocketbase/client'
 import { Button } from '@/components/ui/button'
 import { Printer, ArrowLeft } from 'lucide-react'
 import auroraLogo from '@/assets/image69debc47-caaa-4a34-9b6b-8da340b6c9e7-53707.png'
@@ -10,6 +11,7 @@ export default function PropostaView() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [proposta, setProposta] = useState<Proposta | null>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -18,12 +20,40 @@ export default function PropostaView() {
       .catch(() => toast.error('Erro ao carregar proposta.'))
   }, [id])
 
-  if (!proposta) {
-    return <div className="p-8 text-center text-gray-500">Carregando proposta...</div>
+  const handleDownloadPdf = async () => {
+    if (!proposta) return
+    setIsDownloading(true)
+    try {
+      const url = `${import.meta.env.VITE_POCKETBASE_URL}/backend/v1/propostas/${proposta.id}/pdf`
+
+      const res = await fetch(url, {
+        headers: {
+          Authorization: pb.authStore.token,
+        },
+      })
+
+      if (!res.ok) throw new Error('Falha ao gerar o PDF')
+
+      const blob = await res.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = downloadUrl
+      a.download = `Proposta-${proposta.titulo.replace(/[^a-z0-9]/gi, '_')}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(downloadUrl)
+      document.body.removeChild(a)
+
+      toast.success('PDF baixado com sucesso!')
+    } catch (error) {
+      toast.error('Erro ao baixar o PDF. Tente novamente mais tarde.')
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
-  const handlePrint = () => {
-    window.print()
+  if (!proposta) {
+    return <div className="p-8 text-center text-gray-500">Carregando proposta...</div>
   }
 
   return (
@@ -32,8 +62,12 @@ export default function PropostaView() {
         <Button variant="ghost" onClick={() => navigate(-1)} className="text-gray-600">
           <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
         </Button>
-        <Button onClick={handlePrint} className="bg-orange-500 hover:bg-orange-600 text-white">
-          <Printer className="mr-2 h-4 w-4" /> Gerar PDF / Imprimir
+        <Button
+          onClick={handleDownloadPdf}
+          disabled={isDownloading}
+          className="bg-orange-500 hover:bg-orange-600 text-white"
+        >
+          <Printer className="mr-2 h-4 w-4" /> {isDownloading ? 'Gerando...' : 'Gerar PDF'}
         </Button>
       </div>
 
