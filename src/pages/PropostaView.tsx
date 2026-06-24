@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { ArrowLeft, Download } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
-import { toast } from 'sonner'
 
 export default function PropostaView() {
   const { id } = useParams()
@@ -49,31 +48,8 @@ export default function PropostaView() {
     loadData()
   }, [id])
 
-  const handleGerarPDF = async () => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_POCKETBASE_URL}/backend/v1/propostas/${id}/pdf`,
-        {
-          headers: {
-            Authorization: pb.authStore.token,
-          },
-        },
-      )
-      if (!response.ok) throw new Error('Erro ao gerar PDF')
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `proposta-${id}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.URL.revokeObjectURL(url)
-      toast.success('PDF gerado com sucesso!')
-    } catch (error) {
-      toast.error('Erro ao gerar o PDF da proposta.')
-    }
+  const handleGerarPDF = () => {
+    window.print()
   }
 
   if (loading) {
