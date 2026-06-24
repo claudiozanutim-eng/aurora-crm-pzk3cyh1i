@@ -1,6 +1,7 @@
 import { useState, forwardRef, useEffect, useImperativeHandle } from 'react'
 import { Negocio, updateNegocio } from '@/services/negocios'
 import { getUsers, User } from '@/services/users'
+import { extractFieldErrors, getErrorMessage, type FieldErrors } from '@/lib/pocketbase/errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,6 +33,7 @@ export const NegocioDataForm = forwardRef<
 
   const [data, setData] = useState<Partial<Negocio>>({})
   const [isDirty, setIsDirty] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 
   const loadData = async () => {
     setLoading(true)
@@ -68,12 +70,14 @@ export const NegocioDataForm = forwardRef<
       vendedor_id: selectedNegocio.vendedor_id,
       valor_estimado: selectedNegocio.valor_estimado || 0,
       probabilidade: selectedNegocio.probabilidade || 0,
+      probabilidade_nivel: selectedNegocio.probabilidade_nivel || undefined,
       data_prevista_fechamento: selectedNegocio.data_prevista_fechamento
         ? selectedNegocio.data_prevista_fechamento.split(' ')[0]
         : '',
       prioridade: selectedNegocio.prioridade,
     })
     setIsDirty(false)
+    setFieldErrors({})
   }, [selectedNegocio])
 
   useEffect(() => {
@@ -83,6 +87,7 @@ export const NegocioDataForm = forwardRef<
       vendedor_id: data.vendedor_id,
       valor_estimado: data.valor_estimado,
       probabilidade: data.probabilidade,
+      probabilidade_nivel: data.probabilidade_nivel,
       data_prevista_fechamento: data.data_prevista_fechamento,
       prioridade: data.prioridade,
     })
@@ -91,6 +96,7 @@ export const NegocioDataForm = forwardRef<
       vendedor_id: selectedNegocio.vendedor_id,
       valor_estimado: selectedNegocio.valor_estimado || 0,
       probabilidade: selectedNegocio.probabilidade || 0,
+      probabilidade_nivel: selectedNegocio.probabilidade_nivel || undefined,
       data_prevista_fechamento: selectedNegocio.data_prevista_fechamento
         ? selectedNegocio.data_prevista_fechamento.split(' ')[0]
         : '',
@@ -105,6 +111,7 @@ export const NegocioDataForm = forwardRef<
 
   const saveChanges = async () => {
     if (!selectedNegocioId) return false
+    setFieldErrors({})
     try {
       const payload: Partial<Negocio> = { ...data }
 
@@ -114,15 +121,23 @@ export const NegocioDataForm = forwardRef<
         payload.data_prevista_fechamento = '' as any
       }
 
+      if (!payload.probabilidade_nivel) {
+        payload.probabilidade_nivel = '' as any
+      }
+
       await updateNegocio(selectedNegocioId, payload)
       toast({ title: 'Dados do negócio atualizados com sucesso.' })
       setIsDirty(false)
       await loadData()
       return true
     } catch (error) {
+      const errors = extractFieldErrors(error)
+      setFieldErrors(errors)
+      const errorMsg = getErrorMessage(error)
+
       toast({
         title: 'Erro ao salvar as alterações',
-        description: 'Por favor, tente novamente.',
+        description: errorMsg || 'Por favor, verifique os campos e tente novamente.',
         variant: 'destructive',
       })
       return false
@@ -191,7 +206,7 @@ export const NegocioDataForm = forwardRef<
         <div className="space-y-2">
           <Label>Vendedor Responsável</Label>
           <Select
-            value={data.vendedor_id}
+            value={data.vendedor_id || undefined}
             onValueChange={(val) => handleChange('vendedor_id', val)}
           >
             <SelectTrigger>
@@ -205,11 +220,17 @@ export const NegocioDataForm = forwardRef<
               ))}
             </SelectContent>
           </Select>
+          {fieldErrors.vendedor_id && (
+            <p className="text-sm text-red-500">{fieldErrors.vendedor_id}</p>
+          )}
         </div>
 
         <div className="space-y-2">
           <Label>Valor Estimado (R$)</Label>
           <Input value={valorEstimadoFormatted} onChange={handleValorChange} placeholder="0,00" />
+          {fieldErrors.valor_estimado && (
+            <p className="text-sm text-red-500">{fieldErrors.valor_estimado}</p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -221,22 +242,19 @@ export const NegocioDataForm = forwardRef<
             value={data.probabilidade ?? ''}
             onChange={(e) => handleChange('probabilidade', Number(e.target.value))}
           />
+          {fieldErrors.probabilidade && (
+            <p className="text-sm text-red-500">{fieldErrors.probabilidade}</p>
+          )}
         </div>
 
         <div className="space-y-2">
-          <Label>Data Prevista de Fechamento</Label>
-          <Input
-            type="date"
-            value={data.data_prevista_fechamento || ''}
-            onChange={(e) => handleChange('data_prevista_fechamento', e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Prioridade</Label>
-          <Select value={data.prioridade} onValueChange={(val) => handleChange('prioridade', val)}>
+          <Label>Nível de Probabilidade</Label>
+          <Select
+            value={data.probabilidade_nivel || undefined}
+            onValueChange={(val) => handleChange('probabilidade_nivel', val)}
+          >
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Selecione..." />
             </SelectTrigger>
             <SelectContent>
               {['Alta', 'Média', 'Baixa'].map((s) => (
@@ -246,6 +264,43 @@ export const NegocioDataForm = forwardRef<
               ))}
             </SelectContent>
           </Select>
+          {fieldErrors.probabilidade_nivel && (
+            <p className="text-sm text-red-500">{fieldErrors.probabilidade_nivel}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Data Prevista de Fechamento</Label>
+          <Input
+            type="date"
+            value={data.data_prevista_fechamento || ''}
+            onChange={(e) => handleChange('data_prevista_fechamento', e.target.value)}
+          />
+          {fieldErrors.data_prevista_fechamento && (
+            <p className="text-sm text-red-500">{fieldErrors.data_prevista_fechamento}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Prioridade</Label>
+          <Select
+            value={data.prioridade || undefined}
+            onValueChange={(val) => handleChange('prioridade', val)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione..." />
+            </SelectTrigger>
+            <SelectContent>
+              {['Alta', 'Média', 'Baixa'].map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {fieldErrors.prioridade && (
+            <p className="text-sm text-red-500">{fieldErrors.prioridade}</p>
+          )}
         </div>
       </div>
 
@@ -257,6 +312,7 @@ export const NegocioDataForm = forwardRef<
           onChange={(e) => handleChange('descricao', e.target.value)}
           placeholder="Descrição do negócio..."
         />
+        {fieldErrors.descricao && <p className="text-sm text-red-500">{fieldErrors.descricao}</p>}
       </div>
 
       <div className="flex items-center gap-3 pt-4">

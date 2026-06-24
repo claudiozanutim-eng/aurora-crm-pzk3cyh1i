@@ -141,7 +141,11 @@ export default function ClienteDetail() {
           </TabsList>
 
           <TabsContent value="dados" className="focus-visible:outline-none">
-            <ClientDataForm ref={formRef} cliente={cliente} onExit={() => navigate('/funil')} />
+            <ClientDataForm
+              ref={formRef}
+              cliente={cliente}
+              onExit={() => navigate(`/clientes/${cliente.id}`)}
+            />
           </TabsContent>
           <TabsContent value="contatos" className="focus-visible:outline-none">
             <ContactsList clienteId={cliente.id} />
@@ -156,7 +160,7 @@ export default function ClienteDetail() {
             <NegocioDataForm
               ref={negocioFormRef}
               clienteId={cliente.id}
-              onExit={() => navigate('/funil')}
+              onExit={() => navigate(`/clientes/${cliente.id}`)}
             />
           </TabsContent>
         </Tabs>
