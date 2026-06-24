@@ -1,4 +1,4 @@
-import { useState, forwardRef, useEffect, useImperativeHandle } from 'react'
+import { useState, forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { Negocio, updateNegocio } from '@/services/negocios'
 import { getUsers, User } from '@/services/users'
 import { extractFieldErrors, getErrorMessage, type FieldErrors } from '@/lib/pocketbase/errors'
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import pb from '@/lib/pocketbase/client'
+import { useRealtime } from '@/hooks/use-realtime'
 
 export interface NegocioDataFormRef {
   isDirty: boolean
@@ -61,24 +62,34 @@ export const NegocioDataForm = forwardRef<
     loadData()
   }, [clienteId])
 
+  useRealtime('negocios', () => {
+    loadData()
+  })
+
   const selectedNegocio = negocios.find((n) => n.id === selectedNegocioId)
+  const prevNegocioId = useRef<string | null>(null)
 
   useEffect(() => {
     if (!selectedNegocio) return
-    setData({
-      descricao: selectedNegocio.descricao || '',
-      vendedor_id: selectedNegocio.vendedor_id,
-      valor_estimado: selectedNegocio.valor_estimado || 0,
-      probabilidade: selectedNegocio.probabilidade || 0,
-      probabilidade_nivel: selectedNegocio.probabilidade_nivel || undefined,
-      data_prevista_fechamento: selectedNegocio.data_prevista_fechamento
-        ? selectedNegocio.data_prevista_fechamento.split(' ')[0]
-        : '',
-      prioridade: selectedNegocio.prioridade,
-    })
-    setIsDirty(false)
-    setFieldErrors({})
-  }, [selectedNegocio])
+
+    if (prevNegocioId.current !== selectedNegocio.id || !isDirty) {
+      setData({
+        descricao: selectedNegocio.descricao || '',
+        vendedor_id: selectedNegocio.vendedor_id,
+        valor_estimado: selectedNegocio.valor_estimado || 0,
+        probabilidade: selectedNegocio.probabilidade || 0,
+        probabilidade_nivel: selectedNegocio.probabilidade_nivel || undefined,
+        data_prevista_fechamento: selectedNegocio.data_prevista_fechamento
+          ? selectedNegocio.data_prevista_fechamento.split(' ')[0]
+          : '',
+        prioridade: selectedNegocio.prioridade,
+      })
+      setIsDirty(false)
+      setFieldErrors({})
+    }
+
+    prevNegocioId.current = selectedNegocio.id
+  }, [selectedNegocio, isDirty])
 
   useEffect(() => {
     if (!selectedNegocio) return
@@ -315,13 +326,38 @@ export const NegocioDataForm = forwardRef<
         {fieldErrors.descricao && <p className="text-sm text-red-500">{fieldErrors.descricao}</p>}
       </div>
 
-      <div className="flex items-center gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={() => onExit && onExit()}>
-          Sair sem Salvar
-        </Button>
-        <Button type="submit" className="bg-[#FF6B00] hover:bg-[#E66000] text-white">
-          Salvar e Sair
-        </Button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-gray-100 mt-6">
+        <div className="text-sm text-muted-foreground">
+          {selectedNegocio?.updated &&
+            (() => {
+              const user = users.find((u) => u.id === selectedNegocio.vendedor_id)
+              const userName = user?.name || 'Usuário'
+              try {
+                const dateObj = new Date(selectedNegocio.updated)
+                const formattedDate = `${('0' + dateObj.getDate()).slice(-2)}/${('0' + (dateObj.getMonth() + 1)).slice(-2)}/${dateObj.getFullYear()}`
+                const formattedTime = `${('0' + dateObj.getHours()).slice(-2)}:${('0' + dateObj.getMinutes()).slice(-2)}`
+                return `Última atualização por ${userName} em ${formattedDate} às ${formattedTime}`
+              } catch {
+                return null
+              }
+            })()}
+        </div>
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onExit && onExit()}
+            className="w-full sm:w-auto"
+          >
+            Sair sem Salvar
+          </Button>
+          <Button
+            type="submit"
+            className="bg-[#FF6B00] hover:bg-[#E66000] text-white w-full sm:w-auto"
+          >
+            Salvar e Sair
+          </Button>
+        </div>
       </div>
     </form>
   )
