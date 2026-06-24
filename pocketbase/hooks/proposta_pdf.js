@@ -288,7 +288,14 @@ routerAdd(
       color: gray,
     })
 
-    const pdfBytes = await pdfDoc.save()
+    const base64Pdf = await pdfDoc.saveAsBase64()
+
+    // Convert base64 string to an ArrayBuffer of ASCII bytes
+    // to avoid Goja string-to-byte conversion issues.
+    const textBytes = new Uint8Array(base64Pdf.length)
+    for (let i = 0; i < base64Pdf.length; i++) {
+      textBytes[i] = base64Pdf.charCodeAt(i)
+    }
 
     // Dynamic Filename Header
     const now = new Date()
@@ -320,7 +327,7 @@ routerAdd(
         `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}; filename="${safeClientName.replace(/[^a-zA-Z0-9 -]/g, '')}.pdf"`,
       )
 
-    return e.blob(200, 'application/pdf', pdfBytes.buffer)
+    return e.blob(200, 'application/pdf', textBytes.buffer)
   },
   $apis.requireAuth(),
 )

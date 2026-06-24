@@ -74,7 +74,34 @@ export default function PropostaView() {
         throw new Error(errorMsg)
       }
 
-      const blob = await response.blob()
+      const buffer = await response.arrayBuffer()
+      const bytes = new Uint8Array(buffer)
+
+      let blob: Blob
+      // Check for PDF magic number "%PDF" (37, 80, 68, 70)
+      if (
+        bytes.length > 4 &&
+        bytes[0] === 37 &&
+        bytes[1] === 80 &&
+        bytes[2] === 68 &&
+        bytes[3] === 70
+      ) {
+        blob = new Blob([buffer], { type: 'application/pdf' })
+      } else {
+        try {
+          // Decode base64
+          const textData = new TextDecoder().decode(buffer).trim()
+          const binaryString = window.atob(textData)
+          const pdfBytes = new Uint8Array(binaryString.length)
+          for (let i = 0; i < binaryString.length; i++) {
+            pdfBytes[i] = binaryString.charCodeAt(i)
+          }
+          blob = new Blob([pdfBytes], { type: 'application/pdf' })
+        } catch (err) {
+          console.error('Failed to decode PDF data', err)
+          throw new Error('Falha ao decodificar o documento PDF recebido.')
+        }
+      }
 
       const contentDisposition = response.headers.get('Content-Disposition')
       let fileName = `Proposta_${proposta.id.substring(0, 8).toUpperCase()}.pdf`
