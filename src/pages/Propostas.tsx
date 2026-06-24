@@ -238,7 +238,7 @@ export default function Propostas() {
                           disabled={p.status !== 'Rascunho'}
                           onClick={() => handleSend(p)}
                         >
-                          <Send className="mr-2 h-4 w-4" /> Marcar Enviada
+                          <Send className="mr-2 h-4 w-4" /> Enviar
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDuplicate(p)}>
                           <Copy className="mr-2 h-4 w-4" /> Duplicar
