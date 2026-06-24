@@ -87,6 +87,7 @@ export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps)
               <div className="flex flex-col">
                 <h3 className="font-semibold text-gray-700">{column}</h3>
                 <span className="text-xs font-medium text-gray-500 mt-0.5">
+                  Total:{' '}
                   {new Intl.NumberFormat('pt-BR', {
                     style: 'currency',
                     currency: 'BRL',
@@ -122,10 +123,12 @@ export function KanbanBoard({ negocios = [], onStatusChange }: KanbanBoardProps)
                       <h4 className="font-semibold text-gray-900 mb-2 line-clamp-1">
                         {clientName}
                       </h4>
-                      <div className="space-y-1.5 text-sm text-gray-500">
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium text-gray-900">
+                      <div className="space-y-2 text-sm text-gray-500">
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center justify-center bg-emerald-100/50 text-emerald-700 p-1 rounded-md">
+                            <DollarSign className="h-4 w-4" />
+                          </div>
+                          <span className="font-bold text-gray-900 text-base">
                             {new Intl.NumberFormat('pt-BR', {
                               style: 'currency',
                               currency: 'BRL',
