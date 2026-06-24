@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import pb from '@/lib/pocketbase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { ArrowLeft, Download } from 'lucide-react'
+import { ArrowLeft, Download, Loader2 } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
+import { toast } from 'sonner'
 
 export default function PropostaView() {
   const { id } = useParams()
@@ -13,6 +14,7 @@ export default function PropostaView() {
   const [cliente, setCliente] = useState<any>(null)
   const [negocio, setNegocio] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     const loadData = async () => {
@@ -48,8 +50,40 @@ export default function PropostaView() {
     loadData()
   }, [id])
 
-  const handleGerarPDF = () => {
-    window.print()
+  const handleGerarPDF = async () => {
+    if (!id) return
+    try {
+      setDownloading(true)
+      const response = await fetch(
+        `${import.meta.env.VITE_POCKETBASE_URL}/backend/v1/propostas/${id}/pdf`,
+        {
+          headers: {
+            Authorization: pb.authStore.token,
+          },
+        },
+      )
+
+      if (!response.ok) {
+        throw new Error('Falha ao gerar o documento')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Proposta_${proposta.id.substring(0, 8).toUpperCase()}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success('PDF gerado e baixado com sucesso.')
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error)
+      toast.error('Não foi possível gerar o PDF. Tente novamente.')
+    } finally {
+      setDownloading(false)
+    }
   }
 
   if (loading) {
@@ -70,8 +104,17 @@ export default function PropostaView() {
         <Button variant="ghost" onClick={() => navigate(-1)}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
         </Button>
-        <Button onClick={handleGerarPDF} className="bg-orange-500 hover:bg-orange-600 text-white">
-          <Download className="mr-2 h-4 w-4" /> Gerar PDF
+        <Button
+          onClick={handleGerarPDF}
+          disabled={downloading}
+          className="bg-orange-500 hover:bg-orange-600 text-white"
+        >
+          {downloading ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="mr-2 h-4 w-4" />
+          )}
+          {downloading ? 'Gerando...' : 'Gerar PDF'}
         </Button>
       </div>
 
