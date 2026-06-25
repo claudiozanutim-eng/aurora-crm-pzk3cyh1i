@@ -4,11 +4,12 @@ import { getClienteById, Cliente } from '@/services/clientes'
 import { useRealtime } from '@/hooks/use-realtime'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Sparkles, X, Loader2, Copy, CheckCircle2 } from 'lucide-react'
-import { streamAgentChat } from '@/lib/skipAi'
+import { ArrowLeft, X, Loader2, Copy, CheckCircle2 } from 'lucide-react'
+import { useAuro } from '@/hooks/use-auro'
 import pb from '@/lib/pocketbase/client'
 import { toast } from 'sonner'
 import { ClientDataForm, ClientDataFormRef } from '@/components/details/ClientDataForm'
+import auroAvatar from '@/assets/image24459793-7340-4e96-9dcd-6e71cc4b1e4d-982be.png'
 import { NegocioDataForm, NegocioDataFormRef } from '@/components/details/NegocioDataForm'
 import { ContactsList } from '@/components/details/ContactsList'
 import { InteractionsTimeline } from '@/components/details/InteractionsTimeline'
@@ -35,123 +36,10 @@ export default function ClienteDetail() {
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const [isAnalysisOpen, setIsAnalysisOpen] = useState(false)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [analysisContent, setAnalysisContent] = useState('')
-  const [emailCopied, setEmailCopied] = useState(false)
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const { triggerAnalysis } = useAuro()
 
-  const handleAnalyze = async () => {
-    if (isAnalyzing) return
-    setIsAnalysisOpen(true)
-    setIsAnalyzing(true)
-    setAnalysisContent('')
-
-    abortControllerRef.current = new AbortController()
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_POCKETBASE_URL}/backend/v1/analise-comercial`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: pb.authStore.token,
-          },
-          body: JSON.stringify({ cliente_id: id }),
-          signal: abortControllerRef.current.signal,
-        },
-      )
-
-      await streamAgentChat(res, {
-        onChunk: (_delta, full) => {
-          setAnalysisContent(full)
-        },
-        signal: abortControllerRef.current.signal,
-      })
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        toast.error(err.message || 'Erro ao analisar cliente')
-      }
-    } finally {
-      setIsAnalyzing(false)
-    }
-  }
-
-  const handleCopyEmail = (text: string) => {
-    navigator.clipboard.writeText(text)
-    setEmailCopied(true)
-    toast.success('E-mail copiado para a área de transferência')
-    setTimeout(() => setEmailCopied(false), 2000)
-  }
-
-  const formatText = (text: string) => {
-    return text.split(/(\*\*.*?\*\*)/g).map((part, index) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={index}>{part.slice(2, -2)}</strong>
-      }
-      return part
-    })
-  }
-
-  const renderAnalysis = (text: string) => {
-    if (!text.includes('###')) {
-      return <div className="whitespace-pre-wrap text-sm text-gray-700">{text}</div>
-    }
-
-    const sections = text.split('###').filter((s) => s.trim().length > 0)
-
-    return sections.map((section, idx) => {
-      const lines = section.trim().split('\n')
-      const title = lines[0].trim()
-      const body = lines.slice(1).join('\n').trim()
-
-      const isEmail =
-        title.toLowerCase().includes('e-mail') || title.toLowerCase().includes('email')
-
-      return (
-        <div key={idx} className="mb-6 last:mb-0">
-          <h4 className="text-base font-semibold text-gray-900 mb-2">{title}</h4>
-
-          {isEmail ? (
-            <div className="relative bg-white border border-gray-200 rounded-md p-4 pt-10">
-              <Button
-                variant="outline"
-                size="sm"
-                className="absolute top-2 right-2 h-8"
-                onClick={() => handleCopyEmail(body)}
-              >
-                {emailCopied ? (
-                  <CheckCircle2 className="w-4 h-4 mr-1 text-green-500" />
-                ) : (
-                  <Copy className="w-4 h-4 mr-1" />
-                )}
-                {emailCopied ? 'Copiado!' : 'Copiar'}
-              </Button>
-              <div className="whitespace-pre-wrap text-sm text-gray-700">{body}</div>
-            </div>
-          ) : (
-            <div className="text-sm text-gray-700 space-y-1">
-              {body.split('\n').map((line, i) => {
-                const trimmed = line.trim()
-                if (!trimmed) return null
-                if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-                  return (
-                    <li key={i} className="ml-4 list-disc marker:text-gray-400">
-                      {formatText(trimmed.substring(2))}
-                    </li>
-                  )
-                }
-                return (
-                  <p key={i} className="mb-2">
-                    {formatText(trimmed)}
-                  </p>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )
-    })
+  const handleAnalyze = () => {
+    triggerAnalysis('cliente', id!, cliente?.nome || '')
   }
 
   const load = async () => {
@@ -216,43 +104,12 @@ export default function ClienteDetail() {
         </Button>
         <Button
           onClick={handleAnalyze}
-          disabled={isAnalyzing}
           className="bg-orange-500 hover:bg-orange-600 text-white gap-2 shadow-sm"
         >
-          {isAnalyzing ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Sparkles className="w-4 h-4" />
-          )}
+          <img src={auroAvatar} alt="Auro" className="h-4 w-4 object-contain rounded-full" />
           Analisar Cliente
         </Button>
       </div>
-
-      {isAnalysisOpen && (
-        <div className="bg-gray-50 border border-orange-200 rounded-lg p-5 relative shadow-sm">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsAnalysisOpen(false)}
-            className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-          >
-            <X className="w-4 h-4" />
-          </Button>
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
-            <Sparkles className="w-5 h-5 text-orange-500" />
-            Análise Comercial (IA)
-          </h3>
-
-          <div className="max-w-none">{renderAnalysis(analysisContent)}</div>
-
-          {isAnalyzing && (
-            <div className="flex items-center gap-2 mt-4 text-orange-600 text-sm font-medium">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Gerando insights...
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="flex items-center gap-4">
         {/* Placeholder to keep alignment for the title block */}

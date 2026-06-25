@@ -5,7 +5,9 @@ import { useRealtime } from '@/hooks/use-realtime'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
+import { useAuro } from '@/hooks/use-auro'
 import { LeadDataForm, LeadDataFormRef } from '@/components/details/LeadDataForm'
+import auroAvatar from '@/assets/image24459793-7340-4e96-9dcd-6e71cc4b1e4d-982be.png'
 import { LeadContactsTab } from '@/components/details/LeadContactsTab'
 import { InteractionsTimeline } from '@/components/details/InteractionsTimeline'
 import { TasksList } from '@/components/details/TasksList'
@@ -68,6 +70,12 @@ export default function LeadDetail() {
     navigate('/funil')
   }
 
+  const { triggerAnalysis } = useAuro()
+
+  const handleAnalyze = () => {
+    triggerAnalysis('lead', id!, lead?.nome || '')
+  }
+
   if (!lead)
     return (
       <div className="p-8 flex items-center justify-center text-gray-500">
@@ -77,10 +85,22 @@ export default function LeadDetail() {
 
   return (
     <div className="h-full flex flex-col space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={handleBack} className="shrink-0">
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
+      <div className="flex items-center justify-between">
+        <Button variant="outline" onClick={handleBack} className="gap-2 text-gray-600">
+          <ArrowLeft className="w-4 h-4" />
+          Voltar
         </Button>
+        <Button
+          onClick={handleAnalyze}
+          className="bg-orange-500 hover:bg-orange-600 text-white gap-2 shadow-sm"
+        >
+          <img src={auroAvatar} alt="Auro" className="h-4 w-4 object-contain rounded-full" />
+          Analisar Lead
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="w-10 shrink-0" />
         <div>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">

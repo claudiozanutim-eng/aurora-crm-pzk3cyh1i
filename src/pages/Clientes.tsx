@@ -25,6 +25,7 @@ import {
   AlertCircle,
   Loader2,
 } from 'lucide-react'
+import { useAuro } from '@/hooks/use-auro'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +52,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { ClienteFormSheet } from '@/components/clientes/ClienteFormSheet'
+import auroAvatar from '@/assets/image24459793-7340-4e96-9dcd-6e71cc4b1e4d-982be.png'
 import { ClienteImportDialog } from '@/components/clientes/ClienteImportDialog'
 import { TagBadge } from '@/components/ui/tag-badge'
 import {
@@ -80,6 +82,7 @@ export default function Clientes() {
   const [taskClient, setTaskClient] = useState<Cliente | null>(null)
   const [interactionClient, setInteractionClient] = useState<Cliente | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const { triggerAnalysis } = useAuro()
 
   const navigate = useNavigate()
 
@@ -482,6 +485,23 @@ export default function Clientes() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1 justify-end">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-gray-500 hover:text-[#FF6B00]"
+                                onClick={() => triggerAnalysis('cliente', client.id, client.nome)}
+                              >
+                                <img
+                                  src={auroAvatar}
+                                  alt="Auro"
+                                  className="h-4 w-4 object-contain rounded-full"
+                                />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Analisar Cliente</TooltipContent>
+                          </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button

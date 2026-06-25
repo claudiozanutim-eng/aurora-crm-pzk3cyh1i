@@ -11,13 +11,16 @@ import {
   UserCog,
   LogOut,
   BarChart,
+  Bot,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuro } from '@/hooks/use-auro'
 import pb from '@/lib/pocketbase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import auroraLogoHorizontal from '@/assets/image69debc47-caaa-4a34-9b6b-8da340b6c9e7-53707.png'
+import auroAvatar from '@/assets/image24459793-7340-4e96-9dcd-6e71cc4b1e4d-982be.png'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -40,6 +43,7 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
+  const { setIsOpen } = useAuro()
 
   const handleLogout = () => {
     signOut()
@@ -84,6 +88,23 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
             </Link>
           )
         })}
+        <div className="pt-6 mt-4 border-t border-gray-100 flex justify-center pb-2">
+          <button
+            onClick={() => setIsOpen(true)}
+            className="flex flex-col items-center justify-center gap-3 px-2 py-4 rounded-xl transition-all duration-300 w-[90%] group hover:bg-orange-50/50"
+          >
+            <div className="relative flex items-center justify-center h-[60px] w-[60px] rounded-full overflow-hidden border-2 border-[#F97316]/30 bg-orange-100/50 shadow-sm group-hover:border-[#F97316] group-hover:shadow-md transition-all duration-300">
+              <img
+                src={auroAvatar}
+                alt="Auro"
+                className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
+              />
+            </div>
+            <span className="text-sm font-bold text-gray-600 group-hover:text-[#F97316] transition-colors duration-300 text-center leading-tight">
+              Auro - O Assistente
+            </span>
+          </button>
+        </div>
       </nav>
 
       <div className="p-4 border-t">
