@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   UserPlus,
   AlertCircle,
+  Loader2,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -78,6 +79,7 @@ export default function Clientes() {
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [taskClient, setTaskClient] = useState<Cliente | null>(null)
   const [interactionClient, setInteractionClient] = useState<Cliente | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
 
   const navigate = useNavigate()
 
@@ -86,6 +88,10 @@ export default function Clientes() {
   }, [])
 
   const handleExport = async (format: 'csv' | 'xlsx') => {
+    if (isExporting || filteredClientes.length === 0) return
+    setIsExporting(true)
+    const toastId = toast.loading(`Exportando clientes para ${format.toUpperCase()}...`)
+
     try {
       const clientIds = filteredClientes.map((c) => c.id)
 
@@ -95,6 +101,12 @@ export default function Clientes() {
           source: 'clientes',
           ids: clientIds,
           format: format,
+          filters: {
+            search,
+            status: statusFilter,
+            tipo: tipoFilter,
+            sort: sortOption,
+          },
         }),
         headers: { 'Content-Type': 'application/json' },
       })
@@ -118,10 +130,15 @@ export default function Clientes() {
         document.body.appendChild(link)
         link.click()
         document.body.removeChild(link)
+        toast.success('Exportação concluída com sucesso!', { id: toastId })
+      } else {
+        toast.error('Erro ao processar o arquivo de exportação', { id: toastId })
       }
     } catch (err) {
       console.error('Export erro:', err)
-      toast.error('Erro ao exportar arquivo')
+      toast.error('Erro ao exportar arquivo', { id: toastId })
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -246,8 +263,17 @@ export default function Clientes() {
         <div className="flex gap-2 flex-wrap">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="bg-white">
-                <Download className="mr-2 h-4 w-4" /> Exportar
+              <Button
+                variant="outline"
+                className="bg-white"
+                disabled={isExporting || filteredClientes.length === 0}
+              >
+                {isExporting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                {isExporting ? 'Exportando...' : 'Exportar'}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
