@@ -8,6 +8,7 @@ import {
   CheckSquare,
   FileText,
   Settings,
+  UserCog,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import pb from '@/lib/pocketbase/client'
@@ -21,6 +22,7 @@ const navigation = [
   { name: 'Funil de Vendas', href: '/funil', icon: KanbanSquare },
   { name: 'Tarefas', href: '/tarefas', icon: CheckSquare },
   { name: 'Propostas', href: '/propostas', icon: FileText },
+  { name: 'Usuários', href: '/usuarios', icon: UserCog, adminOnly: true },
   { name: 'Configurações', href: '/configuracoes', icon: Settings },
 ]
 
@@ -47,6 +49,8 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
 
       <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
         {navigation.map((item) => {
+          if (item.adminOnly && user?.perfil !== 'Admin') return null
+
           const isActive = location.pathname === item.href
           const Icon = item.icon
 

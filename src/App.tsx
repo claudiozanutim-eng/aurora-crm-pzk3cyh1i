@@ -19,6 +19,7 @@ import NotFound from './pages/NotFound'
 import Login from './pages/Login'
 import ClienteDetail from './pages/ClienteDetail'
 import LeadDetail from './pages/LeadDetail'
+import Usuarios from './pages/Usuarios'
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, loading } = useAuth()
@@ -47,6 +48,7 @@ const AppRoutes = () => (
       <Route path="/propostas/:id/editar" element={<PropostaForm />} />
       <Route path="/propostas/:id" element={<PropostaView />} />
       <Route path="/configuracoes" element={<Configuracoes />} />
+      <Route path="/usuarios" element={<Usuarios />} />
       <Route path="/clientes/:id" element={<ClienteDetail />} />
       <Route path="/leads/:id" element={<LeadDetail />} />
     </Route>

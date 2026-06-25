@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils'
 
 import { createNegocio } from '@/services/negocios'
 import { getClientes, Cliente } from '@/services/clientes'
-import { getUsers, User } from '@/services/users'
+import { getAllUsers, User } from '@/services/users'
 import { extractFieldErrors } from '@/lib/pocketbase/errors'
 
 export function NegocioFormSheet({
@@ -56,7 +56,7 @@ export function NegocioFormSheet({
   useEffect(() => {
     if (open) {
       getClientes().then(setClientes).catch(console.error)
-      getUsers().then(setUsers).catch(console.error)
+      getAllUsers().then(setUsers).catch(console.error)
       setClienteId('')
       setVendedorId('')
       setValorEstimado('')
@@ -207,24 +207,26 @@ export function NegocioFormSheet({
                   <CommandList>
                     <CommandEmpty>Nenhum vendedor encontrado.</CommandEmpty>
                     <CommandGroup>
-                      {users.map((u) => (
-                        <CommandItem
-                          key={u.id}
-                          value={u.name}
-                          onSelect={() => {
-                            setVendedorId(u.id)
-                            setOpenUserCombobox(false)
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              'mr-2 h-4 w-4',
-                              vendedorId === u.id ? 'opacity-100' : 'opacity-0',
-                            )}
-                          />
-                          {u.name || 'Sem nome'}
-                        </CommandItem>
-                      ))}
+                      {users
+                        .filter((u) => u.ativo !== false || u.id === vendedorId)
+                        .map((u) => (
+                          <CommandItem
+                            key={u.id}
+                            value={u.name}
+                            onSelect={() => {
+                              setVendedorId(u.id)
+                              setOpenUserCombobox(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 h-4 w-4',
+                                vendedorId === u.id ? 'opacity-100' : 'opacity-0',
+                              )}
+                            />
+                            {u.name || 'Sem nome'}
+                          </CommandItem>
+                        ))}
                     </CommandGroup>
                   </CommandList>
                 </Command>

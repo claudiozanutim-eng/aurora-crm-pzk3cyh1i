@@ -17,7 +17,7 @@ export default function Login() {
     e.preventDefault()
     const { error } = await signIn(email, password)
     if (error) {
-      toast.error('Credenciais inválidas')
+      toast.error(error.message || 'Credenciais inválidas')
     } else {
       navigate('/')
     }

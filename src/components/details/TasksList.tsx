@@ -171,11 +171,13 @@ export function TasksList({
                   <SelectValue placeholder="Responsável" />
                 </SelectTrigger>
                 <SelectContent>
-                  {users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.name}
-                    </SelectItem>
-                  ))}
+                  {users
+                    .filter((u) => u.ativo !== false || u.id === user?.id)
+                    .map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <Button type="submit" className="w-full bg-[#FF6B00]">

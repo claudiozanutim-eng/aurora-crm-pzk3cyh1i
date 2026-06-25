@@ -1,6 +1,6 @@
 import { useState, forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { Negocio, updateNegocio } from '@/services/negocios'
-import { getUsers, User } from '@/services/users'
+import { getAllUsers, User } from '@/services/users'
 import { extractFieldErrors, getErrorMessage, type FieldErrors } from '@/lib/pocketbase/errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,7 +44,7 @@ export const NegocioDataForm = forwardRef<
           filter: `cliente_id="${clienteId}"`,
           sort: '-created',
         }),
-        getUsers(),
+        getAllUsers(),
       ])
       setNegocios(fetchedNegocios)
       setUsers(fetchedUsers)
@@ -224,11 +224,13 @@ export const NegocioDataForm = forwardRef<
               <SelectValue placeholder="Selecione um vendedor" />
             </SelectTrigger>
             <SelectContent>
-              {users.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  {u.name || 'Sem nome'}
-                </SelectItem>
-              ))}
+              {users
+                .filter((u) => u.ativo !== false || u.id === data.vendedor_id)
+                .map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name || 'Sem nome'}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
           {fieldErrors.vendedor_id && (

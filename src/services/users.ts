@@ -6,6 +6,7 @@ export interface User extends RecordModel {
   avatar?: string
   email?: string
   ativo?: boolean
+  perfil?: 'Admin' | 'Usuário'
 }
 
 export const getAllUsers = async () => {
@@ -23,4 +24,17 @@ export const getUsers = async () => {
 
 export const updateUserStatus = async (id: string, ativo: boolean) => {
   return pb.collection('users').update(id, { ativo })
+}
+
+export const createUser = async (
+  data: Partial<User> & { password?: string; passwordConfirm?: string },
+) => {
+  return pb.collection('users').create<User>({ ...data, emailVisibility: true })
+}
+
+export const updateUser = async (
+  id: string,
+  data: Partial<User> & { password?: string; passwordConfirm?: string },
+) => {
+  return pb.collection('users').update<User>(id, data)
 }

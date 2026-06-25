@@ -29,7 +29,7 @@ import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { createLead, updateLead, Lead } from '@/services/leads'
 import { useAuth } from '@/hooks/use-auth'
-import { getUsers, User } from '@/services/users'
+import { getAllUsers, User } from '@/services/users'
 import { useEffect } from 'react'
 
 const formSchema = z.object({
@@ -85,7 +85,7 @@ export function LeadFormSheet({ open, onOpenChange, onSuccess, leadToEdit }: Lea
 
   useEffect(() => {
     if (open) {
-      getUsers().then(setUsers).catch(console.error)
+      getAllUsers().then(setUsers).catch(console.error)
       if (leadToEdit) {
         form.reset({
           nome: leadToEdit.nome,
@@ -358,11 +358,13 @@ export function LeadFormSheet({ open, onOpenChange, onSuccess, leadToEdit }: Lea
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {users.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>
-                          {u.name || u.email}
-                        </SelectItem>
-                      ))}
+                      {users
+                        .filter((u) => u.ativo !== false || u.id === field.value)
+                        .map((u) => (
+                          <SelectItem key={u.id} value={u.id}>
+                            {u.name || u.email}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -25,13 +25,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = pb.authStore.onChange((_token, record) => {
-      setUser(pb.authStore.isValid ? record : null)
-      setIsAuthenticated(pb.authStore.isValid)
+      if (record && record.ativo === false) {
+        pb.authStore.clear()
+        setUser(null)
+        setIsAuthenticated(false)
+      } else {
+        setUser(pb.authStore.isValid ? record : null)
+        setIsAuthenticated(pb.authStore.isValid)
+      }
     })
 
     if (pb.authStore.isValid) {
       pb.collection('users')
         .authRefresh()
+        .then((authData) => {
+          if (authData.record.ativo === false) {
+            pb.authStore.clear()
+          }
+        })
         .catch(() => pb.authStore.clear())
         .finally(() => setLoading(false))
     } else {
@@ -56,7 +67,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      await pb.collection('users').authWithPassword(email, password)
+      const authData = await pb.collection('users').authWithPassword(email, password)
+      if (authData.record.ativo === false) {
+        pb.authStore.clear()
+        return { error: new Error('Usuário inativo. Contate um administrador.') }
+      }
       return { error: null }
     } catch (error) {
       return { error }
