@@ -88,7 +88,7 @@ export default function Tarefas() {
     try {
       const [t, u, c] = await Promise.all([
         getAllTarefas(),
-        pb.collection('users').getFullList({ filter: 'ativo = true', sort: 'name' }),
+        pb.collection('users').getFullList({ sort: 'name' }),
         pb.collection('clientes').getFullList({ sort: 'nome' }),
       ])
       setTarefas(t)
@@ -467,11 +467,13 @@ export default function Tarefas() {
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {users.map((u) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.name}
-                      </SelectItem>
-                    ))}
+                    {users
+                      .filter((u) => u.ativo !== false || u.id === taskToEdit?.vendedor_id)
+                      .map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          {u.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
