@@ -19,6 +19,10 @@ import {
   Upload,
   Calendar,
   MessageCircle,
+  Users,
+  CheckCircle2,
+  UserPlus,
+  AlertCircle,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -43,6 +47,7 @@ import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { ClienteFormSheet } from '@/components/clientes/ClienteFormSheet'
 import { ClienteImportDialog } from '@/components/clientes/ClienteImportDialog'
@@ -66,6 +71,7 @@ export default function Clientes() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('Todos')
   const [tipoFilter, setTipoFilter] = useState('Todos')
+  const [sortOption, setSortOption] = useState('nome-asc')
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [clientToEdit, setClientToEdit] = useState<Cliente | null>(null)
   const [clientToDelete, setClientToDelete] = useState<Cliente | null>(null)
@@ -159,7 +165,7 @@ export default function Clientes() {
   }, [interacoes])
 
   const filteredClientes = useMemo(() => {
-    return clientes.filter((c) => {
+    let result = clientes.filter((c) => {
       const matchSearch =
         c.nome.toLowerCase().includes(search.toLowerCase()) ||
         c.documento.includes(search) ||
@@ -170,7 +176,65 @@ export default function Clientes() {
       const matchTipo = tipoFilter === 'Todos' || c.tipo === tipoFilter
       return matchSearch && matchStatus && matchTipo
     })
-  }, [clientes, search, statusFilter, tipoFilter])
+
+    result.sort((a, b) => {
+      switch (sortOption) {
+        case 'nome-asc':
+          return (a.nome || '').localeCompare(b.nome || '')
+        case 'nome-desc':
+          return (b.nome || '').localeCompare(a.nome || '')
+        case 'last_contact-desc':
+        case 'last_contact-asc': {
+          const lastA = latestInteracaoByClient.get(a.id)?.data_hora
+          const lastB = latestInteracaoByClient.get(b.id)?.data_hora
+          const timeA = lastA ? new Date(lastA).getTime() : 0
+          const timeB = lastB ? new Date(lastB).getTime() : 0
+          if (sortOption === 'last_contact-desc') {
+            return timeB - timeA
+          }
+          return timeA - timeB
+        }
+        case 'data_cadastro-desc':
+        case 'data_cadastro-asc': {
+          const timeA = new Date(a.data_cadastro || a.created).getTime()
+          const timeB = new Date(b.data_cadastro || b.created).getTime()
+          if (sortOption === 'data_cadastro-desc') {
+            return timeB - timeA
+          }
+          return timeA - timeB
+        }
+        default:
+          return 0
+      }
+    })
+
+    return result
+  }, [clientes, search, statusFilter, tipoFilter, sortOption, latestInteracaoByClient])
+
+  const metrics = useMemo(() => {
+    let ativos = 0
+    let novos = 0
+    let semContato = 0
+
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    clientes.forEach((c) => {
+      if (c.status === 'Ativo') ativos++
+      if (new Date(c.data_cadastro || c.created) >= thirtyDaysAgo) novos++
+      if (c.status === 'Ativo') {
+        const lastInt = latestInteracaoByClient.get(c.id)
+        if (!lastInt || new Date(lastInt.data_hora) < thirtyDaysAgo) semContato++
+      }
+    })
+
+    return {
+      total: clientes.length,
+      ativos,
+      novos,
+      semContato,
+    }
+  }, [clientes, latestInteracaoByClient])
 
   return (
     <div className="space-y-6">
@@ -210,8 +274,49 @@ export default function Clientes() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.ativos}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Novos Clientes</CardTitle>
+            <UserPlus className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.novos}</div>
+            <p className="text-xs text-muted-foreground">Últimos 30 dias</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Sem Contato (&gt;30 dias)</CardTitle>
+            <AlertCircle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{metrics.semContato}</div>
+            <p className="text-xs text-muted-foreground">Clientes ativos</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="bg-white rounded-xl shadow-subtle border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row gap-4 items-center">
+        <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row gap-4 items-center flex-wrap">
           <div className="relative flex-1 w-full md:max-w-sm">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
             <Input
@@ -221,7 +326,7 @@ export default function Clientes() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="flex w-full md:w-auto gap-4">
+          <div className="flex w-full md:w-auto gap-4 flex-wrap">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full md:w-[140px] bg-gray-50">
                 <SelectValue placeholder="Status" />
@@ -242,6 +347,20 @@ export default function Clientes() {
                 <SelectItem value="Todos">Todos os Tipos</SelectItem>
                 <SelectItem value="PJ">PJ</SelectItem>
                 <SelectItem value="PF">PF</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={sortOption} onValueChange={setSortOption}>
+              <SelectTrigger className="w-full md:w-[220px] bg-gray-50">
+                <SelectValue placeholder="Ordenar por" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nome-asc">Nome (A-Z)</SelectItem>
+                <SelectItem value="nome-desc">Nome (Z-A)</SelectItem>
+                <SelectItem value="last_contact-desc">Último Contato (Mais recente)</SelectItem>
+                <SelectItem value="last_contact-asc">Último Contato (Mais antigo)</SelectItem>
+                <SelectItem value="data_cadastro-desc">Cadastro (Mais recente)</SelectItem>
+                <SelectItem value="data_cadastro-asc">Cadastro (Mais antigo)</SelectItem>
               </SelectContent>
             </Select>
           </div>
