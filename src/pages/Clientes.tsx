@@ -492,11 +492,11 @@ export default function Clientes() {
                                 className="h-9 px-2 text-gray-600 hover:text-[#FF6B00] gap-2"
                                 onClick={() => triggerAnalysis('cliente', client.id, client.nome)}
                               >
-                                <div className="h-6 w-6 rounded-full overflow-hidden shrink-0 bg-gray-100 border border-gray-200 hover:border-[#FF6B00]/40 transition-colors flex items-center justify-center">
+                                <div className="h-6 w-6 shrink-0 flex items-center justify-center">
                                   <img
                                     src={auroAvatar}
                                     alt="Auro"
-                                    className="h-full w-full object-cover object-top scale-[1.5]"
+                                    className="h-full w-full object-contain"
                                   />
                                 </div>
                                 <span className="text-xs font-medium">Analisar com Auro</span>

@@ -106,12 +106,8 @@ export default function ClienteDetail() {
           onClick={handleAnalyze}
           className="bg-[#FF6B00] hover:bg-[#E66000] text-white gap-2.5 shadow-sm h-11 px-5"
         >
-          <div className="h-7 w-7 rounded-full overflow-hidden shrink-0 bg-white/20 border border-white/30 flex items-center justify-center">
-            <img
-              src={auroAvatar}
-              alt="Auro"
-              className="h-full w-full object-cover object-top scale-[1.5]"
-            />
+          <div className="h-7 w-7 shrink-0 flex items-center justify-center">
+            <img src={auroAvatar} alt="Auro" className="h-full w-full object-contain" />
           </div>
           <span className="font-semibold text-sm">Analisar com Auro</span>
         </Button>

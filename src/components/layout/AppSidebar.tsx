@@ -93,11 +93,11 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
             onClick={() => setIsOpen(true)}
             className="flex flex-col items-center justify-center gap-3 px-2 py-4 rounded-xl transition-all duration-300 w-[90%] group hover:bg-orange-50/50"
           >
-            <div className="relative flex items-center justify-center h-[60px] w-[60px] rounded-full overflow-hidden border-2 border-[#F97316]/30 bg-orange-100/50 shadow-sm group-hover:border-[#F97316] group-hover:shadow-md transition-all duration-300">
+            <div className="relative flex items-center justify-center h-[60px] w-[60px] transition-all duration-300">
               <img
                 src={auroAvatar}
                 alt="Auro"
-                className="h-full w-full object-cover object-top scale-[1.5] group-hover:scale-[1.6] transition-transform duration-500"
+                className="h-full w-full object-contain group-hover:scale-110 transition-transform duration-500"
               />
             </div>
             <span className="text-sm font-bold text-gray-600 group-hover:text-[#F97316] transition-colors duration-300 text-center leading-tight">
