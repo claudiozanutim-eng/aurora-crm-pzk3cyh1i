@@ -6,6 +6,60 @@ routerAdd(
 
     let dataArray = body.data
 
+    if (body.source === 'leads' && Array.isArray(body.ids)) {
+      try {
+        const ids = body.ids
+        const headers = [
+          'Nome',
+          'Contato',
+          'Telefone',
+          'E-mail',
+          'Tipo',
+          'Origem',
+          'Segmento',
+          'Prioridade',
+          'Status',
+          'Vendedor',
+          'Data de Cadastro',
+          'Observações',
+        ]
+
+        dataArray = [headers]
+
+        for (const id of ids) {
+          try {
+            const lead = $app.findRecordById('leads', id)
+            let vendedorNome = ''
+            try {
+              if (lead.getString('vendedor_id')) {
+                const vendedor = $app.findRecordById('users', lead.getString('vendedor_id'))
+                vendedorNome = vendedor.getString('name')
+              }
+            } catch (err) {}
+
+            dataArray.push([
+              lead.getString('nome'),
+              lead.getString('contato_nome'),
+              lead.getString('telefone'),
+              lead.getString('email'),
+              lead.getString('tipo'),
+              lead.getString('origem'),
+              lead.getString('segmento'),
+              lead.getString('prioridade'),
+              lead.getString('status'),
+              vendedorNome,
+              lead.getString('created') ? lead.getString('created').substring(0, 10) : '',
+              lead.getString('observacoes'),
+            ])
+          } catch (err) {
+            // Ignore missing lead
+          }
+        }
+      } catch (err) {
+        return e.badRequestError('Erro ao buscar leads: ' + err.message)
+      }
+    }
+
     if (body.source === 'clientes' && Array.isArray(body.ids)) {
       try {
         const ids = body.ids

@@ -98,6 +98,19 @@ export default function Prospeccao() {
   const taxaConversao = totalLeads ? Math.round((leadsConvertidos / totalLeads) * 100) : 0
 
   const handleExport = async (format: 'csv' | 'xlsx') => {
+    if (leads.length === 0) {
+      toast({
+        title: 'Não há dados para exportar.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    const { id } = toast({
+      title: 'Gerando exportação...',
+      description: 'Aguarde enquanto preparamos o seu arquivo.',
+    })
+
     try {
       const res = await fetch(
         `${import.meta.env.VITE_POCKETBASE_URL}/backend/v1/spreadsheet/export`,
@@ -107,7 +120,7 @@ export default function Prospeccao() {
             'Content-Type': 'application/json',
             Authorization: pb.authStore.token,
           },
-          body: JSON.stringify({ collection: 'leads', format }),
+          body: JSON.stringify({ source: 'leads', ids: leads.map((l) => l.id), format }),
         },
       )
 
@@ -121,6 +134,11 @@ export default function Prospeccao() {
           link.href = `data:application/octet-stream;base64,${data.file}`
           link.download = data.filename
           link.click()
+          toast({
+            id,
+            title: 'Exportação concluída',
+            description: `O arquivo ${data.filename} foi gerado com sucesso.`,
+          })
           return
         }
       }
@@ -132,8 +150,15 @@ export default function Prospeccao() {
       a.download = `leads.${format}`
       a.click()
       window.URL.revokeObjectURL(url)
+
+      toast({
+        id,
+        title: 'Exportação concluída',
+        description: `O arquivo leads.${format} foi gerado com sucesso.`,
+      })
     } catch (error) {
       toast({
+        id,
         title: 'Erro ao exportar',
         description: 'Não foi possível exportar os dados. Tente novamente.',
         variant: 'destructive',
@@ -168,7 +193,7 @@ export default function Prospeccao() {
         <div className="flex flex-wrap items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2" disabled={leads.length === 0}>
                 <Download className="h-4 w-4" /> Exportar
               </Button>
             </DropdownMenuTrigger>
