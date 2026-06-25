@@ -33,8 +33,7 @@ export default function Funil() {
   const handleExportFunnel = async () => {
     setIsExporting(true)
     try {
-      const ids = visibleNegocios.map((n) => n.id)
-      if (ids.length === 0) {
+      if (visibleNegocios.length === 0) {
         toast({
           title: 'Aviso',
           description: 'Nenhum negócio visível para exportar.',
@@ -42,27 +41,39 @@ export default function Funil() {
         })
         return
       }
-      const res = await pb.send('/backend/v1/spreadsheet/export', {
-        method: 'POST',
-        body: JSON.stringify({ source: 'negocios', ids, format: 'xlsx' }),
+
+      const csvRows = [
+        [
+          'Cliente',
+          'Fase do Funil',
+          'Valor Estimado',
+          'Probabilidade',
+          'Data Prevista de Fechamento',
+          'Vendedor',
+        ],
+      ]
+
+      visibleNegocios.forEach((n) => {
+        csvRows.push([
+          `"${n.expand?.cliente_id?.nome?.replace(/"/g, '""') || ''}"`,
+          `"${n.status}"`,
+          `${n.valor_estimado || 0}`,
+          `${n.probabilidade || 0}`,
+          `"${n.data_prevista_fechamento ? n.data_prevista_fechamento.substring(0, 10) : ''}"`,
+          `"${n.expand?.vendedor_id?.name?.replace(/"/g, '""') || ''}"`,
+        ])
       })
-      if (res.base64) {
-        const byteCharacters = atob(res.base64)
-        const byteNumbers = new Array(byteCharacters.length)
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i)
-        }
-        const byteArray = new Uint8Array(byteNumbers)
-        const blob = new Blob([byteArray], {
-          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `Funil_Vendas_${new Date().toISOString().split('T')[0]}.xlsx`
-        a.click()
-        window.URL.revokeObjectURL(url)
-      }
+
+      const csvContent = csvRows.map((e) => e.join(',')).join('\n')
+      const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], {
+        type: 'text/csv;charset=utf-8;',
+      })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Funil_Vendas_${new Date().toISOString().split('T')[0]}.csv`
+      a.click()
+      window.URL.revokeObjectURL(url)
     } catch (e) {
       console.error(e)
       toast({ title: 'Erro', description: 'Falha ao exportar funil.', variant: 'destructive' })
@@ -87,6 +98,9 @@ export default function Funil() {
   }, [])
 
   useRealtime('negocios', () => {
+    loadData()
+  })
+  useRealtime('clientes', () => {
     loadData()
   })
 
@@ -253,8 +267,7 @@ export default function Funil() {
 
           <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
             <Button
-              variant="outline"
-              className="text-[#FF8C00] border-[#FF8C00] hover:bg-[#FF8C00]/10 hover:text-[#FF8C00] w-full sm:w-auto"
+              className="bg-[#FF8C00] hover:bg-[#E67E00] text-white w-full sm:w-auto"
               onClick={handleExportFunnel}
               disabled={isExporting}
             >
@@ -263,7 +276,7 @@ export default function Funil() {
               ) : (
                 <Download className="mr-2 h-4 w-4" />
               )}
-              Exportar
+              Exportar Funil
             </Button>
             <Button
               className="bg-[#FF8C00] hover:bg-[#E67E00] text-white w-full sm:w-auto"

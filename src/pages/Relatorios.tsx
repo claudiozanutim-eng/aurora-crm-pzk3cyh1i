@@ -93,6 +93,7 @@ export default function Relatorios() {
   }, [])
 
   useRealtime('negocios', () => loadData())
+  useRealtime('clientes', () => loadData())
 
   const handleConfirmar = () => {
     setAppliedP1Start(p1Start)
@@ -101,34 +102,40 @@ export default function Relatorios() {
     setAppliedP2End(p2End)
   }
 
-  const handleExport = async (ids: string[], filename: string) => {
+  const handleExport = async (data: Negocio[], filename: string) => {
     setIsExporting(true)
     try {
-      if (ids.length === 0) {
+      if (data.length === 0) {
         toast({ title: 'Aviso', description: 'Nenhum dado para exportar.', variant: 'default' })
         return
       }
-      const res = await pb.send('/backend/v1/spreadsheet/export', {
-        method: 'POST',
-        body: JSON.stringify({ source: 'negocios', ids, format: 'xlsx' }),
+
+      const csvRows = [
+        ['Cliente', 'Negócio', 'Valor', 'Probabilidade', 'Status', 'Data', 'Vendedor'],
+      ]
+
+      data.forEach((n) => {
+        csvRows.push([
+          `"${n.expand?.cliente_id?.nome?.replace(/"/g, '""') || ''}"`,
+          `"${n.descricao?.replace(/"/g, '""') || ''}"`,
+          `${n.valor_estimado || 0}`,
+          `${n.probabilidade || 0}`,
+          `"${n.status}"`,
+          `"${getFilterDateStr(n)}"`,
+          `"${n.expand?.vendedor_id?.name?.replace(/"/g, '""') || ''}"`,
+        ])
       })
-      if (res.base64) {
-        const byteCharacters = atob(res.base64)
-        const byteNumbers = new Array(byteCharacters.length)
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i)
-        }
-        const byteArray = new Uint8Array(byteNumbers)
-        const blob = new Blob([byteArray], {
-          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `${filename}.xlsx`
-        a.click()
-        window.URL.revokeObjectURL(url)
-      }
+
+      const csvContent = csvRows.map((e) => e.join(',')).join('\n')
+      const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], {
+        type: 'text/csv;charset=utf-8;',
+      })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`
+      a.click()
+      window.URL.revokeObjectURL(url)
     } catch (e) {
       console.error(e)
       toast({ title: 'Erro', description: 'Falha ao exportar relatórios.', variant: 'destructive' })
@@ -139,7 +146,15 @@ export default function Relatorios() {
 
   // --- Data Processing: Vendas ---
   const getFilterDateStr = (n: Negocio) => {
-    const d = n.data_fechamento_real || n.data_prevista_fechamento || n.created
+    const isClosed = n.status === 'Fechado/Ganho' || n.status === 'Perdido'
+    let d = ''
+    if (isClosed && n.data_fechamento_real) {
+      d = n.data_fechamento_real
+    } else if (n.data_prevista_fechamento) {
+      d = n.data_prevista_fechamento
+    } else {
+      d = n.created
+    }
     return d ? d.substring(0, 10) : ''
   }
 
@@ -158,7 +173,7 @@ export default function Relatorios() {
       return { total: 0, valorTotal: 0, valorPonderado: 0, conversao: 0, ticketMedio: 0 }
 
     const deals = negocios.filter((n) => {
-      const dStr = n.created ? n.created.substring(0, 10) : ''
+      const dStr = getFilterDateStr(n)
       return dStr >= start && dStr <= end
     })
 
@@ -282,12 +297,7 @@ export default function Relatorios() {
             <div className="flex items-end sm:ml-4">
               <Button
                 className="bg-[#FF8C00] hover:bg-[#E67E00] text-white w-full sm:w-auto"
-                onClick={() =>
-                  handleExport(
-                    vendasData.map((n) => n.id),
-                    'Relatorio_Vendas',
-                  )
-                }
+                onClick={() => handleExport(vendasData, 'Relatorio_Vendas')}
                 disabled={isExporting}
               >
                 {isExporting ? (
