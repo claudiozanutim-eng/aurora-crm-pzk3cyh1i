@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
 import {
   LayoutDashboard,
@@ -9,10 +9,13 @@ import {
   FileText,
   Settings,
   UserCog,
+  LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import pb from '@/lib/pocketbase/client'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
 import auroraLogoHorizontal from '@/assets/image69debc47-caaa-4a34-9b6b-8da340b6c9e7-53707.png'
 
 const navigation = [
@@ -33,7 +36,13 @@ interface AppSidebarProps {
 
 export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
   const location = useLocation()
-  const { user } = useAuth()
+  const navigate = useNavigate()
+  const { user, signOut } = useAuth()
+
+  const handleLogout = () => {
+    signOut()
+    navigate('/login')
+  }
 
   return (
     <div className={cn('flex h-full w-full flex-col bg-white border-r', className)}>
@@ -77,7 +86,7 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
 
       <div className="p-4 border-t">
         <div className="flex items-center gap-3 px-3 py-2">
-          <Avatar className="h-8 w-8 border border-gray-200">
+          <Avatar className="h-8 w-8 border border-gray-200 shrink-0">
             <AvatarImage
               src={user?.avatar ? pb.files.getURL(user, user.avatar) : undefined}
               alt={user?.name || 'User profile'}
@@ -95,10 +104,28 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
                 : 'U'}
             </AvatarFallback>
           </Avatar>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-gray-900">{user?.name || 'Usuário'}</span>
-            <span className="text-xs text-gray-500">IC Educ</span>
+          <div className="flex flex-col flex-1 min-w-0">
+            <span className="text-sm font-medium text-gray-900 truncate">
+              {user?.name || 'Usuário'}
+            </span>
+            <span className="text-xs text-gray-500 truncate">IC Educ</span>
           </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-gray-500 hover:text-primary hover:bg-primary/10 shrink-0"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="sr-only">Sair</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Sair</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </div>
