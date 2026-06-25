@@ -92,10 +92,16 @@ export default function LeadDetail() {
         </Button>
         <Button
           onClick={handleAnalyze}
-          className="bg-orange-500 hover:bg-orange-600 text-white gap-2 shadow-sm"
+          className="bg-[#FF6B00] hover:bg-[#E66000] text-white gap-2.5 shadow-sm h-11 px-5"
         >
-          <img src={auroAvatar} alt="Auro" className="h-4 w-4 object-contain rounded-full" />
-          Analisar Lead
+          <div className="h-7 w-7 rounded-full overflow-hidden shrink-0 bg-white/20 border border-white/30 flex items-center justify-center">
+            <img
+              src={auroAvatar}
+              alt="Auro"
+              className="h-full w-full object-cover object-top scale-[1.4]"
+            />
+          </div>
+          <span className="font-semibold text-sm">Analisar com Auro</span>
         </Button>
       </div>
 

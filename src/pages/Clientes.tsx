@@ -490,17 +490,19 @@ export default function Clientes() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-gray-500 hover:text-[#FF6B00]"
+                                className="h-9 w-9 text-gray-500 hover:text-[#FF6B00]"
                                 onClick={() => triggerAnalysis('cliente', client.id, client.nome)}
                               >
-                                <img
-                                  src={auroAvatar}
-                                  alt="Auro"
-                                  className="h-4 w-4 object-contain rounded-full"
-                                />
+                                <div className="h-7 w-7 rounded-full overflow-hidden shrink-0 bg-gray-100 border border-gray-200 hover:border-[#FF6B00]/40 transition-colors flex items-center justify-center">
+                                  <img
+                                    src={auroAvatar}
+                                    alt="Auro"
+                                    className="h-full w-full object-cover object-top scale-[1.4]"
+                                  />
+                                </div>
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Analisar Cliente</TooltipContent>
+                            <TooltipContent>Analisar com Auro</TooltipContent>
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
