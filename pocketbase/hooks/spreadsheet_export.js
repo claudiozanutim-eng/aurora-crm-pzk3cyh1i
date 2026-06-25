@@ -144,6 +144,64 @@ routerAdd(
       }
     }
 
+    if (body.source === 'negocios' && Array.isArray(body.ids)) {
+      try {
+        const ids = body.ids
+        const headers = [
+          'Cliente',
+          'Fase do Funil',
+          'Valor Estimado',
+          'Probabilidade (%)',
+          'Data Prevista Fechamento',
+          'Data Fechamento Real',
+          'Vendedor',
+          'Descrição',
+        ]
+
+        dataArray = [headers]
+
+        for (const id of ids) {
+          try {
+            const negocio = $app.findRecordById('negocios', id)
+            let clienteNome = ''
+            try {
+              if (negocio.getString('cliente_id')) {
+                const cliente = $app.findRecordById('clientes', negocio.getString('cliente_id'))
+                clienteNome = cliente.getString('nome')
+              }
+            } catch (err) {}
+
+            let vendedorNome = ''
+            try {
+              if (negocio.getString('vendedor_id')) {
+                const vendedor = $app.findRecordById('users', negocio.getString('vendedor_id'))
+                vendedorNome = vendedor.getString('name')
+              }
+            } catch (err) {}
+
+            dataArray.push([
+              clienteNome,
+              negocio.getString('status'),
+              negocio.get('valor_estimado') || 0,
+              negocio.get('probabilidade') || 0,
+              negocio.getString('data_prevista_fechamento')
+                ? negocio.getString('data_prevista_fechamento').substring(0, 10)
+                : '',
+              negocio.getString('data_fechamento_real')
+                ? negocio.getString('data_fechamento_real').substring(0, 10)
+                : '',
+              vendedorNome,
+              negocio.getString('descricao'),
+            ])
+          } catch (err) {
+            // Ignore missing
+          }
+        }
+      } catch (err) {
+        return e.badRequestError('Erro ao buscar negocios: ' + err.message)
+      }
+    }
+
     if (!dataArray || !Array.isArray(dataArray)) {
       return e.badRequestError('missing data array')
     }

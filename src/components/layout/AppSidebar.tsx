@@ -10,6 +10,7 @@ import {
   Settings,
   UserCog,
   LogOut,
+  BarChart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import pb from '@/lib/pocketbase/client'
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Clientes', href: '/clientes', icon: Users },
   { name: 'Prospecção', href: '/prospeccao', icon: Target },
   { name: 'Funil de Vendas', href: '/funil', icon: KanbanSquare },
+  { name: 'Relatórios', href: '/relatorios', icon: BarChart },
   { name: 'Tarefas', href: '/tarefas', icon: CheckSquare },
   { name: 'Propostas', href: '/propostas', icon: FileText },
   { name: 'Usuários', href: '/usuarios', icon: UserCog, adminOnly: true },

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { KanbanBoard } from '@/components/dashboard/KanbanBoard'
 import { Button } from '@/components/ui/button'
-import { Plus, Filter } from 'lucide-react'
+import { Plus, Filter, Download, Loader2 } from 'lucide-react'
+import pb from '@/lib/pocketbase/client'
 import { getNegocios, Negocio, updateNegocio, deleteNegocio } from '@/services/negocios'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
@@ -27,6 +28,48 @@ export default function Funil() {
 
   const { vendedorId, periodo, setVendedorId, setPeriodo } = useDashboardStore()
   const { toast } = useToast()
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExportFunnel = async () => {
+    setIsExporting(true)
+    try {
+      const ids = visibleNegocios.map((n) => n.id)
+      if (ids.length === 0) {
+        toast({
+          title: 'Aviso',
+          description: 'Nenhum negócio visível para exportar.',
+          variant: 'default',
+        })
+        return
+      }
+      const res = await pb.send('/backend/v1/spreadsheet/export', {
+        method: 'POST',
+        body: JSON.stringify({ source: 'negocios', ids, format: 'xlsx' }),
+      })
+      if (res.base64) {
+        const byteCharacters = atob(res.base64)
+        const byteNumbers = new Array(byteCharacters.length)
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i)
+        }
+        const byteArray = new Uint8Array(byteNumbers)
+        const blob = new Blob([byteArray], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `Funil_Vendas_${new Date().toISOString().split('T')[0]}.xlsx`
+        a.click()
+        window.URL.revokeObjectURL(url)
+      }
+    } catch (e) {
+      console.error(e)
+      toast({ title: 'Erro', description: 'Falha ao exportar funil.', variant: 'destructive' })
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const loadData = async () => {
     try {
@@ -208,12 +251,27 @@ export default function Funil() {
             </Select>
           </div>
 
-          <Button
-            className="bg-[#FF6B00] hover:bg-[#E66000] text-white w-full sm:w-auto"
-            onClick={() => setIsNewDealOpen(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" /> Novo Negócio
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+            <Button
+              variant="outline"
+              className="text-[#FF8C00] border-[#FF8C00] hover:bg-[#FF8C00]/10 hover:text-[#FF8C00] w-full sm:w-auto"
+              onClick={handleExportFunnel}
+              disabled={isExporting}
+            >
+              {isExporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Exportar
+            </Button>
+            <Button
+              className="bg-[#FF8C00] hover:bg-[#E67E00] text-white w-full sm:w-auto"
+              onClick={() => setIsNewDealOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Novo Negócio
+            </Button>
+          </div>
         </div>
       </div>
 

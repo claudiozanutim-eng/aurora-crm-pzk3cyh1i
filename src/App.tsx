@@ -10,6 +10,7 @@ import Index from './pages/Index'
 import Clientes from './pages/Clientes'
 import Prospeccao from './pages/Prospeccao'
 import Funil from './pages/Funil'
+import Relatorios from './pages/Relatorios'
 import Tarefas from './pages/Tarefas'
 import Propostas from './pages/Propostas'
 import PropostaForm from './pages/PropostaForm'
@@ -42,6 +43,7 @@ const AppRoutes = () => (
       <Route path="/clientes" element={<Clientes />} />
       <Route path="/prospeccao" element={<Prospeccao />} />
       <Route path="/funil" element={<Funil />} />
+      <Route path="/relatorios" element={<Relatorios />} />
       <Route path="/tarefas" element={<Tarefas />} />
       <Route path="/propostas" element={<Propostas />} />
       <Route path="/propostas/nova" element={<PropostaForm />} />
