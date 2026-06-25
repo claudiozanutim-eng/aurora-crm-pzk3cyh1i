@@ -11,7 +11,15 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, MoreHorizontal, Download, Upload } from 'lucide-react'
+import {
+  Plus,
+  Search,
+  MoreHorizontal,
+  Download,
+  Upload,
+  Calendar,
+  MessageCircle,
+} from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +38,12 @@ import {
 import { toast } from 'sonner'
 import pb from '@/lib/pocketbase/client'
 import { getClientes, deleteCliente, type Cliente } from '@/services/clientes'
+import { Interacao } from '@/services/interacoes'
 import { useRealtime } from '@/hooks/use-realtime'
+import { useAuth } from '@/hooks/use-auth'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
 import { ClienteFormSheet } from '@/components/clientes/ClienteFormSheet'
 import { ClienteImportDialog } from '@/components/clientes/ClienteImportDialog'
 import { TagBadge } from '@/components/ui/tag-badge'
@@ -46,7 +59,10 @@ import {
 } from '@/components/ui/alert-dialog'
 
 export default function Clientes() {
+  const { user } = useAuth()
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [interacoes, setInteracoes] = useState<Interacao[]>([])
+  const [users, setUsers] = useState<any[]>([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('Todos')
   const [tipoFilter, setTipoFilter] = useState('Todos')
@@ -54,8 +70,14 @@ export default function Clientes() {
   const [clientToEdit, setClientToEdit] = useState<Cliente | null>(null)
   const [clientToDelete, setClientToDelete] = useState<Cliente | null>(null)
   const [isImportOpen, setIsImportOpen] = useState(false)
+  const [taskClient, setTaskClient] = useState<Cliente | null>(null)
+  const [interactionClient, setInteractionClient] = useState<Cliente | null>(null)
 
   const navigate = useNavigate()
+
+  useEffect(() => {
+    pb.collection('users').getFullList({ sort: 'name' }).then(setUsers).catch(console.error)
+  }, [])
 
   const handleExport = async (format: 'csv' | 'xlsx') => {
     try {
@@ -99,8 +121,12 @@ export default function Clientes() {
 
   const loadData = async () => {
     try {
-      const data = await getClientes()
+      const [data, intData] = await Promise.all([
+        getClientes(),
+        pb.collection('interacoes').getFullList<Interacao>({ sort: '-data_hora' }),
+      ])
       setClientes(data)
+      setInteracoes(intData)
     } catch (error) {
       console.error('Failed to load clients:', error)
     }
@@ -118,10 +144,28 @@ export default function Clientes() {
     loadData()
   })
 
+  useRealtime('interacoes', () => {
+    loadData()
+  })
+
+  const latestInteracaoByClient = useMemo(() => {
+    const map = new Map<string, Interacao>()
+    for (const i of interacoes) {
+      if (i.cliente_id && !map.has(i.cliente_id)) {
+        map.set(i.cliente_id, i)
+      }
+    }
+    return map
+  }, [interacoes])
+
   const filteredClientes = useMemo(() => {
     return clientes.filter((c) => {
       const matchSearch =
-        c.nome.toLowerCase().includes(search.toLowerCase()) || c.documento.includes(search)
+        c.nome.toLowerCase().includes(search.toLowerCase()) ||
+        c.documento.includes(search) ||
+        c.expand?.contatos_via_cliente_id?.some((contato) =>
+          contato.email?.toLowerCase().includes(search.toLowerCase()),
+        )
       const matchStatus = statusFilter === 'Todos' || c.status === statusFilter
       const matchTipo = tipoFilter === 'Todos' || c.tipo === tipoFilter
       return matchSearch && matchStatus && matchTipo
@@ -213,8 +257,9 @@ export default function Clientes() {
                 <TableHead>E-mail</TableHead>
                 <TableHead>Segmento</TableHead>
                 <TableHead>Tag</TableHead>
+                <TableHead>Último Contato</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+                <TableHead className="w-[120px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -260,6 +305,17 @@ export default function Clientes() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        {latestInteracaoByClient.get(client.id) ? (
+                          <span className="text-gray-600">
+                            {new Date(
+                              latestInteracaoByClient.get(client.id)!.data_hora,
+                            ).toLocaleDateString('pt-BR')}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <Badge
                           variant={
                             client.status === 'Ativo'
@@ -280,30 +336,60 @@ export default function Clientes() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4 text-gray-500" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                navigate(`/clientes/${client.id}`, { state: { from: '/clientes' } })
-                              }
-                            >
-                              Ver detalhes
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                              onClick={() => setClientToDelete(client)}
-                            >
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center gap-1 justify-end">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-gray-500 hover:text-[#FF6B00]"
+                                onClick={() => setTaskClient(client)}
+                              >
+                                <Calendar className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Criar Tarefa</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-gray-500 hover:text-[#FF6B00]"
+                                onClick={() => setInteractionClient(client)}
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Registrar Interação</TooltipContent>
+                          </Tooltip>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4 text-gray-500" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  navigate(`/clientes/${client.id}`, {
+                                    state: { from: '/clientes' },
+                                  })
+                                }
+                              >
+                                Ver detalhes
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                onClick={() => setClientToDelete(client)}
+                              >
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )
@@ -326,6 +412,142 @@ export default function Clientes() {
         onSuccess={() => loadData()}
         initialData={clientToEdit}
       />
+
+      <Dialog open={!!taskClient} onOpenChange={(o) => !o && setTaskClient(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova Tarefa - {taskClient?.nome}</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!taskClient) return
+              const fd = new FormData(e.currentTarget)
+              const data = Object.fromEntries(fd.entries())
+              const dataLimiteStr = data.data_limite as string
+              const finalDataLimite = dataLimiteStr
+                ? new Date(dataLimiteStr).toISOString()
+                : new Date().toISOString()
+              try {
+                await pb.collection('tarefas').create({
+                  ...data,
+                  status: 'Pendente',
+                  data_limite: finalDataLimite,
+                  cliente_id: taskClient.id,
+                })
+                toast.success('Tarefa criada com sucesso.')
+                setTaskClient(null)
+              } catch (err) {
+                toast.error('Erro ao criar tarefa')
+              }
+            }}
+            className="space-y-4"
+          >
+            <Select name="tipo" required>
+              <SelectTrigger>
+                <SelectValue placeholder="Tipo de Interação" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="E-mail">E-mail</SelectItem>
+                <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                <SelectItem value="Telefonema">Telefonema</SelectItem>
+                <SelectItem value="Reunião">Reunião</SelectItem>
+                <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
+                <SelectItem value="Enviar Proposta">Enviar Proposta</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input name="descricao" placeholder="Descrição" required />
+            <div className="space-y-1">
+              <span className="text-sm font-medium text-gray-700">Data Limite (opcional)</span>
+              <Input name="data_limite" type="datetime-local" />
+            </div>
+            <Select name="prioridade" defaultValue="Média">
+              <SelectTrigger>
+                <SelectValue placeholder="Prioridade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Alta">Alta</SelectItem>
+                <SelectItem value="Média">Média</SelectItem>
+                <SelectItem value="Baixa">Baixa</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select name="vendedor_id" defaultValue={user?.id}>
+              <SelectTrigger>
+                <SelectValue placeholder="Responsável" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="submit" className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90">
+              Salvar Tarefa
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!interactionClient} onOpenChange={(o) => !o && setInteractionClient(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Interação - {interactionClient?.nome}</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (!interactionClient || !user) return
+              const fd = new FormData(e.currentTarget)
+              const data = Object.fromEntries(fd.entries())
+              try {
+                await pb.collection('interacoes').create({
+                  tipo: data.tipo,
+                  data_hora: new Date(data.data_hora as string).toISOString(),
+                  resumo: data.resumo,
+                  vendedor_id: user.id,
+                  cliente_id: interactionClient.id,
+                })
+                toast.success('Interação registrada com sucesso.')
+                setInteractionClient(null)
+              } catch (err) {
+                toast.error('Erro ao registrar interação')
+              }
+            }}
+            className="space-y-4"
+          >
+            <Select name="tipo" defaultValue="Telefonema" required>
+              <SelectTrigger>
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="E-mail">E-mail</SelectItem>
+                <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                <SelectItem value="Telefonema">Telefonema</SelectItem>
+                <SelectItem value="Reunião">Reunião</SelectItem>
+                <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
+                <SelectItem value="Enviar Proposta">Enviar Proposta</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="space-y-1">
+              <span className="text-sm font-medium text-gray-700">Data e Hora</span>
+              <Input
+                name="data_hora"
+                type="datetime-local"
+                required
+                defaultValue={new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+                  .toISOString()
+                  .slice(0, 16)}
+              />
+            </div>
+            <Textarea name="resumo" placeholder="Resumo da interação..." required rows={4} />
+            <Button type="submit" className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90">
+              Salvar
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!clientToDelete} onOpenChange={(o) => !o && setClientToDelete(null)}>
         <AlertDialogContent>
