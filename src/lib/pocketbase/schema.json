@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-06-25T15:43:28.271Z",
+  "generatedAt": "2026-06-25T19:06:35.173Z",
   "collections": [
     {
       "name": "users",
       "type": "auth",
       "apiRules": {
-        "list": "@request.auth.id != ''",
-        "view": "@request.auth.id != ''",
+        "list": "",
+        "view": "id = @request.auth.id || @request.auth.perfil = 'Admin'",
         "create": "@request.auth.perfil = 'Admin'",
         "update": "@request.auth.perfil = 'Admin' || id = @request.auth.id",
         "delete": "@request.auth.perfil = 'Admin'"
@@ -47,9 +47,15 @@
         {
           "name": "perfil",
           "type": "select",
-          "required": true,
+          "required": false,
           "system": false,
           "selectValues": ["Admin", "Usuário"]
+        },
+        {
+          "name": "requer_troca_senha",
+          "type": "bool",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [
