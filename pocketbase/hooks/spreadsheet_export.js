@@ -22,6 +22,7 @@ routerAdd(
           'Vendedor',
           'Data de Cadastro',
           'Observações',
+          'Tags',
         ]
 
         dataArray = [headers]
@@ -34,6 +35,16 @@ routerAdd(
               if (lead.getString('vendedor_id')) {
                 const vendedor = $app.findRecordById('users', lead.getString('vendedor_id'))
                 vendedorNome = vendedor.getString('name')
+              }
+            } catch (err) {}
+
+            let tagsStr = ''
+            try {
+              const tags = lead.get('tags')
+              if (Array.isArray(tags)) {
+                tagsStr = tags.join(', ')
+              } else if (tags && typeof tags === 'string') {
+                tagsStr = tags
               }
             } catch (err) {}
 
@@ -50,6 +61,7 @@ routerAdd(
               vendedorNome,
               lead.getString('created') ? lead.getString('created').substring(0, 10) : '',
               lead.getString('observacoes'),
+              tagsStr,
             ])
           } catch (err) {
             // Ignore missing lead

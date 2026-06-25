@@ -6,7 +6,7 @@ import { LeadImportDialog } from '@/components/prospeccao/LeadImportDialog'
 import { getLeads, Lead, updateLead, deleteLead } from '@/services/leads'
 import { useRealtime } from '@/hooks/use-realtime'
 import { Button } from '@/components/ui/button'
-import { Plus, Download, Upload } from 'lucide-react'
+import { Plus, Download, Upload, Loader2 } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -35,6 +35,7 @@ export default function Prospeccao() {
   const [leadToEdit, setLeadToEdit] = useState<Lead | null>(null)
   const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null)
   const [convertedClientNames, setConvertedClientNames] = useState<Set<string>>(new Set())
+  const [isExporting, setIsExporting] = useState(false)
 
   const loadData = async () => {
     try {
@@ -106,6 +107,7 @@ export default function Prospeccao() {
       return
     }
 
+    setIsExporting(true)
     const { id } = toast({
       title: 'Gerando exportação...',
       description: 'Aguarde enquanto preparamos o seu arquivo.',
@@ -124,21 +126,28 @@ export default function Prospeccao() {
         },
       )
 
-      if (!res.ok) throw new Error('Falha na exportação')
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.message || errData.error || 'Falha na exportação')
+      }
+
+      const dateStr = new Date().toISOString().split('T')[0]
+      const filename = `export_leads_${dateStr}.${format}`
 
       const contentType = res.headers.get('content-type')
       if (contentType?.includes('application/json')) {
         const data = await res.json()
-        if (data.file && data.filename) {
+        if (data.base64 && data.type) {
           const link = document.createElement('a')
-          link.href = `data:application/octet-stream;base64,${data.file}`
-          link.download = data.filename
+          link.href = `data:application/octet-stream;base64,${data.base64}`
+          link.download = filename
           link.click()
           toast({
             id,
             title: 'Exportação concluída',
-            description: `O arquivo ${data.filename} foi gerado com sucesso.`,
+            description: `O arquivo ${filename} foi gerado com sucesso.`,
           })
+          setIsExporting(false)
           return
         }
       }
@@ -147,22 +156,24 @@ export default function Prospeccao() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `leads.${format}`
+      a.download = filename
       a.click()
       window.URL.revokeObjectURL(url)
 
       toast({
         id,
         title: 'Exportação concluída',
-        description: `O arquivo leads.${format} foi gerado com sucesso.`,
+        description: `O arquivo ${filename} foi gerado com sucesso.`,
       })
-    } catch (error) {
+    } catch (error: any) {
       toast({
         id,
         title: 'Erro ao exportar',
-        description: 'Não foi possível exportar os dados. Tente novamente.',
+        description: error.message || 'Não foi possível exportar os dados. Tente novamente.',
         variant: 'destructive',
       })
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -193,13 +204,24 @@ export default function Prospeccao() {
         <div className="flex flex-wrap items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2" disabled={leads.length === 0}>
-                <Download className="h-4 w-4" /> Exportar
+              <Button
+                variant="outline"
+                className="gap-2"
+                disabled={leads.length === 0 || isExporting}
+              >
+                {isExporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                {isExporting ? 'Exportando...' : 'Exportar'}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleExport('csv')}>Exportar CSV</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+              <DropdownMenuItem onClick={() => handleExport('csv')} disabled={isExporting}>
+                Exportar CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('xlsx')} disabled={isExporting}>
                 Exportar Excel
               </DropdownMenuItem>
             </DropdownMenuContent>
