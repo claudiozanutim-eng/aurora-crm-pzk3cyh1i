@@ -5,34 +5,48 @@ migrate(
     const interacoes = app.findCollectionByNameOrId('interacoes')
     const tarefas = app.findCollectionByNameOrId('tarefas')
 
+    let usersCol
     try {
-      const usersCol = app.findCollectionByNameOrId('users')
-      app.delete(usersCol)
-    } catch (_) {}
-
-    const newUsers = new Collection({
-      id: '_pb_users_auth_',
-      name: 'users',
-      type: 'auth',
-      listRule: '',
-      viewRule: '',
-      createRule: '',
-      updateRule: '',
-      deleteRule: '',
-      fields: [
-        { name: 'name', type: 'text' },
-        { name: 'ativo', type: 'bool' },
-        { name: 'perfil', type: 'select', values: ['Admin', 'Usuário'], maxSelect: 1 },
-        { name: 'requer_troca_senha', type: 'bool' },
-      ],
-    })
-
-    if (newUsers.passwordAuth) {
-      newUsers.passwordAuth.enabled = true
-      newUsers.passwordAuth.identityFields = ['email']
+      usersCol = app.findCollectionByNameOrId('_pb_users_auth_')
+    } catch (_) {
+      try {
+        usersCol = app.findCollectionByNameOrId('users')
+      } catch (_) {
+        usersCol = new Collection({
+          id: '_pb_users_auth_',
+          name: 'users',
+          type: 'auth',
+        })
+      }
     }
 
-    app.save(newUsers)
+    usersCol.listRule = ''
+    usersCol.viewRule = ''
+    usersCol.createRule = ''
+    usersCol.updateRule = ''
+    usersCol.deleteRule = ''
+
+    if (!usersCol.fields.getByName('name')) {
+      usersCol.fields.add(new TextField({ name: 'name' }))
+    }
+    if (!usersCol.fields.getByName('ativo')) {
+      usersCol.fields.add(new BoolField({ name: 'ativo' }))
+    }
+    if (!usersCol.fields.getByName('perfil')) {
+      usersCol.fields.add(
+        new SelectField({ name: 'perfil', values: ['Admin', 'Usuário'], maxSelect: 1 }),
+      )
+    }
+    if (!usersCol.fields.getByName('requer_troca_senha')) {
+      usersCol.fields.add(new BoolField({ name: 'requer_troca_senha' }))
+    }
+
+    if (usersCol.passwordAuth) {
+      usersCol.passwordAuth.enabled = true
+      usersCol.passwordAuth.identityFields = ['email']
+    }
+
+    app.save(usersCol)
 
     const reAddRelation = (col) => {
       if (col && !col.fields.getByName('vendedor_id')) {
@@ -63,7 +77,7 @@ migrate(
       try {
         app.findAuthRecordByEmail('users', u.email)
       } catch (_) {
-        const record = new Record(newUsers)
+        const record = new Record(usersCol)
         record.setEmail(u.email)
         record.setPassword(u.password)
         record.setVerified(true)
