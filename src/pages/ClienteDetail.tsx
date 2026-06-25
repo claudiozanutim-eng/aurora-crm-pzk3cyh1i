@@ -110,7 +110,7 @@ export default function ClienteDetail() {
             <img
               src={auroAvatar}
               alt="Auro"
-              className="h-full w-full object-cover object-top scale-[1.4]"
+              className="h-full w-full object-cover object-top scale-[1.5]"
             />
           </div>
           <span className="font-semibold text-sm">Analisar com Auro</span>

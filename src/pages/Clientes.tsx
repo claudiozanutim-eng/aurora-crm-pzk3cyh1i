@@ -407,7 +407,7 @@ export default function Clientes() {
                 <TableHead>Tag</TableHead>
                 <TableHead>Último Contato</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-[120px]"></TableHead>
+                <TableHead className="w-[200px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -489,17 +489,17 @@ export default function Clientes() {
                             <TooltipTrigger asChild>
                               <Button
                                 variant="ghost"
-                                size="icon"
-                                className="h-9 w-9 text-gray-500 hover:text-[#FF6B00]"
+                                className="h-9 px-2 text-gray-600 hover:text-[#FF6B00] gap-2"
                                 onClick={() => triggerAnalysis('cliente', client.id, client.nome)}
                               >
-                                <div className="h-7 w-7 rounded-full overflow-hidden shrink-0 bg-gray-100 border border-gray-200 hover:border-[#FF6B00]/40 transition-colors flex items-center justify-center">
+                                <div className="h-6 w-6 rounded-full overflow-hidden shrink-0 bg-gray-100 border border-gray-200 hover:border-[#FF6B00]/40 transition-colors flex items-center justify-center">
                                   <img
                                     src={auroAvatar}
                                     alt="Auro"
-                                    className="h-full w-full object-cover object-top scale-[1.4]"
+                                    className="h-full w-full object-cover object-top scale-[1.5]"
                                   />
                                 </div>
+                                <span className="text-xs font-medium">Analisar com Auro</span>
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Analisar com Auro</TooltipContent>

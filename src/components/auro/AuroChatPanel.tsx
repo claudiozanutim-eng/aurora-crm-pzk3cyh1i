@@ -120,8 +120,12 @@ export function AuroChatPanel() {
     <div className="flex flex-col h-full bg-gray-50/50">
       <div className="flex items-center justify-between px-4 py-3 bg-white border-b shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full overflow-hidden border border-gray-100 shadow-sm bg-orange-100/50">
-            <img src={auroAvatar} alt="Auro" className="h-full w-full object-cover" />
+          <div className="h-10 w-10 rounded-full overflow-hidden border border-gray-100 shadow-sm bg-orange-100/50 flex items-center justify-center">
+            <img
+              src={auroAvatar}
+              alt="Auro"
+              className="h-full w-full object-cover object-top scale-[1.5]"
+            />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">Auro</h3>
@@ -142,8 +146,12 @@ export function AuroChatPanel() {
         <div className="space-y-6 pb-4">
           {messages.length === 0 && (
             <div className="text-center py-10">
-              <div className="h-20 w-20 mx-auto mb-4 rounded-full overflow-hidden border-4 border-[#F97316]/30 shadow-md bg-orange-100/50">
-                <img src={auroAvatar} alt="Auro" className="h-full w-full object-cover" />
+              <div className="h-20 w-20 mx-auto mb-4 rounded-full overflow-hidden border-4 border-[#F97316]/30 shadow-md bg-orange-100/50 flex items-center justify-center">
+                <img
+                  src={auroAvatar}
+                  alt="Auro"
+                  className="h-full w-full object-cover object-top scale-[1.5]"
+                />
               </div>
               <p className="text-gray-500 text-sm">
                 Olá! Sou o Auro, seu assistente virtual. Como posso ajudar você hoje?
@@ -157,8 +165,12 @@ export function AuroChatPanel() {
               className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}
             >
               {msg.role === 'assistant' && (
-                <div className="h-8 w-8 rounded-full overflow-hidden shrink-0 border border-gray-100 shadow-sm bg-orange-100/50">
-                  <img src={auroAvatar} alt="Auro" className="h-full w-full object-cover" />
+                <div className="h-8 w-8 rounded-full overflow-hidden shrink-0 border border-gray-100 shadow-sm bg-orange-100/50 flex items-center justify-center">
+                  <img
+                    src={auroAvatar}
+                    alt="Auro"
+                    className="h-full w-full object-cover object-top scale-[1.5]"
+                  />
                 </div>
               )}
               <div
@@ -175,8 +187,12 @@ export function AuroChatPanel() {
           ))}
           {isLoading && (
             <div className="flex gap-3 flex-row">
-              <div className="h-8 w-8 rounded-full overflow-hidden shrink-0 border border-gray-100 shadow-sm bg-orange-100/50">
-                <img src={auroAvatar} alt="Auro" className="h-full w-full object-cover" />
+              <div className="h-8 w-8 rounded-full overflow-hidden shrink-0 border border-gray-100 shadow-sm bg-orange-100/50 flex items-center justify-center">
+                <img
+                  src={auroAvatar}
+                  alt="Auro"
+                  className="h-full w-full object-cover object-top scale-[1.5]"
+                />
               </div>
               <div className="px-4 py-3 rounded-2xl bg-white text-gray-800 border border-gray-100 rounded-tl-sm shadow-sm flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-orange-500" />

@@ -97,7 +97,7 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
               <img
                 src={auroAvatar}
                 alt="Auro"
-                className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
+                className="h-full w-full object-cover object-top scale-[1.5] group-hover:scale-[1.6] transition-transform duration-500"
               />
             </div>
             <span className="text-sm font-bold text-gray-600 group-hover:text-[#F97316] transition-colors duration-300 text-center leading-tight">
