@@ -18,7 +18,11 @@ routerAdd(
           return accentIndex !== -1 ? accentsOut[accentIndex] : letter
         })
         .join('')
+      // Convert punctuation that separates words into spaces first
+      s = s.replace(/[-_./\\]/g, ' ')
+      // Remove any other non-word/non-space character
       s = s.replace(/[^\w\s]/gi, '')
+      // Collapse multiple spaces
       s = s.replace(/\s+/g, ' ')
       return s.trim().toLowerCase()
     }
@@ -46,72 +50,64 @@ routerAdd(
 
         let duplicates = []
 
-        const rsClientes = txApp.db().newQuery('SELECT id, nome FROM clientes').all() || []
+        const rsClientes = txApp.findRecordsByFilter('clientes', '1=1', '', 10000, 0) || []
         for (const r of rsClientes) {
-          if (normalize(r.nome) === normalizedNewName) {
-            duplicates.push(`Nome similar encontrado em Clientes: ${r.nome}`)
+          const cName = r.getString('nome')
+          if (normalize(cName) === normalizedNewName) {
+            duplicates.push(`Nome similar encontrado em Clientes: ${cName}`)
             break
           }
         }
 
         if (leadEmail) {
-          const rsEmail =
-            txApp
-              .db()
-              .newQuery(`
-            SELECT contatos.id, clientes.nome
-            FROM contatos
-            JOIN clientes ON clientes.id = contatos.cliente_id
-            WHERE LOWER(TRIM(contatos.email)) = LOWER(TRIM({:email}))
-            LIMIT 1
-          `)
-              .bind({ email: leadEmail })
-              .all() || []
-          if (rsEmail.length > 0) {
-            duplicates.push(
-              `E-mail já existente em Clientes: ${leadEmail} (Cliente: ${rsEmail[0].nome})`,
-            )
+          const rsContatos =
+            txApp.findRecordsByFilter('contatos', "email != ''", '', 10000, 0) || []
+          for (const r of rsContatos) {
+            const cEmail = r.getString('email')
+            if (cEmail && cEmail.toLowerCase().trim() === leadEmail.toLowerCase().trim()) {
+              try {
+                const cliente = txApp.findRecordById('clientes', r.getString('cliente_id'))
+                duplicates.push(
+                  `E-mail já existente em Clientes: ${leadEmail} (Cliente: ${cliente.getString('nome')})`,
+                )
+                break
+              } catch (_) {}
+            }
           }
         }
 
         if (normalizedPhone) {
-          const rsPhone =
-            txApp
-              .db()
-              .newQuery(`
-            SELECT contatos.telefone, clientes.nome
-            FROM contatos
-            JOIN clientes ON clientes.id = contatos.cliente_id
-            WHERE contatos.telefone != "" AND contatos.telefone IS NOT NULL
-          `)
-              .all() || []
-          for (const r of rsPhone) {
-            if (r.telefone.replace(/\D/g, '') === normalizedPhone) {
-              duplicates.push(
-                `Telefone já existente em Clientes: ${leadPhone} (Cliente: ${r.nome})`,
-              )
-              break
+          const rsContatos =
+            txApp.findRecordsByFilter('contatos', "telefone != ''", '', 10000, 0) || []
+          for (const r of rsContatos) {
+            const cPhone = r.getString('telefone')
+            if (cPhone && cPhone.replace(/\D/g, '') === normalizedPhone) {
+              try {
+                const cliente = txApp.findRecordById('clientes', r.getString('cliente_id'))
+                duplicates.push(
+                  `Telefone já existente em Clientes: ${leadPhone} (Cliente: ${cliente.getString('nome')})`,
+                )
+                break
+              } catch (_) {}
             }
           }
         }
 
         const rsLeads =
-          txApp
-            .db()
-            .newQuery('SELECT id, nome, email, telefone FROM leads WHERE id != {:id}')
-            .bind({ id: lead.id })
-            .all() || []
+          txApp.findRecordsByFilter('leads', "id != '" + lead.id + "'", '', 10000, 0) || []
         for (const r of rsLeads) {
-          if (normalize(r.nome) === normalizedNewName) {
-            duplicates.push(`Nome similar encontrado em outro Lead: ${r.nome}`)
+          const lName = r.getString('nome')
+          if (normalize(lName) === normalizedNewName) {
+            duplicates.push(`Nome similar encontrado em outro Lead: ${lName}`)
             break
           }
         }
 
         if (leadEmail) {
           for (const r of rsLeads) {
-            if (r.email && r.email.toLowerCase().trim() === leadEmail.toLowerCase().trim()) {
-              duplicates.push(`E-mail já existente em outro Lead: ${r.email}`)
+            const lEmail = r.getString('email')
+            if (lEmail && lEmail.toLowerCase().trim() === leadEmail.toLowerCase().trim()) {
+              duplicates.push(`E-mail já existente em outro Lead: ${lEmail}`)
               break
             }
           }
@@ -119,8 +115,9 @@ routerAdd(
 
         if (normalizedPhone) {
           for (const r of rsLeads) {
-            if (r.telefone && r.telefone.replace(/\D/g, '') === normalizedPhone) {
-              duplicates.push(`Telefone já existente em outro Lead: ${r.telefone}`)
+            const lPhone = r.getString('telefone')
+            if (lPhone && lPhone.replace(/\D/g, '') === normalizedPhone) {
+              duplicates.push(`Telefone já existente em outro Lead: ${lPhone}`)
               break
             }
           }

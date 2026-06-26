@@ -127,13 +127,13 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
                 Possível duplicidade detectada
               </AlertDialogTitle>
               <AlertDialogDescription className="text-base text-gray-700 mt-2">
-                Encontramos conflitos com os dados deste lead no sistema:
+                Uma empresa com este nome já existe no sistema. Deseja continuar com a conversão
+                assim mesmo?
                 <ul className="list-disc pl-5 mt-2 mb-4 font-medium text-gray-900">
                   {duplicateWarning.map((dup, i) => (
                     <li key={i}>{dup}</li>
                   ))}
                 </ul>
-                Deseja continuar e criar um novo cliente mesmo assim?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -160,7 +160,7 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
                     Convertendo...
                   </>
                 ) : (
-                  'Continuar mesmo assim'
+                  'Continuar'
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>
