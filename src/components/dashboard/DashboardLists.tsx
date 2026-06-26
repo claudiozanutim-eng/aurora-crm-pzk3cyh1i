@@ -9,14 +9,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { parseISO, isPast, isToday, format, differenceInDays } from 'date-fns'
-import { AlertCircle, Clock, CheckCircle2, Target } from 'lucide-react'
+import { parseISO, isPast, isToday, format, differenceInDays, differenceInYears } from 'date-fns'
+import { AlertCircle, Clock, CheckCircle2, Target, Gift } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DashboardListsProps {
   data: {
     negocios: any[]
     tarefas: any[]
+    aniversariantes: any[]
   }
   loading: boolean
 }
@@ -56,22 +57,34 @@ export function DashboardLists({ data, loading }: DashboardListsProps) {
     return { label: 'Atrasada', color: 'text-red-600 bg-red-100', icon: AlertCircle }
   }
 
+  const birthdays = useMemo(() => {
+    if (!data.aniversariantes) return []
+    return data.aniversariantes.map((c) => {
+      const bday = parseISO(c.data_aniversario)
+      const age = differenceInYears(new Date(), bday)
+      return { ...c, age }
+    })
+  }, [data.aniversariantes])
+
   if (loading) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         <Card className="shadow-subtle border-gray-100">
           <CardContent className="p-6 text-gray-400">Carregando negócios...</CardContent>
         </Card>
         <Card className="shadow-subtle border-gray-100">
           <CardContent className="p-6 text-gray-400">Carregando tarefas...</CardContent>
         </Card>
+        <Card className="shadow-subtle border-gray-100">
+          <CardContent className="p-6 text-gray-400">Carregando aniversariantes...</CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card className="shadow-subtle border-gray-100">
+    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <Card className="shadow-subtle border-gray-100 bg-white">
         <CardHeader className="pb-3 border-b border-gray-100">
           <CardTitle className="text-lg font-semibold text-gray-800 flex items-center">
             <Target className="w-5 h-5 mr-2 text-orange-500" />
@@ -145,11 +158,11 @@ export function DashboardLists({ data, loading }: DashboardListsProps) {
         </CardContent>
       </Card>
 
-      <Card className="shadow-subtle border-gray-100">
+      <Card className="shadow-subtle border-gray-100 bg-white">
         <CardHeader className="pb-3 border-b border-gray-100">
           <CardTitle className="text-lg font-semibold text-gray-800 flex items-center">
             <AlertCircle className="w-5 h-5 mr-2 text-red-500" />
-            Tarefas Atrasadas ou de Hoje
+            Tarefas Atrasadas/Hoje
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -202,6 +215,51 @@ export function DashboardLists({ data, loading }: DashboardListsProps) {
                     </TableRow>
                   )
                 })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-subtle border-gray-100 bg-white">
+        <CardHeader className="pb-3 border-b border-gray-100">
+          <CardTitle className="text-lg font-semibold text-black flex items-center">
+            <Gift className="w-5 h-5 mr-2 text-orange-500" />
+            Aniversariantes do Dia
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {birthdays.length === 0 ? (
+            <div className="p-6 text-center text-sm text-gray-500">Nenhum aniversariante hoje</div>
+          ) : (
+            <Table>
+              <TableHeader className="bg-gray-50/50">
+                <TableRow>
+                  <TableHead className="text-gray-500">Contato</TableHead>
+                  <TableHead className="text-gray-500 text-right">Idade</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {birthdays.map((b) => (
+                  <TableRow key={b.id}>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-black">{b.nome}</span>
+                        <span className="text-xs text-gray-500">
+                          {b.expand?.cliente_id?.nome || 'N/A'}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge
+                        variant="secondary"
+                        className="bg-orange-50 text-orange-700 hover:bg-orange-100"
+                      >
+                        {b.age} anos
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           )}

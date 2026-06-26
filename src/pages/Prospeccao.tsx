@@ -6,9 +6,10 @@ import { LeadImportDialog } from '@/components/prospeccao/LeadImportDialog'
 import { getLeads, Lead, updateLead, deleteLead } from '@/services/leads'
 import { useRealtime } from '@/hooks/use-realtime'
 import { Button } from '@/components/ui/button'
-import { Plus, Download, Upload, Loader2 } from 'lucide-react'
+import { Plus, Download, Upload, Loader2, Search } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { useToast } from '@/hooks/use-toast'
+import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +30,7 @@ import {
 export default function Prospeccao() {
   const { toast } = useToast()
   const [leads, setLeads] = useState<Lead[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [convertingLead, setConvertingLead] = useState<Lead | null>(null)
@@ -84,11 +86,23 @@ export default function Prospeccao() {
   const currentMonth = now.getMonth()
   const currentYear = now.getFullYear()
 
-  let totalLeads = leads.length
+  const filteredLeads = leads.filter((lead) => {
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      const nome = lead.nome?.toLowerCase() || ''
+      const contato = lead.contato_nome?.toLowerCase() || ''
+      if (!nome.includes(term) && !contato.includes(term)) {
+        return false
+      }
+    }
+    return true
+  })
+
+  let totalLeads = filteredLeads.length
   let leadsNovosMes = 0
   let leadsConvertidos = 0
 
-  leads.forEach((lead) => {
+  filteredLeads.forEach((lead) => {
     if (lead.status === 'Convertido') leadsConvertidos++
     const createdDate = new Date(lead.created)
     if (createdDate.getMonth() === currentMonth && createdDate.getFullYear() === currentYear) {
@@ -99,7 +113,7 @@ export default function Prospeccao() {
   const taxaConversao = totalLeads ? Math.round((leadsConvertidos / totalLeads) * 100) : 0
 
   const handleExport = async (format: 'csv' | 'xlsx') => {
-    if (leads.length === 0) {
+    if (filteredLeads.length === 0) {
       toast({
         title: 'Não há dados para exportar.',
         variant: 'destructive',
@@ -122,7 +136,7 @@ export default function Prospeccao() {
             'Content-Type': 'application/json',
             Authorization: pb.authStore.token,
           },
-          body: JSON.stringify({ source: 'leads', ids: leads.map((l) => l.id), format }),
+          body: JSON.stringify({ source: 'leads', ids: filteredLeads.map((l) => l.id), format }),
         },
       )
 
@@ -202,12 +216,23 @@ export default function Prospeccao() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full sm:w-64 shrink-0">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              type="text"
+              placeholder="Buscar empresa ou negócio"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 bg-white focus-visible:ring-[#F97316] focus-visible:border-[#F97316] border-gray-200 shadow-sm"
+            />
+          </div>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 className="gap-2"
-                disabled={leads.length === 0 || isExporting}
+                disabled={filteredLeads.length === 0 || isExporting}
               >
                 {isExporting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -264,7 +289,7 @@ export default function Prospeccao() {
 
       <div className="flex-1 min-h-0 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
         <LeadsKanbanBoard
-          leads={leads}
+          leads={filteredLeads}
           onStatusChange={handleStatusChange}
           onConvertLead={setConvertingLead}
           onEditLead={(lead) => {

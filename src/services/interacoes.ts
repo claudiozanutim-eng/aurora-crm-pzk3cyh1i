@@ -4,7 +4,14 @@ import type { RecordModel } from 'pocketbase'
 export interface Interacao extends RecordModel {
   cliente_id?: string
   lead_id?: string
-  tipo: 'E-mail' | 'WhatsApp' | 'Telefonema' | 'Reunião' | 'Proposta Enviada' | 'Enviar Proposta'
+  tipo:
+    | 'E-mail'
+    | 'WhatsApp'
+    | 'Telefonema'
+    | 'Reunião'
+    | 'Proposta Enviada'
+    | 'Enviar Proposta'
+    | 'Proposta Aprovada'
   data_hora: string
   vendedor_id: string
   resumo: string

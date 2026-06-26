@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react'
 import { Negocio } from '@/services/negocios'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { User, DollarSign, Trash2, Search } from 'lucide-react'
+import { User, DollarSign, Trash2, CheckCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import pb from '@/lib/pocketbase/client'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +17,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { useNavigate } from 'react-router-dom'
-import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useRealtime } from '@/hooks/use-realtime'
 
 const COLUMNS = [
   'Qualificação',
@@ -49,149 +51,226 @@ interface KanbanBoardProps {
 }
 
 const parseValor = (val: any) => {
-  if (typeof val === 'number') return val
-  if (typeof val === 'string') return parseFloat(val) || 0
-  return 0
+  const num = Number(val)
+  return isNaN(num) ? 0 : num
 }
 
+const formatCurrency = (val: number) =>
+  new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(val)
+
 export function KanbanBoard({ negocios = [], onStatusChange, onDeleteDeal }: KanbanBoardProps) {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [deleteDeal, setDeleteDeal] = useState<Negocio | null>(null)
+  const [activeColumn, setActiveColumn] = useState<Status | null>(null)
+  const [dealToDelete, setDealToDelete] = useState<Negocio | null>(null)
+  const [approvedDeals, setApprovedDeals] = useState<Set<string>>(new Set())
   const navigate = useNavigate()
 
-  const filteredNegocios = useMemo(() => {
-    if (!searchTerm) return negocios
-    const lower = searchTerm.toLowerCase()
-    return negocios.filter((n) => {
-      const clienteNome = n.expand?.cliente_id?.nome?.toLowerCase() || ''
-      const clienteFantasia = n.expand?.cliente_id?.nome_fantasia?.toLowerCase() || ''
-      const descricao = n.descricao?.toLowerCase() || ''
-      return (
-        clienteNome.includes(lower) || clienteFantasia.includes(lower) || descricao.includes(lower)
-      )
-    })
-  }, [negocios, searchTerm])
+  const safeNegocios = Array.isArray(negocios) ? negocios : []
+
+  const fetchApprovedPropostas = async () => {
+    try {
+      const records = await pb.collection('propostas').getFullList({
+        filter: 'arquivo_aprovado != ""',
+        fields: 'negocio_id',
+      })
+      const dealIds = new Set(records.map((r) => r.negocio_id))
+      setApprovedDeals(dealIds)
+    } catch {
+      /* intentionally ignored */
+    }
+  }
+
+  useEffect(() => {
+    fetchApprovedPropostas()
+  }, [negocios])
+
+  useRealtime('propostas', fetchApprovedPropostas)
 
   const handleDragStart = (e: React.DragEvent, deal: Negocio) => {
     e.dataTransfer.setData('dealId', deal.id)
+    e.dataTransfer.effectAllowed = 'move'
   }
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, column: Status) => {
     e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (activeColumn !== column) setActiveColumn(column)
   }
 
-  const handleDrop = async (e: React.DragEvent, status: Status) => {
+  const handleDragLeave = () => {
+    setActiveColumn(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, columnStatus: Status) => {
     e.preventDefault()
+    setActiveColumn(null)
     const dealId = e.dataTransfer.getData('dealId')
-    const deal = negocios.find((n) => n.id === dealId)
-    if (deal && deal.status !== status) {
-      if (onStatusChange) onStatusChange(deal, status)
+    const deal = safeNegocios.find((n) => n.id === dealId)
+    if (deal && deal.status !== columnStatus && onStatusChange) {
+      onStatusChange(deal, columnStatus)
     }
   }
 
   return (
-    <div className="flex flex-col space-y-4 h-full">
-      <div className="flex items-center space-x-2 bg-white p-2 rounded-md shadow-sm border border-gray-200 max-w-md">
-        <Search className="h-5 w-5 text-orange-500" />
-        <Input
-          placeholder="Buscar empresa ou negócio"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-black placeholder:text-gray-400"
-        />
-      </div>
+    <>
+      <div className="flex h-full w-full gap-4 overflow-x-auto p-4 hide-scrollbar snap-x">
+        {COLUMNS.map((column) => {
+          const columnDeals = safeNegocios.filter((n) => n.status === column)
+          const isActive = activeColumn === column
+          const columnTotal = columnDeals.reduce(
+            (sum, deal) => sum + parseValor(deal.valor_estimado),
+            0,
+          )
 
-      <div className="flex flex-1 gap-4 overflow-x-auto pb-4">
-        {COLUMNS.map((column) => (
-          <div
-            key={column}
-            className="flex flex-col min-w-[300px] max-w-[300px] bg-gray-50 rounded-lg p-3"
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, column)}
-          >
-            <h3 className="font-semibold text-gray-700 mb-3 flex items-center justify-between">
-              {column}
-              <Badge variant="secondary" className="bg-white text-black">
-                {filteredNegocios.filter((n) => n.status === column).length}
-              </Badge>
-            </h3>
+          return (
+            <div
+              key={column}
+              className={cn(
+                'flex-shrink-0 w-80 lg:w-auto lg:flex-1 lg:min-w-0 flex flex-col rounded-xl border transition-colors snap-start',
+                isActive ? 'border-orange-400 bg-orange-50/30' : 'bg-gray-50 border-gray-100',
+              )}
+              onDragOver={(e) => handleDragOver(e, column)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, column)}
+            >
+              <div className="flex items-center justify-between p-3 border-b border-gray-100/50 bg-white/50 rounded-t-xl backdrop-blur-sm">
+                <div className="flex flex-col">
+                  <h3 className="font-semibold text-gray-700">{column}</h3>
+                  <span className="text-xs font-medium text-gray-500 mt-0.5">
+                    Total: {formatCurrency(columnTotal)}
+                  </span>
+                </div>
+                <span className="bg-white text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full border border-gray-200 shadow-sm">
+                  {columnDeals.length}
+                </span>
+              </div>
 
-            <div className="flex-1 space-y-3 overflow-y-auto">
-              {filteredNegocios
-                .filter((n) => n.status === column)
-                .map((deal) => (
-                  <Card
-                    key={deal.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, deal)}
-                    className="cursor-move hover:border-orange-500 transition-colors bg-white"
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="font-medium text-sm text-black">
-                          {deal.expand?.cliente_id?.nome_fantasia ||
-                            deal.expand?.cliente_id?.nome ||
-                            'Sem cliente'}
+              <div className="flex-1 p-3 overflow-y-auto space-y-3">
+                {columnDeals.map((deal) => {
+                  const clientName = deal.expand?.cliente_id?.nome || 'Cliente Desconhecido'
+                  const contatos = deal.expand?.cliente_id?.expand?.contatos_via_cliente_id
+                  const mainContact =
+                    contatos?.find((c: any) => c.is_principal)?.nome ||
+                    contatos?.[0]?.nome ||
+                    'Sem Contato'
+                  const dealValor = parseValor(deal.valor_estimado)
+
+                  const isApproved = approvedDeals.has(deal.id)
+
+                  return (
+                    <Card
+                      key={deal.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, deal)}
+                      onClick={() => navigate(`/clientes/${deal.cliente_id}`)}
+                      className={cn(
+                        'cursor-pointer hover:border-orange-300 transition-colors shadow-sm',
+                        isApproved ? 'border-green-400 ring-1 ring-green-100' : 'border-gray-200',
+                      )}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <PriorityBadge priority={deal.prioridade} />
+                          {isApproved && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                              </TooltipTrigger>
+                              <TooltipContent>Proposta Aprovada (Arquivo Anexado)</TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
-                        {onDeleteDeal && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-gray-400 hover:text-red-500"
-                            onClick={() => setDeleteDeal(deal)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-
-                      <div
-                        className="text-sm font-semibold mb-2 text-black hover:text-orange-500 cursor-pointer"
-                        onClick={() => navigate(`/clientes/${deal.cliente_id}`)}
-                      >
-                        {deal.descricao || 'Sem descrição'}
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                        <div className="flex items-center">
-                          <DollarSign className="h-3 w-3 mr-1" />
-                          {new Intl.NumberFormat('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                          }).format(parseValor(deal.valor_estimado))}
+                        <h4 className="font-semibold text-gray-900 mb-2 line-clamp-1">
+                          {clientName}
+                        </h4>
+                        <div className="space-y-2 text-sm text-gray-500">
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex items-center justify-center bg-emerald-100/50 text-emerald-700 p-1 rounded-md">
+                              <DollarSign className="h-4 w-4" />
+                            </div>
+                            <span className="font-bold text-gray-900 text-base">
+                              {formatCurrency(dealValor)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-gray-400" />
+                            <span className="truncate">{mainContact}</span>
+                          </div>
+                          <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-end min-h-[2rem]">
+                            <div className="flex flex-col gap-1">
+                              {deal.status === 'Fechado/Ganho' && deal.data_fechamento_real && (
+                                <span className="text-xs text-green-700 font-medium block">
+                                  Data de Ganho: {deal.data_fechamento_real.substring(8, 10)}/
+                                  {deal.data_fechamento_real.substring(5, 7)}/
+                                  {deal.data_fechamento_real.substring(0, 4)}
+                                </span>
+                              )}
+                              {deal.status === 'Perdido' && (
+                                <>
+                                  {deal.data_fechamento_real && (
+                                    <span className="text-xs text-red-600 font-medium block">
+                                      Data de Perda: {deal.data_fechamento_real.substring(8, 10)}/
+                                      {deal.data_fechamento_real.substring(5, 7)}/
+                                      {deal.data_fechamento_real.substring(0, 4)}
+                                    </span>
+                                  )}
+                                  {deal.motivo_perda && (
+                                    <span className="text-xs text-red-600 font-medium block">
+                                      Motivo: {deal.motivo_perda}
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDealToDelete(deal)
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <PriorityBadge priority={deal.prioridade} />
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-gray-400">
-                        <div className="flex items-center">
-                          <User className="h-3 w-3 mr-1" />
-                          {deal.expand?.vendedor_id?.name || 'Não atribuído'}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+                {columnDeals.length === 0 && (
+                  <div className="h-24 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-sm">
+                    Solte aqui
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      <AlertDialog open={!!deleteDeal} onOpenChange={() => setDeleteDeal(null)}>
-        <AlertDialogContent className="bg-white">
+      <AlertDialog open={!!dealToDelete} onOpenChange={(open) => !open && setDealToDelete(null)}>
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-black">Excluir negócio?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir Negócio</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Isso excluirá permanentemente o negócio.
+              Tem certeza que deseja excluir este negócio? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-500 hover:bg-red-600 text-white"
+              className="bg-red-600 hover:bg-red-700 text-white"
               onClick={() => {
-                if (deleteDeal && onDeleteDeal) onDeleteDeal(deleteDeal)
-                setDeleteDeal(null)
+                if (dealToDelete && onDeleteDeal) {
+                  onDeleteDeal(dealToDelete)
+                }
+                setDealToDelete(null)
               }}
             >
               Excluir
@@ -199,6 +278,6 @@ export function KanbanBoard({ negocios = [], onStatusChange, onDeleteDeal }: Kan
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   )
 }

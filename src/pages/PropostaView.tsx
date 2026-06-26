@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import pb from '@/lib/pocketbase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { ArrowLeft, Download, Loader2 } from 'lucide-react'
+import { ArrowLeft, Download, Loader2, CheckCircle, Upload, Eye, Trash } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/use-auth'
@@ -18,6 +18,8 @@ export default function PropostaView() {
   const [vendedor, setVendedor] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const loadData = async () => {
@@ -110,6 +112,53 @@ export default function PropostaView() {
       toast.error(error.message || 'Não foi possível gerar o PDF. Tente novamente.')
     } finally {
       setDownloading(false)
+    }
+  }
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !id) return
+    try {
+      setUploading(true)
+      const formData = new FormData()
+      formData.append('arquivo_aprovado', file)
+      formData.append('status', 'Aprovada')
+
+      const updated = await pb.collection('propostas').update(id, formData)
+      setProposta(updated)
+
+      const fileUrl = pb.files.getUrl(updated, updated.arquivo_aprovado)
+
+      await pb.collection('interacoes').create({
+        tipo: 'Proposta Aprovada',
+        data_hora: new Date().toISOString(),
+        resumo: `Proposta "${updated.titulo}" aprovada e arquivo assinado anexado por ${user?.name || user?.email}.`,
+        observacoes: fileUrl,
+        vendedor_id: user?.id,
+        cliente_id: updated.cliente_id,
+      })
+      toast.success('Arquivo enviado e proposta aprovada com sucesso!')
+    } catch (error) {
+      console.error(error)
+      toast.error('Erro ao enviar arquivo.')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleDeleteFile = async () => {
+    if (!id || !confirm('Deseja realmente excluir este arquivo?')) return
+    try {
+      setUploading(true)
+      const updated = await pb.collection('propostas').update(id, { arquivo_aprovado: null })
+      setProposta(updated)
+      toast.success('Arquivo excluído com sucesso.')
+    } catch (error) {
+      console.error(error)
+      toast.error('Erro ao excluir arquivo.')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -229,6 +278,70 @@ export default function PropostaView() {
           </div>
         </CardContent>
       </Card>
+
+      {(proposta.status === 'Enviada' || proposta.status === 'Aprovada') && (
+        <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200 print:hidden">
+          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <CheckCircle className="text-green-500 w-5 h-5" />
+            Proposta Aprovada
+          </h3>
+          {proposta.arquivo_aprovado ? (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 rounded-lg border border-gray-200 gap-4">
+              <div className="flex flex-col">
+                <span className="font-medium text-gray-900">{proposta.arquivo_aprovado}</span>
+                <span className="text-sm text-gray-500">
+                  Enviado em {new Date(proposta.updated).toLocaleDateString('pt-BR')}
+                </span>
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  className="flex-1 sm:flex-none"
+                  onClick={() =>
+                    window.open(pb.files.getUrl(proposta, proposta.arquivo_aprovado), '_blank')
+                  }
+                >
+                  <Eye className="w-4 h-4 mr-2" /> Visualizar
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="flex-1 sm:flex-none bg-gray-200 hover:bg-gray-300 text-gray-800"
+                  onClick={handleDeleteFile}
+                  disabled={uploading}
+                >
+                  <Trash className="w-4 h-4 mr-2" /> Excluir
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm text-gray-500 mb-4">
+                Faça o upload do documento assinado (.pdf, .png, .jpg) para confirmar a aprovação
+                formal da proposta.
+              </p>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept=".pdf,.png,.jpg,.jpeg"
+                onChange={handleUpload}
+              />
+              <Button
+                className="bg-[#FF6B00] hover:bg-[#E66000] text-white"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4 mr-2" />
+                )}
+                Fazer Upload
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

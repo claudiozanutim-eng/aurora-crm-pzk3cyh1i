@@ -1,6 +1,25 @@
-import { Interacao } from '@/services/interacoes'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { useEffect, useState } from 'react'
+import { getInteracoes, createInteracao, Interacao } from '@/services/interacoes'
+import { useAuth } from '@/hooks/use-auth'
+import { useRealtime } from '@/hooks/use-realtime'
+import { useToast } from '@/hooks/use-toast'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import {
   Mail,
   MessageCircle,
@@ -8,119 +27,431 @@ import {
   Users,
   FileText,
   Send,
+  Plus,
   ArrowRightLeft,
-  Calendar,
-  User,
+  CheckCircle,
+  Upload,
+  Download,
 } from 'lucide-react'
+import pb from '@/lib/pocketbase/client'
 import { cn } from '@/lib/utils'
 
-interface InteractionsTimelineProps {
-  interacoes: Interacao[]
+const icons: Record<string, any> = {
+  'E-mail': <Mail className="w-4 h-4 text-blue-500" />,
+  WhatsApp: <MessageCircle className="w-4 h-4 text-green-500" />,
+  Telefonema: <Phone className="w-4 h-4 text-purple-500" />,
+  Reunião: <Users className="w-4 h-4 text-orange-500" />,
+  'Proposta Enviada': <FileText className="w-4 h-4 text-red-500" />,
+  'Enviar Proposta': <Send className="w-4 h-4 text-indigo-500" />,
+  'Movimentação de Funil': <ArrowRightLeft className="w-4 h-4 text-[#e55320]" />,
+  'Proposta Aprovada': <CheckCircle className="w-4 h-4 text-green-500" />,
 }
 
-const getIconForType = (tipo: string) => {
-  switch (tipo) {
-    case 'E-mail':
-      return <Mail className="h-4 w-4" />
-    case 'WhatsApp':
-      return <MessageCircle className="h-4 w-4" />
-    case 'Telefonema':
-      return <Phone className="h-4 w-4" />
-    case 'Reunião':
-      return <Users className="h-4 w-4" />
-    case 'Proposta Enviada':
-      return <FileText className="h-4 w-4" />
-    case 'Enviar Proposta':
-      return <Send className="h-4 w-4" />
-    case 'Movimentação de Funil':
-      return <ArrowRightLeft className="h-4 w-4 text-white" />
-    default:
-      return <Calendar className="h-4 w-4" />
+export function InteractionsTimeline({
+  targetId,
+  targetType,
+}: {
+  targetId: string
+  targetType: 'cliente' | 'lead'
+}) {
+  const { user } = useAuth()
+  const { toast } = useToast()
+  const [interacoes, setInteracoes] = useState<Interacao[]>([])
+  const [open, setOpen] = useState(false)
+
+  const [tipo, setTipo] = useState<Interacao['tipo']>('Telefonema')
+  const [dataHora, setDataHora] = useState('')
+  const [resumo, setResumo] = useState('')
+
+  const [externalDialogOpen, setExternalDialogOpen] = useState(false)
+  const [extTitle, setExtTitle] = useState('')
+  const [extValue, setExtValue] = useState('')
+  const [extFile, setExtFile] = useState<File | null>(null)
+  const [extNegocio, setExtNegocio] = useState('')
+  const [clientNegocios, setClientNegocios] = useState<any[]>([])
+
+  useEffect(() => {
+    if (targetType === 'cliente' && externalDialogOpen) {
+      pb.collection('negocios')
+        .getFullList({ filter: `cliente_id="${targetId}"` })
+        .then(setClientNegocios)
+        .catch(console.error)
+    }
+  }, [targetId, targetType, externalDialogOpen])
+
+  const handleExternalProposal = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!extFile) return toast({ title: 'Selecione um arquivo', variant: 'destructive' })
+    if (!extNegocio) return toast({ title: 'Selecione um negócio', variant: 'destructive' })
+
+    try {
+      const formData = new FormData()
+      formData.append('titulo', extTitle)
+      formData.append('valor_total', extValue)
+      formData.append('cliente_id', targetId)
+      formData.append('status', 'Aprovada')
+      formData.append('negocio_id', extNegocio)
+      formData.append('arquivo_aprovado', extFile)
+
+      formData.append('descricao_servicos', 'Proposta externa anexada')
+      formData.append('condicoes_comerciais', 'Vide documento anexo')
+      formData.append('validade_dias', '30')
+
+      const p = await pb.collection('propostas').create(formData)
+      const fileUrl = pb.files.getUrl(p, p.arquivo_aprovado)
+
+      await pb.collection('interacoes').create({
+        tipo: 'Proposta Aprovada',
+        data_hora: new Date().toISOString(),
+        resumo: `Proposta externa "${extTitle}" anexada por ${user?.name || user?.email}.`,
+        observacoes: fileUrl,
+        vendedor_id: user.id,
+        cliente_id: targetId,
+      })
+
+      toast({ title: 'Proposta externa anexada com sucesso.' })
+      setExternalDialogOpen(false)
+      setExtTitle('')
+      setExtValue('')
+      setExtFile(null)
+      setExtNegocio('')
+    } catch (err: any) {
+      console.error(err)
+      toast({ title: 'Erro ao anexar proposta', variant: 'destructive' })
+    }
   }
-}
 
-const getColorForType = (tipo: string) => {
-  switch (tipo) {
-    case 'E-mail':
-      return 'bg-blue-100 text-blue-600'
-    case 'WhatsApp':
-      return 'bg-green-100 text-green-600'
-    case 'Telefonema':
-      return 'bg-purple-100 text-purple-600'
-    case 'Reunião':
-      return 'bg-indigo-100 text-indigo-600'
-    case 'Proposta Enviada':
-      return 'bg-rose-100 text-rose-600'
-    case 'Enviar Proposta':
-      return 'bg-amber-100 text-amber-600'
-    case 'Movimentação de Funil':
-      return 'bg-orange-500 border border-orange-500'
-    default:
-      return 'bg-gray-100 text-gray-600'
+  const buildUrlWithToken = (rawUrl: string, download: boolean = false) => {
+    const baseUrl = rawUrl.startsWith('http')
+      ? rawUrl
+      : import.meta.env.VITE_POCKETBASE_URL + (rawUrl.startsWith('/') ? '' : '/') + rawUrl
+    try {
+      const url = new URL(baseUrl)
+      if (download) {
+        url.searchParams.set('download', '1')
+      } else {
+        url.searchParams.delete('download')
+      }
+      if (pb.authStore.token) {
+        url.searchParams.set('token', pb.authStore.token)
+      }
+      return url.toString()
+    } catch {
+      return rawUrl
+    }
   }
-}
 
-export function InteractionsTimeline({ interacoes = [] }: InteractionsTimelineProps) {
-  if (!interacoes.length) {
-    return <div className="text-center py-8 text-gray-500">Nenhuma interação registrada ainda.</div>
+  const getFileUrlInfo = (obs?: string) => {
+    if (!obs) return null
+    try {
+      const url = new URL(obs)
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
+      return {
+        viewUrl: buildUrlWithToken(url.toString(), false),
+        downloadUrl: buildUrlWithToken(url.toString(), true),
+      }
+    } catch {
+      return null
+    }
+  }
+
+  const load = async () => {
+    try {
+      const data = await getInteracoes(targetId, targetType)
+      setInteracoes(data)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [targetId])
+  useRealtime('interacoes', load)
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await createInteracao({
+        tipo,
+        data_hora: new Date(dataHora).toISOString(),
+        resumo,
+        vendedor_id: user.id,
+        ...(targetType === 'cliente' ? { cliente_id: targetId } : { lead_id: targetId }),
+      })
+      toast({ title: 'Interação registrada.' })
+      setOpen(false)
+      setResumo('')
+      setDataHora('')
+    } catch (err) {
+      toast({ title: 'Erro ao registrar', variant: 'destructive' })
+    }
   }
 
   return (
     <div className="space-y-6">
-      <div className="relative border-l border-gray-200 ml-3">
-        {interacoes.map((interacao, idx) => {
-          const isMovimentacao = interacao.tipo === 'Movimentação de Funil'
-          return (
-            <div key={interacao.id || idx} className="mb-6 ml-6 relative group">
-              <span
-                className={cn(
-                  'absolute -left-10 flex h-8 w-8 items-center justify-center rounded-full ring-8 ring-white',
-                  getColorForType(interacao.tipo),
-                )}
-              >
-                {getIconForType(interacao.tipo)}
-              </span>
-
-              <div
-                className={cn(
-                  'rounded-lg border p-4 shadow-sm bg-white transition-shadow hover:shadow-md',
-                  isMovimentacao ? 'border-orange-200 bg-orange-50/30' : 'border-gray-100',
-                )}
-              >
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 gap-2">
-                  <h4
-                    className={cn(
-                      'text-sm font-semibold',
-                      isMovimentacao ? 'text-orange-700' : 'text-gray-900',
-                    )}
-                  >
-                    {interacao.tipo}
-                  </h4>
-                  <time className="text-xs text-gray-500 font-medium">
-                    {format(new Date(interacao.data_hora), "dd 'de' MMMM, yyyy 'às' HH:mm", {
-                      locale: ptBR,
-                    })}
-                  </time>
-                </div>
-
-                <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                  {interacao.resumo}
-                </p>
-
-                {interacao.observacoes && (
-                  <div className="mt-3 text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-100 italic">
-                    {interacao.observacoes}
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold text-gray-800">Histórico de Interações</h2>
+        <div className="flex gap-2 flex-wrap justify-end">
+          {targetType === 'cliente' && (
+            <Dialog open={externalDialogOpen} onOpenChange={setExternalDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-[#e55320] hover:bg-[#cc4a1c] text-white">
+                  <Upload className="w-4 h-4 mr-2" /> Anexar Proposta Aprovada
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Anexar Proposta Externa</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleExternalProposal} className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Título</label>
+                    <Input
+                      placeholder="Título da Proposta"
+                      value={extTitle}
+                      onChange={(e) => setExtTitle(e.target.value)}
+                      required
+                    />
                   </div>
-                )}
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Valor (R$)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Ex: 5000.00"
+                      value={extValue}
+                      onChange={(e) => setExtValue(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Negócio Associado</label>
+                    <Select value={extNegocio} onValueChange={setExtNegocio} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um Negócio" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clientNegocios.length > 0 ? (
+                          clientNegocios.map((n) => (
+                            <SelectItem key={n.id} value={n.id}>
+                              {n.descricao || `Negócio #${n.id.slice(0, 5)}`} -{' '}
+                              {new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              }).format(n.valor_estimado || 0)}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            Nenhum negócio cadastrado
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Arquivo Assinado</label>
+                    <Input
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      onChange={(e) => setExtFile(e.target.files?.[0] || null)}
+                      required
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full bg-[#e55320] hover:bg-[#cc4a1c] text-white"
+                  >
+                    Salvar Proposta
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
 
-                <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-400 font-medium">
-                  <User className="h-3 w-3" />
-                  <span>{interacao.expand?.vendedor_id?.name || 'Sistema'}</span>
-                </div>
-              </div>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#e55320] hover:bg-[#cc4a1c] text-white">
+                <Plus className="w-4 h-4 mr-2" /> Nova Interação
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Registrar Interação</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSave} className="space-y-4">
+                <Select value={tipo} onValueChange={(v: any) => setTipo(v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(icons)
+                      .filter((k) => k !== 'Movimentação de Funil' && k !== 'Proposta Aprovada')
+                      .map((k) => (
+                        <SelectItem key={k} value={k}>
+                          {k}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="datetime-local"
+                  value={dataHora}
+                  onChange={(e) => setDataHora(e.target.value)}
+                  required
+                />
+                <Textarea
+                  placeholder="Resumo da interação..."
+                  value={resumo}
+                  onChange={(e) => setResumo(e.target.value)}
+                  required
+                  rows={4}
+                />
+                <Button type="submit" className="w-full bg-[#e55320] hover:bg-[#cc4a1c] text-white">
+                  Salvar
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      <div className="relative pl-6 border-l-2 border-gray-100 space-y-8 mt-4">
+        {interacoes.map((i) => (
+          <div key={i.id} className="relative">
+            <div className="absolute -left-[35px] bg-white p-2 rounded-full border-2 border-gray-100 shadow-sm flex items-center justify-center">
+              {icons[i.tipo]}
             </div>
-          )
-        })}
+            <div
+              className={cn(
+                'rounded-lg p-4 shadow-sm border',
+                i.tipo === 'Movimentação de Funil'
+                  ? 'bg-white border-orange-200 ring-1 ring-orange-50'
+                  : 'bg-gray-50 border-gray-100',
+              )}
+            >
+              <div className="flex justify-between items-start mb-2">
+                <span
+                  className={cn(
+                    'font-semibold',
+                    i.tipo === 'Movimentação de Funil' ? 'text-orange-600' : 'text-gray-800',
+                  )}
+                >
+                  {i.tipo}
+                </span>
+                <span className="text-sm text-gray-500">
+                  {new Date(i.data_hora).toLocaleString('pt-BR')}
+                </span>
+              </div>
+              <p
+                className={cn(
+                  'text-sm whitespace-pre-wrap',
+                  i.tipo === 'Movimentação de Funil' ? 'text-black font-medium' : 'text-gray-700',
+                )}
+              >
+                {i.resumo}
+              </p>
+              {i.tipo === 'Proposta Aprovada' && (
+                <div className="flex gap-2 mt-3 items-center">
+                  {(() => {
+                    const baseInfo = getFileUrlInfo(i.observacoes)
+                    if (!baseInfo) {
+                      return (
+                        <span className="text-sm text-gray-500 italic">
+                          {i.observacoes ? 'Arquivo não disponível' : 'Nenhum arquivo anexado'}
+                        </span>
+                      )
+                    }
+
+                    let downloadUrl = baseInfo.downloadUrl
+
+                    try {
+                      let baseUrlString = baseInfo.downloadUrl || baseInfo.viewUrl
+                      let url: URL
+                      if (baseUrlString.startsWith('http')) {
+                        url = new URL(baseUrlString)
+                      } else {
+                        url = new URL(
+                          baseUrlString,
+                          import.meta.env.VITE_POCKETBASE_URL || window.location.origin,
+                        )
+                      }
+
+                      const authData = JSON.parse(localStorage.getItem('pocketbase_auth') || '{}')
+                      const token = authData?.token || ''
+
+                      if (token) {
+                        url.searchParams.set('token', token)
+                      }
+
+                      url.searchParams.set('download', '1')
+                      downloadUrl = url.toString()
+                    } catch (e) {
+                      console.error('Error formatting file URL', e)
+                    }
+
+                    const handleDownloadClick = async () => {
+                      try {
+                        const res = await fetch(downloadUrl, { method: 'HEAD' })
+                        if (!res.ok) {
+                          toast({
+                            title: 'Arquivo indisponível',
+                            description: 'Não foi possível acessar o arquivo no momento.',
+                            variant: 'destructive',
+                          })
+                        }
+                      } catch (error) {
+                        toast({
+                          title: 'Erro de conexão',
+                          description: 'Verifique sua conexão e tente novamente.',
+                          variant: 'destructive',
+                        })
+                      }
+                    }
+
+                    // Força o download nativo adicionando ?download=1 à URL do PocketBase
+                    const finalDownloadUrl = downloadUrl.includes('?')
+                      ? `${downloadUrl}&download=1`
+                      : `${downloadUrl}?download=1`
+
+                    return (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="text-green-700 border-green-200 bg-green-50 hover:bg-green-100 transition-all"
+                      >
+                        <a
+                          href={finalDownloadUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          download
+                          onClick={handleDownloadClick}
+                        >
+                          <Download className="w-4 h-4 mr-2" /> Baixar Arquivo
+                        </a>
+                      </Button>
+                    )
+                  })()}
+                </div>
+              )}
+              <p
+                className={cn(
+                  'text-xs mt-3 pt-3 border-t',
+                  i.tipo === 'Movimentação de Funil'
+                    ? 'text-gray-500 border-orange-100'
+                    : 'text-gray-400 border-gray-200',
+                )}
+              >
+                Por: {i.expand?.vendedor_id?.name || 'Usuário Desconhecido'}
+              </p>
+            </div>
+          </div>
+        ))}
+        {interacoes.length === 0 && (
+          <p className="text-gray-500 text-sm italic">Nenhuma interação registrada.</p>
+        )}
       </div>
     </div>
   )

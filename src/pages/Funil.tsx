@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { KanbanBoard } from '@/components/dashboard/KanbanBoard'
 import { Button } from '@/components/ui/button'
-import { Plus, Filter, Download, Loader2 } from 'lucide-react'
+import { Plus, Filter, Download, Loader2, Search } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { getNegocios, Negocio, updateNegocio, deleteNegocio } from '@/services/negocios'
 import { useRealtime } from '@/hooks/use-realtime'
@@ -18,9 +18,11 @@ import {
 } from '@/components/ui/select'
 import { getUsers, User } from '@/services/users'
 import useDashboardStore from '@/stores/use-dashboard-store'
+import { Input } from '@/components/ui/input'
 
 export default function Funil() {
   const [negocios, setNegocios] = useState<Negocio[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [vendedores, setVendedores] = useState<User[]>([])
   const [isNewDealOpen, setIsNewDealOpen] = useState(false)
   const [closingDeal, setClosingDeal] = useState<Negocio | null>(null)
@@ -138,7 +140,31 @@ export default function Funil() {
     return true
   })
 
-  const visibleNegocios = filteredNegocios.filter((n) => n.status !== 'Prospecção')
+  const visibleNegocios = filteredNegocios.filter((n) => {
+    if (n.status === 'Prospecção') return false
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      const clientName = n.expand?.cliente_id?.nome?.toLowerCase() || ''
+      const nomeFantasia = n.expand?.cliente_id?.nome_fantasia?.toLowerCase() || ''
+      const descricao = n.descricao?.toLowerCase() || ''
+      const contatos = n.expand?.cliente_id?.expand?.contatos_via_cliente_id || []
+      const contactName = (
+        contatos.find((c: any) => c.is_principal)?.nome ||
+        contatos[0]?.nome ||
+        ''
+      ).toLowerCase()
+
+      if (
+        !clientName.includes(term) &&
+        !nomeFantasia.includes(term) &&
+        !descricao.includes(term) &&
+        !contactName.includes(term)
+      ) {
+        return false
+      }
+    }
+    return true
+  })
 
   let totalDeals = 0
   let totalPipeline = 0
@@ -236,6 +262,17 @@ export default function Funil() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full lg:w-auto">
+          <div className="relative w-full sm:w-64 shrink-0">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              type="text"
+              placeholder="Buscar empresa ou negócio"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 bg-white focus-visible:ring-[#FF8C00] focus-visible:border-[#FF8C00] border-gray-200 shadow-sm"
+            />
+          </div>
+
           <div className="flex items-center gap-2 w-full sm:w-auto bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
             <Filter className="w-4 h-4 text-gray-400 ml-2" />
             <Select value={periodo} onValueChange={setPeriodo}>

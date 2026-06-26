@@ -633,7 +633,7 @@ export function ClienteFormSheet({
                 <Button
                   type="button"
                   onClick={handleNext}
-                  className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
+                  className="w-full bg-[#e55320] hover:bg-[#e55320]/90 text-white"
                 >
                   Próximo Passo
                 </Button>
@@ -641,7 +641,7 @@ export function ClienteFormSheet({
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
+                  className="w-full bg-[#e55320] hover:bg-[#e55320]/90 text-white"
                 >
                   {isLoading ? 'Salvando...' : initialData ? 'Atualizar' : 'Salvar'}
                 </Button>
@@ -761,7 +761,7 @@ export function ClienteFormSheet({
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="flex-1 bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
+                  className="flex-1 bg-[#e55320] hover:bg-[#e55320]/90 text-white"
                 >
                   {isLoading ? 'Salvando...' : initialData ? 'Atualizar Cliente' : 'Salvar Cliente'}
                 </Button>
@@ -788,8 +788,9 @@ export function ClienteFormSheet({
                 if (pendingData) checkContacts(pendingData)
               }}
               disabled={isLoading}
-              className="bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
+              className="bg-[#e55320] hover:bg-[#e55320]/90 text-white"
             >
+              {' '}
               Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -813,8 +814,9 @@ export function ClienteFormSheet({
                 if (pendingData) executeSubmit(pendingData)
               }}
               disabled={isLoading}
-              className="bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
+              className="bg-[#e55320] hover:bg-[#e55320]/90 text-white"
             >
+              {' '}
               {isLoading ? 'Salvando...' : 'Confirmar'}
             </AlertDialogAction>
           </AlertDialogFooter>

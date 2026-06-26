@@ -35,7 +35,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, MoreVertical, Eye, Edit, Send, Copy, Trash2, Search } from 'lucide-react'
+import {
+  Plus,
+  MoreVertical,
+  Eye,
+  Edit,
+  Send,
+  Copy,
+  Trash2,
+  Search,
+  CheckCircle,
+} from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const statusColors: Record<string, string> = {
   Rascunho: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
@@ -204,7 +215,19 @@ export default function Propostas() {
             ) : (
               filtered.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="font-medium">{p.titulo}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {p.titulo}
+                      {p.arquivo_aprovado && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                          </TooltipTrigger>
+                          <TooltipContent>Proposta Aprovada (Arquivo Anexado)</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>{p.expand?.cliente_id?.nome || '-'}</TableCell>
                   <TableCell>
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(

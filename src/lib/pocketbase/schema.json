@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-25T23:44:23.063Z",
+  "generatedAt": "2026-06-26T02:36:50.437Z",
   "collections": [
     {
       "name": "users",
@@ -523,7 +523,8 @@
             "Reunião",
             "Proposta Enviada",
             "Enviar Proposta",
-            "Movimentação de Funil"
+            "Movimentação de Funil",
+            "Proposta Aprovada"
           ]
         },
         {
@@ -749,6 +750,12 @@
         {
           "name": "validade_ate",
           "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "arquivo_aprovado",
+          "type": "file",
           "required": false,
           "system": false
         }

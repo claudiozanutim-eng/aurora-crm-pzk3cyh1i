@@ -310,8 +310,9 @@ export default function Tarefas() {
             <Link
               to={`/clientes/${t.cliente_id}`}
               onClick={(e) => e.stopPropagation()}
-              className="text-xs text-[#FF6B00] hover:underline font-medium inline-flex items-center gap-1 w-fit"
+              className="text-xs text-[#e55320] hover:underline font-medium inline-flex items-center gap-1 w-fit"
             >
+              {' '}
               <Users className="w-3 h-3" />
               {t.expand.cliente_id.nome}
             </Link>
@@ -356,7 +357,7 @@ export default function Tarefas() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#FF6B00]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#e55320]" />
       </div>
     )
   }
@@ -383,7 +384,7 @@ export default function Tarefas() {
               <Button type="button" variant="outline" onClick={() => setInteractionTask(null)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-[#FF6B00] hover:bg-[#E66000] text-white">
+              <Button type="submit" className="bg-[#e55320] hover:bg-[#cc4a1c] text-white">
                 Salvar Interação
               </Button>
             </DialogFooter>
@@ -530,7 +531,7 @@ export default function Tarefas() {
               <Button type="button" variant="outline" onClick={() => setTaskFormOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-[#FF6B00] hover:bg-[#E66000] text-white">
+              <Button type="submit" className="bg-[#e55320] hover:bg-[#cc4a1c] text-white">
                 Salvar Tarefa
               </Button>
             </div>
@@ -545,7 +546,7 @@ export default function Tarefas() {
             <p className="text-gray-500 mt-1">Suas atividades e follow-ups agendados.</p>
           </div>
           <Button
-            className="bg-[#FF6B00] hover:bg-[#E66000] text-white"
+            className="bg-[#e55320] hover:bg-[#cc4a1c] text-white"
             onClick={() => {
               setTaskToEdit(null)
               setTaskFormOpen(true)
@@ -656,9 +657,9 @@ export default function Tarefas() {
 
         {/* Hoje */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b-2 border-[#FF6B00]">
+          <div className="flex items-center justify-between pb-2 border-b-2 border-[#e55320]">
             <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[#FF6B00]" />
+              <Clock className="w-4 h-4 text-[#e55320]" />
               Hoje
             </h2>
             <Badge variant="secondary" className="bg-gray-100 text-gray-600">

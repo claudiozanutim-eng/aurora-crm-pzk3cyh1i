@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import auroraLogoHorizontal from '@/assets/image69debc47-caaa-4a34-9b6b-8da340b6c9e7-53707.png'
-import auroAvatar from '@/assets/image24459793-7340-4e96-9dcd-6e71cc4b1e4d-982be.png'
+import { AuroAvatar } from '@/components/auro/AuroAvatar'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -93,13 +93,10 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
             onClick={() => setIsOpen(true)}
             className="flex flex-col items-center justify-center gap-3 px-2 py-4 rounded-xl transition-all duration-300 w-[90%] group hover:bg-orange-50/50"
           >
-            <div className="relative flex items-center justify-center h-[60px] w-[60px] transition-all duration-300">
-              <img
-                src={auroAvatar}
-                alt="Auro"
-                className="h-full w-full object-contain group-hover:scale-110 transition-transform duration-500"
-              />
-            </div>
+            <AuroAvatar
+              className="h-[60px] w-[60px] transition-all duration-300"
+              imageClassName="group-hover:scale-110 transition-transform duration-500"
+            />
             <span className="text-sm font-bold text-gray-600 group-hover:text-[#F97316] transition-colors duration-300 text-center leading-tight">
               Auro - O Assistente
             </span>

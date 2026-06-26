@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { useAuro } from '@/hooks/use-auro'
 import { LeadDataForm, LeadDataFormRef } from '@/components/details/LeadDataForm'
-import auroAvatar from '@/assets/image24459793-7340-4e96-9dcd-6e71cc4b1e4d-982be.png'
+import { AuroAvatar } from '@/components/auro/AuroAvatar'
 import { LeadContactsTab } from '@/components/details/LeadContactsTab'
 import { InteractionsTimeline } from '@/components/details/InteractionsTimeline'
 import { TasksList } from '@/components/details/TasksList'
@@ -92,11 +92,9 @@ export default function LeadDetail() {
         </Button>
         <Button
           onClick={handleAnalyze}
-          className="bg-[#FF6B00] hover:bg-[#E66000] text-white gap-2.5 shadow-sm h-11 px-5"
+          className="hover:bg-[#cc4a1c] hover:text-white gap-2.5 h-11 px-5 text-[#4A4A4A] bg-[#ffffff] shadow-[0px_0px_6px_0px_#e55320] font-semibold transition-colors duration-200 group"
         >
-          <div className="h-7 w-7 shrink-0 flex items-center justify-center">
-            <img src={auroAvatar} alt="Auro" className="h-full w-full object-contain" />
-          </div>
+          <AuroAvatar className="h-7 w-7 transition-transform duration-300 group-hover:scale-110" />
           <span className="font-semibold text-sm">Analisar com Auro</span>
         </Button>
       </div>
@@ -125,25 +123,25 @@ export default function LeadDetail() {
           <TabsList className="w-full justify-start bg-transparent border-b border-gray-200 rounded-none h-12 pb-0 overflow-x-auto mb-6 gap-6">
             <TabsTrigger
               value="dados"
-              className="data-[state=active]:border-b-2 data-[state=active]:border-[#FF6B00] data-[state=active]:text-[#FF6B00] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
+              className="data-[state=active]:border-b-2 data-[state=active]:border-[#e55320] data-[state=active]:text-[#e55320] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
             >
               Dados do Lead
             </TabsTrigger>
             <TabsTrigger
               value="contatos"
-              className="data-[state=active]:border-b-2 data-[state=active]:border-[#FF6B00] data-[state=active]:text-[#FF6B00] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
+              className="data-[state=active]:border-b-2 data-[state=active]:border-[#e55320] data-[state=active]:text-[#e55320] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
             >
               Contatos
             </TabsTrigger>
             <TabsTrigger
               value="interacoes"
-              className="data-[state=active]:border-b-2 data-[state=active]:border-[#FF6B00] data-[state=active]:text-[#FF6B00] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
+              className="data-[state=active]:border-b-2 data-[state=active]:border-[#e55320] data-[state=active]:text-[#e55320] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
             >
               Histórico de Interações
             </TabsTrigger>
             <TabsTrigger
               value="tarefas"
-              className="data-[state=active]:border-b-2 data-[state=active]:border-[#FF6B00] data-[state=active]:text-[#FF6B00] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
+              className="data-[state=active]:border-b-2 data-[state=active]:border-[#e55320] data-[state=active]:text-[#e55320] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
             >
               Tarefas
             </TabsTrigger>
@@ -180,7 +178,7 @@ export default function LeadDetail() {
             <Button
               onClick={handleSaveAndExit}
               disabled={isSaving}
-              className="bg-[#FF6B00] hover:bg-[#E66000] text-white"
+              className="bg-[#e55320] hover:bg-[#cc4a1c] text-white"
             >
               {isSaving ? 'Salvando...' : 'Salvar e Sair'}
             </Button>

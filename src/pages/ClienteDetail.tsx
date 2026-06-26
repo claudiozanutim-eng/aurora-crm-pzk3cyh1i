@@ -9,7 +9,7 @@ import { useAuro } from '@/hooks/use-auro'
 import pb from '@/lib/pocketbase/client'
 import { toast } from 'sonner'
 import { ClientDataForm, ClientDataFormRef } from '@/components/details/ClientDataForm'
-import auroAvatar from '@/assets/image24459793-7340-4e96-9dcd-6e71cc4b1e4d-982be.png'
+import { AuroAvatar } from '@/components/auro/AuroAvatar'
 import { NegocioDataForm, NegocioDataFormRef } from '@/components/details/NegocioDataForm'
 import { ContactsList } from '@/components/details/ContactsList'
 import { InteractionsTimeline } from '@/components/details/InteractionsTimeline'
@@ -35,6 +35,7 @@ export default function ClienteDetail() {
   const negocioFormRef = useRef<NegocioDataFormRef>(null)
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState('dados')
 
   const { triggerAnalysis } = useAuro()
 
@@ -104,11 +105,9 @@ export default function ClienteDetail() {
         </Button>
         <Button
           onClick={handleAnalyze}
-          className="bg-[#FF6B00] hover:bg-[#E66000] text-white gap-2.5 shadow-sm h-11 px-5"
+          className="hover:bg-[#cc4a1c] hover:text-white gap-2.5 h-11 px-5 text-[#4A4A4A] bg-[#ffffff] shadow-[0px_0px_6px_0px_#e55320] font-semibold transition-colors duration-200 group"
         >
-          <div className="h-7 w-7 shrink-0 flex items-center justify-center">
-            <img src={auroAvatar} alt="Auro" className="h-full w-full object-contain" />
-          </div>
+          <AuroAvatar className="h-7 w-7 transition-transform duration-300 group-hover:scale-110" />
           <span className="font-semibold text-sm">Analisar com Auro</span>
         </Button>
       </div>
@@ -134,53 +133,78 @@ export default function ClienteDetail() {
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm flex-1 p-6">
-        <Tabs defaultValue="dados" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full justify-start bg-transparent border-b border-gray-200 rounded-none h-12 pb-0 overflow-x-auto mb-6 gap-6">
             <TabsTrigger
               value="dados"
-              className="data-[state=active]:border-b-2 data-[state=active]:border-[#FF6B00] data-[state=active]:text-[#FF6B00] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
+              className="data-[state=active]:border-b-2 data-[state=active]:border-[#e55320] data-[state=active]:text-[#e55320] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
             >
               Dados do Cliente
             </TabsTrigger>
             <TabsTrigger
               value="contatos"
-              className="data-[state=active]:border-b-2 data-[state=active]:border-[#FF6B00] data-[state=active]:text-[#FF6B00] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
+              className="data-[state=active]:border-b-2 data-[state=active]:border-[#e55320] data-[state=active]:text-[#e55320] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
             >
               Contatos
             </TabsTrigger>
             <TabsTrigger
               value="interacoes"
-              className="data-[state=active]:border-b-2 data-[state=active]:border-[#FF6B00] data-[state=active]:text-[#FF6B00] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
+              className="data-[state=active]:border-b-2 data-[state=active]:border-[#e55320] data-[state=active]:text-[#e55320] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
             >
               Histórico de Interações
             </TabsTrigger>
             <TabsTrigger
               value="tarefas"
-              className="data-[state=active]:border-b-2 data-[state=active]:border-[#FF6B00] data-[state=active]:text-[#FF6B00] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
+              className="data-[state=active]:border-b-2 data-[state=active]:border-[#e55320] data-[state=active]:text-[#e55320] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
             >
               Tarefas
             </TabsTrigger>
             <TabsTrigger
               value="negocios"
-              className="data-[state=active]:border-b-2 data-[state=active]:border-[#FF6B00] data-[state=active]:text-[#FF6B00] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
+              className="data-[state=active]:border-b-2 data-[state=active]:border-[#e55320] data-[state=active]:text-[#e55320] data-[state=active]:shadow-none rounded-none bg-transparent px-1 pb-3 text-base"
             >
               Dados do Negócio
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dados" className="focus-visible:outline-none">
+          <TabsContent
+            value="dados"
+            forceMount
+            hidden={activeTab !== 'dados'}
+            className={`focus-visible:outline-none ${activeTab !== 'dados' ? 'hidden' : ''}`}
+          >
             <ClientDataForm ref={formRef} cliente={cliente} onExit={() => navigate(from)} />
           </TabsContent>
-          <TabsContent value="contatos" className="focus-visible:outline-none">
+          <TabsContent
+            value="contatos"
+            forceMount
+            hidden={activeTab !== 'contatos'}
+            className={`focus-visible:outline-none ${activeTab !== 'contatos' ? 'hidden' : ''}`}
+          >
             <ContactsList clienteId={cliente.id} />
           </TabsContent>
-          <TabsContent value="interacoes" className="focus-visible:outline-none">
+          <TabsContent
+            value="interacoes"
+            forceMount
+            hidden={activeTab !== 'interacoes'}
+            className={`focus-visible:outline-none ${activeTab !== 'interacoes' ? 'hidden' : ''}`}
+          >
             <InteractionsTimeline targetId={cliente.id} targetType="cliente" />
           </TabsContent>
-          <TabsContent value="tarefas" className="focus-visible:outline-none">
+          <TabsContent
+            value="tarefas"
+            forceMount
+            hidden={activeTab !== 'tarefas'}
+            className={`focus-visible:outline-none ${activeTab !== 'tarefas' ? 'hidden' : ''}`}
+          >
             <TasksList targetId={cliente.id} targetType="cliente" />
           </TabsContent>
-          <TabsContent value="negocios" className="focus-visible:outline-none">
+          <TabsContent
+            value="negocios"
+            forceMount
+            hidden={activeTab !== 'negocios'}
+            className={`focus-visible:outline-none ${activeTab !== 'negocios' ? 'hidden' : ''}`}
+          >
             <NegocioDataForm
               ref={negocioFormRef}
               clienteId={cliente.id}
@@ -206,7 +230,7 @@ export default function ClienteDetail() {
             <Button
               onClick={handleSaveAndExit}
               disabled={isSaving}
-              className="bg-[#FF6B00] hover:bg-[#E66000] text-white"
+              className="bg-[#e55320] hover:bg-[#cc4a1c] text-white"
             >
               {isSaving ? 'Salvando...' : 'Salvar e Sair'}
             </Button>

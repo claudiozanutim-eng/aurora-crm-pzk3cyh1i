@@ -8,17 +8,30 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { X, Send, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import auroAvatar from '@/assets/image24459793-7340-4e96-9dcd-6e71cc4b1e4d-982be.png'
+import { AuroAvatar } from '@/components/auro/AuroAvatar'
 
 export function AuroChatPanel() {
-  const { isOpen, setIsOpen, contextData } = useAuro()
+  const {
+    isOpen,
+    setIsOpen,
+    conversationId,
+    setConversationId,
+    initialPrompt,
+    clearInitialPrompt,
+    analysisContext,
+  } = useAuro()
   const { user } = useAuth()
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<DisplayMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [conversationId, setConversationId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Store analysis context locally so it survives clearInitialPrompt
+  const activeContextRef = useRef(analysisContext)
+  useEffect(() => {
+    if (analysisContext) activeContextRef.current = analysisContext
+  }, [analysisContext])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -26,15 +39,15 @@ export function AuroChatPanel() {
     }
   }, [messages, isLoading])
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return
-    const userMsg = input.trim()
-    setInput('')
+  const handleSend = async (overrideMsg?: string, overrideConvId?: string | null) => {
+    const userMsg = overrideMsg || input.trim()
+    if (!userMsg || isLoading) return
 
-    let currentInput = userMsg
-    if (contextData && messages.length === 0) {
-      currentInput = `Contexto: Analisando ${contextData.type} "${contextData.title}" (ID: ${contextData.id}).\n\nUsuário: ${userMsg}`
-    }
+    if (!overrideMsg) setInput('')
+
+    const activeConvId = overrideConvId !== undefined ? overrideConvId : conversationId
+
+    const currentInput = userMsg
 
     const newMessage: DisplayMessage = {
       id: Date.now().toString(),
@@ -60,12 +73,35 @@ export function AuroChatPanel() {
         },
       ])
 
-      const res = await fetch(`${import.meta.env.VITE_POCKETBASE_URL}/backend/v1/auro/chat`, {
+      const isAnalysis = !!activeContextRef.current
+      const payload: any = { message: currentInput, conversation_id: activeConvId }
+
+      if (isAnalysis && activeContextRef.current) {
+        payload.cliente_id = activeContextRef.current.targetId
+        payload.target_type = activeContextRef.current.targetType
+        payload.agent_slug = 'analista-comercial'
+      }
+
+      let endpoint = isAnalysis
+        ? `${import.meta.env.VITE_POCKETBASE_URL}/backend/v1/analise_comercial`
+        : `${import.meta.env.VITE_POCKETBASE_URL}/backend/v1/auro/chat`
+
+      let res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
-        body: JSON.stringify({ message: currentInput, conversation_id: conversationId }),
+        body: JSON.stringify(payload),
         signal: abortControllerRef.current.signal,
       })
+
+      if (res.status === 404 && isAnalysis) {
+        endpoint = `${import.meta.env.VITE_POCKETBASE_URL}/backend/v1/auro/chat`
+        res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
+          body: JSON.stringify(payload),
+          signal: abortControllerRef.current.signal,
+        })
+      }
 
       const result = await streamAgentChat(res, {
         onChunk: (_delta, full) => {
@@ -108,6 +144,18 @@ export function AuroChatPanel() {
     }
   }
 
+  useEffect(() => {
+    if (initialPrompt && isOpen) {
+      setConversationId(null)
+      setMessages([])
+      setInput('')
+
+      handleSend(initialPrompt, null)
+      clearInitialPrompt()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrompt, isOpen])
+
   const handleStop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -120,9 +168,7 @@ export function AuroChatPanel() {
     <div className="flex flex-col h-full bg-gray-50/50">
       <div className="flex items-center justify-between px-4 py-3 bg-white border-b shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 flex items-center justify-center shrink-0">
-            <img src={auroAvatar} alt="Auro" className="h-full w-full object-contain" />
-          </div>
+          <AuroAvatar className="h-10 w-10" />
           <div>
             <h3 className="font-semibold text-gray-900">Auro</h3>
             <p className="text-xs text-gray-500">Assistente IA da IC Educ</p>
@@ -142,9 +188,7 @@ export function AuroChatPanel() {
         <div className="space-y-6 pb-4">
           {messages.length === 0 && (
             <div className="text-center py-10">
-              <div className="h-20 w-20 mx-auto mb-4 flex items-center justify-center shrink-0">
-                <img src={auroAvatar} alt="Auro" className="h-full w-full object-contain" />
-              </div>
+              <AuroAvatar className="h-20 w-20 mx-auto mb-4" />
               <p className="text-gray-500 text-sm">
                 Olá! Sou o Auro, seu assistente virtual. Como posso ajudar você hoje?
               </p>
@@ -156,11 +200,7 @@ export function AuroChatPanel() {
               key={msg.id}
               className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}
             >
-              {msg.role === 'assistant' && (
-                <div className="h-8 w-8 shrink-0 flex items-center justify-center">
-                  <img src={auroAvatar} alt="Auro" className="h-full w-full object-contain" />
-                </div>
-              )}
+              {msg.role === 'assistant' && <AuroAvatar className="h-8 w-8" />}
               <div
                 className={cn(
                   'px-4 py-2 rounded-2xl max-w-[85%] text-sm shadow-sm',
@@ -175,9 +215,7 @@ export function AuroChatPanel() {
           ))}
           {isLoading && (
             <div className="flex gap-3 flex-row">
-              <div className="h-8 w-8 shrink-0 flex items-center justify-center">
-                <img src={auroAvatar} alt="Auro" className="h-full w-full object-contain" />
-              </div>
+              <AuroAvatar className="h-8 w-8" />
               <div className="px-4 py-3 rounded-2xl bg-white text-gray-800 border border-gray-100 rounded-tl-sm shadow-sm flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
                 <span className="text-sm text-gray-500">Auro está digitando...</span>

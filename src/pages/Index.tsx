@@ -127,6 +127,7 @@ export default function Index() {
     leads: [] as any[],
     negocios: [] as any[],
     tarefas: [] as any[],
+    aniversariantes: [] as any[],
   })
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('current_month')
@@ -208,7 +209,9 @@ export default function Index() {
         filterTarefas = filterTarefas ? `(${filterTarefas}) && ${vFilter}` : vFilter
       }
 
-      const [clientes, leads, negocios, tarefas] = await Promise.all([
+      const todayFilter = `"${format(new Date(), '-MM-dd')}"`
+
+      const [clientes, leads, negocios, tarefas, aniversariantes] = await Promise.all([
         pb.collection('clientes').getFullList({ filter: filterClientes }),
         pb.collection('leads').getFullList({ filter: filterLeads }),
         pb
@@ -217,6 +220,9 @@ export default function Index() {
         pb
           .collection('tarefas')
           .getFullList({ expand: 'cliente_id,lead_id', filter: filterTarefas }),
+        pb
+          .collection('contatos')
+          .getFullList({ expand: 'cliente_id', filter: `data_aniversario ~ ${todayFilter}` }),
       ])
 
       let finalClientes = clientes
@@ -225,7 +231,7 @@ export default function Index() {
         finalClientes = clientes.filter((c) => clientIds.has(c.id))
       }
 
-      setData({ clientes: finalClientes, leads, negocios, tarefas })
+      setData({ clientes: finalClientes, leads, negocios, tarefas, aniversariantes })
     } catch (e) {
       console.error(e)
     } finally {
@@ -237,10 +243,89 @@ export default function Index() {
     loadData()
   }, [queryDates, vendedorId])
 
-  useRealtime('clientes', loadData)
-  useRealtime('leads', loadData)
-  useRealtime('negocios', loadData)
-  useRealtime('tarefas', loadData)
+  const handleRealtimeEvent = async (collection: string, action: string, record: any) => {
+    if (action === 'delete') {
+      setData((prev) => ({
+        ...prev,
+        [collection]: prev[collection as keyof typeof prev].filter(
+          (item: any) => item.id !== record.id,
+        ),
+      }))
+      return
+    }
+
+    try {
+      let fetchedRecord = record
+      if (collection === 'negocios') {
+        fetchedRecord = await pb
+          .collection('negocios')
+          .getOne(record.id, { expand: 'cliente_id,vendedor_id' })
+      } else if (collection === 'tarefas') {
+        fetchedRecord = await pb
+          .collection('tarefas')
+          .getOne(record.id, { expand: 'cliente_id,lead_id' })
+      }
+
+      setData((prev) => {
+        const currentList = prev[collection as keyof typeof prev] as any[]
+        let nextList = currentList
+
+        if (vendedorId !== 'all') {
+          if (
+            (collection === 'leads' || collection === 'negocios' || collection === 'tarefas') &&
+            fetchedRecord.vendedor_id !== vendedorId
+          ) {
+            return {
+              ...prev,
+              [collection]: currentList.filter((item) => item.id !== fetchedRecord.id),
+            }
+          }
+
+          if (collection === 'clientes') {
+            const clientIds = new Set(prev.negocios.map((n) => n.cliente_id).filter(Boolean))
+            if (!clientIds.has(fetchedRecord.id)) {
+              return {
+                ...prev,
+                clientes: currentList.filter((item) => item.id !== fetchedRecord.id),
+              }
+            }
+          }
+        }
+
+        const exists = currentList.some((item) => item.id === fetchedRecord.id)
+        if (exists) {
+          nextList = currentList.map((item) =>
+            item.id === fetchedRecord.id ? fetchedRecord : item,
+          )
+        } else {
+          nextList = [...currentList, fetchedRecord]
+        }
+
+        const nextState = { ...prev, [collection]: nextList }
+
+        if (collection === 'negocios' && fetchedRecord.expand?.cliente_id) {
+          const cliente = fetchedRecord.expand.cliente_id
+          if (!nextState.clientes.some((c) => c.id === cliente.id)) {
+            nextState.clientes = [...nextState.clientes, cliente]
+          } else {
+            nextState.clientes = nextState.clientes.map((c) => (c.id === cliente.id ? cliente : c))
+          }
+        }
+
+        return nextState
+      })
+    } catch (err) {
+      console.error('Error fetching real-time record', err)
+    }
+  }
+
+  useRealtime('clientes', (e) => handleRealtimeEvent('clientes', e.action, e.record))
+  useRealtime('leads', (e) => handleRealtimeEvent('leads', e.action, e.record))
+  useRealtime('negocios', (e) => handleRealtimeEvent('negocios', e.action, e.record))
+  useRealtime('tarefas', (e) => handleRealtimeEvent('tarefas', e.action, e.record))
+  useRealtime('interacoes', () => {
+    // Placeholder as per requirements; interactions are not stored in Dashboard state directly.
+  })
 
   const filteredData = useMemo(() => {
     const { startDate, endDate } = queryDates
@@ -313,6 +398,7 @@ export default function Index() {
       lists: {
         negocios: negocios,
         tarefas: data.tarefas.filter((t) => isDateInPeriod(t.data_limite || t.created)),
+        aniversariantes: data.aniversariantes,
       },
     }
   }, [data, queryDates])

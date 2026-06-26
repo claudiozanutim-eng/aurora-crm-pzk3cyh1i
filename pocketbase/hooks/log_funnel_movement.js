@@ -1,9 +1,15 @@
-onRecordAfterUpdateSuccess(
+onRecordUpdateRequest(
   (e) => {
     const oldStatus = e.record.original().getString('status')
     const newStatus = e.record.getString('status')
 
-    if (oldStatus && newStatus && oldStatus !== newStatus) {
+    const statusChanged = oldStatus && newStatus && oldStatus !== newStatus
+
+    // Proceed with the update first
+    e.next()
+
+    // If successful and status changed, log the interaction
+    if (statusChanged) {
       const user = e.auth
       const userName = user ? user.getString('name') || user.getString('email') : 'Sistema'
       const userId = user ? user.id : ''
@@ -42,8 +48,6 @@ onRecordAfterUpdateSuccess(
         }
       }
     }
-
-    e.next()
   },
   'negocios',
   'leads',

@@ -13,6 +13,7 @@ export interface Proposta extends RecordModel {
   validade_ate?: string
   status: 'Rascunho' | 'Enviada' | 'Aprovada' | 'Rejeitada' | 'Expirada'
   data_envio?: string
+  arquivo_aprovado?: string
   expand?: {
     cliente_id?: Cliente
     negocio_id?: Negocio

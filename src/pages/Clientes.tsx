@@ -52,7 +52,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { ClienteFormSheet } from '@/components/clientes/ClienteFormSheet'
-import auroAvatar from '@/assets/image24459793-7340-4e96-9dcd-6e71cc4b1e4d-982be.png'
+import { AuroAvatar } from '@/components/auro/AuroAvatar'
 import { ClienteImportDialog } from '@/components/clientes/ClienteImportDialog'
 import { TagBadge } from '@/components/ui/tag-badge'
 import {
@@ -296,7 +296,7 @@ export default function Clientes() {
               setClientToEdit(null)
               setIsSheetOpen(true)
             }}
-            className="bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white"
+            className="bg-[#e55320] hover:bg-[#e55320]/90 text-white"
           >
             <Plus className="mr-2 h-4 w-4" /> Novo Cliente
           </Button>
@@ -488,18 +488,11 @@ export default function Clientes() {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
-                                variant="ghost"
-                                className="h-9 px-2 text-gray-600 hover:text-[#FF6B00] gap-2"
+                                className="hover:bg-[#cc4a1c] hover:text-white gap-2.5 h-11 px-5 text-[#4A4A4A] bg-[#ffffff] shadow-[0px_0px_6px_0px_#e55320] font-semibold transition-colors duration-200 group"
                                 onClick={() => triggerAnalysis('cliente', client.id, client.nome)}
                               >
-                                <div className="h-6 w-6 shrink-0 flex items-center justify-center">
-                                  <img
-                                    src={auroAvatar}
-                                    alt="Auro"
-                                    className="h-full w-full object-contain"
-                                  />
-                                </div>
-                                <span className="text-xs font-medium">Analisar com Auro</span>
+                                <AuroAvatar className="h-7 w-7 transition-transform duration-300 group-hover:scale-110" />
+                                <span className="font-semibold text-sm">Analisar com Auro</span>
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Analisar com Auro</TooltipContent>
@@ -509,7 +502,7 @@ export default function Clientes() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-gray-500 hover:text-[#FF6B00]"
+                                className="h-8 w-8 text-gray-500 hover:text-[#e55320]"
                                 onClick={() => setTaskClient(client)}
                               >
                                 <Calendar className="h-4 w-4" />
@@ -522,7 +515,7 @@ export default function Clientes() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-gray-500 hover:text-[#FF6B00]"
+                                className="h-8 w-8 text-gray-500 hover:text-[#e55320]"
                                 onClick={() => setInteractionClient(client)}
                               >
                                 <MessageCircle className="h-4 w-4" />
@@ -650,7 +643,7 @@ export default function Clientes() {
                 ))}
               </SelectContent>
             </Select>
-            <Button type="submit" className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90">
+            <Button type="submit" className="w-full bg-[#e55320] hover:bg-[#e55320]/90 text-white">
               Salvar Tarefa
             </Button>
           </form>
@@ -709,7 +702,7 @@ export default function Clientes() {
               />
             </div>
             <Textarea name="resumo" placeholder="Resumo da interação..." required rows={4} />
-            <Button type="submit" className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90">
+            <Button type="submit" className="w-full bg-[#e55320] hover:bg-[#e55320]/90 text-white">
               Salvar
             </Button>
           </form>
