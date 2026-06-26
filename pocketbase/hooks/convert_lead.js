@@ -29,35 +29,10 @@ routerAdd(
         }
 
         if (clienteExists) {
-          customError = new BadRequestError('Já existe um cliente cadastrado com este nome.', {
-            nome: 'Já existe um cliente cadastrado com este nome.',
-          })
-          throw new Error('Validation')
-        }
-
-        let contatoExists = false
-        const leadEmail = lead.getString('email')
-        const leadTelefone = lead.getString('telefone')
-
-        if (leadEmail) {
-          try {
-            txApp.findFirstRecordByData('contatos', 'email', leadEmail)
-            contatoExists = true
-          } catch (_) {}
-        }
-
-        if (!contatoExists && leadTelefone) {
-          try {
-            txApp.findFirstRecordByData('contatos', 'telefone', leadTelefone)
-            contatoExists = true
-          } catch (_) {}
-        }
-
-        if (contatoExists) {
           customError = new BadRequestError(
-            'Já existe um contato cadastrado com este e-mail ou telefone.',
+            "Este nome de cliente já existe. Por favor, utilize um nome único ou adicione um identificador (ex: 'NOME - Unidade X') para diferenciar o registro.",
             {
-              error: 'Já existe um contato cadastrado com este e-mail ou telefone.',
+              nome: "Este nome de cliente já existe. Por favor, utilize um nome único ou adicione um identificador (ex: 'NOME - Unidade X') para diferenciar o registro.",
             },
           )
           throw new Error('Validation')

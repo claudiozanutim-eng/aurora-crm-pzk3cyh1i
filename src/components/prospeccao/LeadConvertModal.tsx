@@ -70,12 +70,19 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
       const errorMsg = getErrorMessage(e)
 
       let msg =
-        fieldErrs.error ||
         fieldErrs.nome ||
+        fieldErrs.error ||
         fieldErrs.valor_estimado ||
         errorMsg ||
         'Não foi possível realizar a conversão.'
-      if (msg === 'Something went wrong.' || msg === 'An unexpected error occurred.') {
+
+      if (
+        msg.toLowerCase().includes('nome de cliente já existe') ||
+        (msg.toLowerCase().includes('nome') && msg.toLowerCase().includes('já existe'))
+      ) {
+        msg =
+          "Este nome de cliente já existe. Por favor, utilize um nome único ou adicione um identificador (ex: 'NOME - Unidade X') para diferenciar o registro."
+      } else if (msg === 'Something went wrong.' || msg === 'An unexpected error occurred.') {
         msg =
           'Não foi possível realizar a conversão. Verifique os campos obrigatórios (Cliente, Contato).'
       }
