@@ -8,14 +8,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Lead } from '@/services/leads'
+import { Lead, convertLeadToSale } from '@/services/leads'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage, extractFieldErrors } from '@/lib/pocketbase/errors'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertTriangle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import pb from '@/lib/pocketbase/client'
 
 interface LeadConvertModalProps {
   lead: Lead
@@ -28,12 +27,14 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
   const [loading, setLoading] = useState(false)
   const [valorEstimado, setValorEstimado] = useState('')
   const [clienteNome, setClienteNome] = useState(lead.nome || '')
+  const [duplicateWarning, setDuplicateWarning] = useState<string[] | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
     if (open) {
       setClienteNome(lead.nome || '')
       setValorEstimado('')
+      setDuplicateWarning(null)
     }
   }, [open, lead])
 
@@ -53,38 +54,27 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
     )
   }
 
-  const handleConvert = async () => {
+  const handleConvert = async (ignoreDuplicates = false) => {
     setLoading(true)
     try {
       const valorNum = valorEstimado
         ? Number(valorEstimado.replace(/\./g, '').replace(',', '.'))
         : null
 
-      const res = await pb.send('/backend/v1/convert-lead', {
-        method: 'POST',
-        body: JSON.stringify({
-          lead_id: lead.id,
-          valor_estimado: valorNum,
-          cliente_nome: clienteNome,
-        }),
-        headers: { 'Content-Type': 'application/json' },
-      })
+      await convertLeadToSale(lead, clienteNome, valorNum, ignoreDuplicates)
 
-      if (res.warning) {
-        toast({
-          title: 'Lead convertido com aviso',
-          description: res.warning,
-          duration: 6000,
-        })
-      } else {
-        toast({
-          title: 'Lead convertido com sucesso! O novo negócio já está no seu funil.',
-        })
-      }
+      toast({
+        title: 'Lead convertido com sucesso! O novo negócio já está no seu funil.',
+      })
 
       onSuccess()
       onOpenChange(false)
     } catch (e: any) {
+      if (e.status === 409 && e.response?.error === 'duplicate_warning') {
+        setDuplicateWarning(e.response.duplicates || [])
+        return
+      }
+
       const fieldErrs = extractFieldErrors(e)
       const errorMsg = getErrorMessage(e)
 
@@ -119,63 +109,122 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen && duplicateWarning) {
+          setDuplicateWarning(null)
+        }
+        onOpenChange(isOpen)
+      }}
+    >
       <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            Deseja converter este lead em cliente e abrir um novo negócio?
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            Isso irá gerar um novo cliente, um contato e um novo negócio na coluna "Qualificação".
-          </AlertDialogDescription>
-        </AlertDialogHeader>
+        {duplicateWarning ? (
+          <>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+                <AlertTriangle className="h-5 w-5" />
+                Atenção: Dados Duplicados
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-base text-gray-700 mt-2">
+                Encontramos registros existentes com os seguintes dados deste lead no sistema:
+                <ul className="list-disc pl-5 mt-2 mb-4 font-medium text-gray-900">
+                  {duplicateWarning.map((dup) => (
+                    <li key={dup}>{dup}</li>
+                  ))}
+                </ul>
+                Deseja continuar e criar um novo cliente mesmo assim?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={(e) => {
+                  e.preventDefault()
+                  setDuplicateWarning(null)
+                }}
+                disabled={loading}
+              >
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleConvert(true)
+                }}
+                disabled={loading}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Convertendo...
+                  </>
+                ) : (
+                  'Continuar mesmo assim'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </>
+        ) : (
+          <>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Deseja converter este lead em cliente e abrir um novo negócio?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Isso irá gerar um novo cliente, um contato e um novo negócio na coluna
+                "Qualificação".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
 
-        <div className="py-4 space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="cliente_nome">Nome do Cliente *</Label>
-            <Input
-              id="cliente_nome"
-              type="text"
-              placeholder="Nome do cliente/empresa"
-              value={clienteNome}
-              onChange={(e) => setClienteNome(e.target.value)}
-              disabled={loading}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="valor">Valor Estimado (Opcional)</Label>
-            <Input
-              id="valor"
-              type="text"
-              placeholder="0,00"
-              value={valorEstimado}
-              onChange={handleValorChange}
-              disabled={loading}
-            />
-          </div>
-        </div>
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="cliente_nome">Nome do Cliente *</Label>
+                <Input
+                  id="cliente_nome"
+                  type="text"
+                  placeholder="Nome do cliente/empresa"
+                  value={clienteNome}
+                  onChange={(e) => setClienteNome(e.target.value)}
+                  disabled={loading}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="valor">Valor Estimado (Opcional)</Label>
+                <Input
+                  id="valor"
+                  type="text"
+                  placeholder="0,00"
+                  value={valorEstimado}
+                  onChange={handleValorChange}
+                  disabled={loading}
+                />
+              </div>
+            </div>
 
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => {
-              e.preventDefault()
-              handleConvert()
-            }}
-            disabled={loading}
-            className="bg-[#F97316] hover:bg-[#EA580C] text-white"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Convertendo...
-              </>
-            ) : (
-              'Sim, converter'
-            )}
-          </AlertDialogAction>
-        </AlertDialogFooter>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleConvert(false)
+                }}
+                disabled={loading}
+                className="bg-[#F97316] hover:bg-[#EA580C] text-white"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Convertendo...
+                  </>
+                ) : (
+                  'Sim, converter'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </>
+        )}
       </AlertDialogContent>
     </AlertDialog>
   )

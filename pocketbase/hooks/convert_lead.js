@@ -9,6 +9,8 @@ routerAdd(
 
     let result
     let customError = null
+    let conflictResponse = null
+    const ignoreDuplicates = body.ignore_duplicates === true
 
     try {
       $app.runInTransaction((txApp) => {
@@ -22,7 +24,8 @@ routerAdd(
 
         const novoNomeCliente = (body.cliente_nome || lead.getString('nome')).trim()
 
-        let clienteExists = false
+        let duplicates = []
+
         try {
           const rs = txApp
             .db()
@@ -31,57 +34,39 @@ routerAdd(
             )
             .bind({ nome: novoNomeCliente })
             .all()
-          if (rs && rs.length > 0) {
-            clienteExists = true
-          }
+          if (rs && rs.length > 0) duplicates.push('Empresa (Nome)')
         } catch (_) {}
 
-        if (clienteExists) {
-          customError = new BadRequestError(
-            'Já existe um cliente com este nome. Por favor, revise ou adicione um identificador (ex: - Filial).',
-            {
-              cliente_nome:
-                'Já existe um cliente com este nome. Por favor, revise ou adicione um identificador (ex: - Filial).',
-            },
-          )
-          throw new Error('Validation')
-        }
-
-        let warningMsg = null
         let leadEmail = lead.getString('email')
         let leadPhone = lead.getString('telefone')
-        if (leadEmail || leadPhone) {
-          let filterParts = []
-          let params = {}
-          if (leadEmail) {
-            filterParts.push('email = {:email}')
-            params.email = leadEmail
-          }
-          if (leadPhone) {
-            filterParts.push('telefone = {:phone}')
-            params.phone = leadPhone
-          }
 
+        if (leadEmail) {
           try {
-            const existingContato = txApp.findFirstRecordByFilter(
-              'contatos',
-              filterParts.join(' || '),
-              params,
-            )
-            if (existingContato) {
-              const cliId = existingContato.getString('cliente_id')
-              if (cliId) {
-                try {
-                  const cli = txApp.findRecordById('clientes', cliId)
-                  warningMsg = `Atenção: O e-mail ou telefone já está associado ao cliente "${cli.getString('nome')}".`
-                } catch (_) {
-                  warningMsg = `Atenção: O e-mail ou telefone já existe na base de contatos.`
-                }
-              } else {
-                warningMsg = `Atenção: O e-mail ou telefone já existe na base de contatos.`
-              }
-            }
+            const rs = txApp
+              .db()
+              .newQuery(
+                'SELECT id FROM contatos WHERE LOWER(TRIM(email)) = LOWER(TRIM({:email})) LIMIT 1',
+              )
+              .bind({ email: leadEmail })
+              .all()
+            if (rs && rs.length > 0) duplicates.push('E-mail')
           } catch (_) {}
+        }
+
+        if (leadPhone) {
+          try {
+            const rs = txApp
+              .db()
+              .newQuery('SELECT id FROM contatos WHERE TRIM(telefone) = TRIM({:phone}) LIMIT 1')
+              .bind({ phone: leadPhone })
+              .all()
+            if (rs && rs.length > 0) duplicates.push('Telefone')
+          } catch (_) {}
+        }
+
+        if (duplicates.length > 0 && !ignoreDuplicates) {
+          conflictResponse = { error: 'duplicate_warning', duplicates }
+          throw new Error('DUPLICATE_WARNING')
         }
 
         const clientesCol = txApp.findCollectionByNameOrId('clientes')
@@ -168,10 +153,12 @@ routerAdd(
           success: true,
           cliente_id: cliente.id,
           negocio_id: negocio.id,
-          warning: warningMsg,
         }
       })
     } catch (err) {
+      if (conflictResponse) {
+        return e.json(409, conflictResponse)
+      }
       if (customError) throw customError
       throw new BadRequestError(err.message || 'Erro interno ao converter lead')
     }

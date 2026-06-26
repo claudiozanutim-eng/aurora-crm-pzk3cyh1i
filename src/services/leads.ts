@@ -50,6 +50,7 @@ export const convertLeadToSale = async (
   lead: Lead,
   clienteNome?: string,
   valorEstimado?: number | null,
+  ignoreDuplicates?: boolean,
 ) => {
   return pb.send('/backend/v1/convert-lead', {
     method: 'POST',
@@ -57,6 +58,7 @@ export const convertLeadToSale = async (
       lead_id: lead.id,
       cliente_nome: clienteNome,
       valor_estimado: valorEstimado,
+      ignore_duplicates: ignoreDuplicates,
     }),
     headers: { 'Content-Type': 'application/json' },
   })
