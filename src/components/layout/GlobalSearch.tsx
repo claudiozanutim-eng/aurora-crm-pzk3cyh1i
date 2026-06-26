@@ -25,18 +25,14 @@ export function GlobalSearch() {
       setLoading(true)
       const t = debouncedTerm.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
       Promise.all([
-        pb
-          .collection('clientes')
-          .getList(1, 5, {
-            filter: `nome ~ "${t}" || nome_fantasia ~ "${t}" || documento ~ "${t}"`,
-          }),
+        pb.collection('clientes').getList(1, 5, {
+          filter: `nome ~ "${t}" || nome_fantasia ~ "${t}" || documento ~ "${t}"`,
+        }),
         pb.collection('leads').getList(1, 5, { filter: `nome ~ "${t}" || contato_nome ~ "${t}"` }),
-        pb
-          .collection('negocios')
-          .getList(1, 5, {
-            filter: `descricao ~ "${t}" || cliente_id.nome ~ "${t}"`,
-            expand: 'cliente_id',
-          }),
+        pb.collection('negocios').getList(1, 5, {
+          filter: `descricao ~ "${t}" || cliente_id.nome ~ "${t}"`,
+          expand: 'cliente_id',
+        }),
       ])
         .then(([c, l, n]) => {
           setResults({ clientes: c.items, leads: l.items, negocios: n.items })

@@ -9,9 +9,11 @@ import {
   Percent,
   TrendingUp,
   TrendingDown,
+  Info,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export interface KpiData {
   totalClientes: number
@@ -61,6 +63,8 @@ export function DashboardKpis({ data, loading }: DashboardKpisProps) {
       icon: Target,
       color: 'text-teal-600',
       bgColor: 'bg-teal-100',
+      tooltip:
+        'O valor ponderado é o valor total do seu pipeline de vendas considerando a probabilidade de fechamento de cada negócio. Por exemplo: se você tem um negócio de R$ 100.000 com 50% de chance de fechar, ele contribui com R$ 50.000 para esse indicador. Somamos todos os negócios abertos multiplicados pela sua probabilidade de fechamento.',
     },
     {
       title: 'Taxa de Conversão',
@@ -68,6 +72,8 @@ export function DashboardKpis({ data, loading }: DashboardKpisProps) {
       icon: Percent,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100',
+      tooltip:
+        'A taxa de conversão mostra o percentual de negócios que foram convertidos em vendas. Calculamos dividindo o número de negócios ganhos pelo total de negócios que já concluíram o ciclo (ganhos + perdidos).',
     },
     {
       title: 'Ticket Médio',
@@ -75,6 +81,8 @@ export function DashboardKpis({ data, loading }: DashboardKpisProps) {
       icon: Receipt,
       color: 'text-rose-600',
       bgColor: 'bg-rose-100',
+      tooltip:
+        'O ticket médio é o valor médio dos negócios que você fechou com sucesso. Calculamos dividindo o valor total dos negócios ganhos pela quantidade de negócios ganhos.',
     },
     {
       title: 'Valor Total de Perdidos',
@@ -118,7 +126,19 @@ export function DashboardKpis({ data, loading }: DashboardKpisProps) {
             <CardContent className="p-5">
               <div className="flex justify-between items-start">
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-500">{item.title}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium text-gray-500">{item.title}</p>
+                    {item.tooltip && (
+                      <Tooltip>
+                        <TooltipTrigger className="inline-flex cursor-help focus:outline-none">
+                          <Info className="h-4 w-4 text-[#e55320]" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-[300px] bg-white text-black border border-gray-200 shadow-md">
+                          <p className="text-xs font-normal leading-relaxed">{item.tooltip}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                   {loading ? (
                     <Skeleton className="h-8 w-24" />
                   ) : (
