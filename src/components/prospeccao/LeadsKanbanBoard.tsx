@@ -109,7 +109,7 @@ export function LeadsKanbanBoard({
                   key={lead.id}
                   draggable
                   onDragStart={(e) => handleDragStart(e, lead)}
-                  onClick={() => navigate(`/leads/${lead.id}`)}
+                  onClick={() => navigate(`/leads/${lead.id}`, { state: { from: '/prospeccao' } })}
                   className="cursor-pointer hover:border-orange-300 transition-colors shadow-sm border-gray-200 relative group"
                 >
                   <CardContent className="p-3 pb-8">

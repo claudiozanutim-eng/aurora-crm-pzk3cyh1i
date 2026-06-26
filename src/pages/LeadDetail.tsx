@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { getLeadById, Lead } from '@/services/leads'
 import { useRealtime } from '@/hooks/use-realtime'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -25,6 +25,8 @@ import {
 export default function LeadDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = location.state?.from || '/funil'
   const [lead, setLead] = useState<Lead | null>(null)
   const formRef = useRef<LeadDataFormRef>(null)
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
@@ -49,7 +51,7 @@ export default function LeadDetail() {
     if (formRef.current?.isDirty) {
       setShowUnsavedDialog(true)
     } else {
-      navigate('/funil')
+      navigate(from)
     }
   }
 
@@ -60,14 +62,14 @@ export default function LeadDetail() {
       setIsSaving(false)
       if (success) {
         setShowUnsavedDialog(false)
-        navigate('/funil')
+        navigate(from)
       }
     }
   }
 
   const handleExitWithoutSaving = () => {
     setShowUnsavedDialog(false)
-    navigate('/funil')
+    navigate(from)
   }
 
   const { triggerAnalysis } = useAuro()
@@ -148,7 +150,7 @@ export default function LeadDetail() {
           </TabsList>
 
           <TabsContent value="dados" className="focus-visible:outline-none">
-            <LeadDataForm ref={formRef} lead={lead} onExit={() => navigate('/funil')} />
+            <LeadDataForm ref={formRef} lead={lead} onExit={() => navigate(from)} />
           </TabsContent>
           <TabsContent value="contatos" className="focus-visible:outline-none">
             <LeadContactsTab lead={lead} />

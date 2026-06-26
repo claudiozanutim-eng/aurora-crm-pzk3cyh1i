@@ -166,7 +166,9 @@ export function KanbanBoard({ negocios = [], onStatusChange, onDeleteDeal }: Kan
                       key={deal.id}
                       draggable
                       onDragStart={(e) => handleDragStart(e, deal)}
-                      onClick={() => navigate(`/clientes/${deal.cliente_id}`)}
+                      onClick={() =>
+                        navigate(`/clientes/${deal.cliente_id}`, { state: { from: '/funil' } })
+                      }
                       className={cn(
                         'cursor-pointer hover:border-orange-300 transition-colors shadow-sm',
                         isApproved ? 'border-green-400 ring-1 ring-green-100' : 'border-gray-200',
