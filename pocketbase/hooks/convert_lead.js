@@ -71,7 +71,7 @@ routerAdd(
         cliente.set('status', 'Ativo')
 
         const now = new Date()
-        const pbDate = now.toISOString().replace('T', ' ').replace('Z', '')
+        const pbDate = now.toISOString().split('.')[0].replace('T', ' ') + 'Z'
         cliente.set('data_cadastro', pbDate)
         cliente.set('data_conversao', pbDate)
         cliente.set('porte', 'Pequeno')
@@ -125,7 +125,7 @@ routerAdd(
         closingDate.setDate(closingDate.getDate() + 30)
         negocio.set(
           'data_prevista_fechamento',
-          closingDate.toISOString().replace('T', ' ').replace('Z', ''),
+          closingDate.toISOString().split('.')[0].replace('T', ' ') + 'Z',
         )
 
         try {
