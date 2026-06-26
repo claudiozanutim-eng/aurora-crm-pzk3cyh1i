@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 
 export interface KpiData {
   totalClientes: number
@@ -116,48 +116,60 @@ export function DashboardKpis({ data, loading }: DashboardKpisProps) {
   ]
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {kpiConfig.map((item) => {
-        const Icon = item.icon
+    <TooltipProvider delayDuration={0}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {kpiConfig.map((item) => {
+          const Icon = item.icon
 
-        return (
-          <Card
-            key={item.title}
-            className={cn(
-              'bg-white shadow-sm hover:shadow-md transition-all duration-200 group rounded-xl relative',
-              item.borderColor || 'border-gray-100',
-            )}
-          >
-            <CardContent className="p-5">
-              <div className="flex justify-between items-start">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-sm font-medium text-gray-500">{item.title}</p>
-                    {item.tooltip && (
-                      <Tooltip>
-                        <TooltipTrigger className="inline-flex cursor-help focus:outline-none">
-                          <Info className="h-4 w-4 text-[#e55320]" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-[300px] bg-white text-black border border-gray-200 shadow-md">
-                          <p className="text-xs font-normal leading-relaxed">{item.tooltip}</p>
-                        </TooltipContent>
-                      </Tooltip>
+          return (
+            <Card
+              key={item.title}
+              className={cn(
+                'bg-white shadow-sm hover:shadow-md transition-all duration-200 group rounded-xl relative',
+                item.borderColor || 'border-gray-100',
+              )}
+            >
+              <CardContent className="p-5">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium text-gray-500">{item.title}</p>
+                      {item.tooltip && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex cursor-help focus:outline-none"
+                            >
+                              <Info className="h-4 w-4 text-[#e55320]" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            sideOffset={4}
+                            className="max-w-[300px] bg-white text-black border border-gray-200 shadow-md z-50"
+                          >
+                            <p className="text-xs font-normal leading-relaxed">{item.tooltip}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                    {loading ? (
+                      <Skeleton className="h-8 w-24" />
+                    ) : (
+                      <p className="text-2xl font-bold text-gray-900 tracking-tight">
+                        {item.value}
+                      </p>
                     )}
                   </div>
-                  {loading ? (
-                    <Skeleton className="h-8 w-24" />
-                  ) : (
-                    <p className="text-2xl font-bold text-gray-900 tracking-tight">{item.value}</p>
-                  )}
+                  <div className={cn('p-2 rounded-lg transition-colors', item.bgColor)}>
+                    <Icon className={cn('h-5 w-5', item.color)} />
+                  </div>
                 </div>
-                <div className={cn('p-2 rounded-lg transition-colors', item.bgColor)}>
-                  <Icon className={cn('h-5 w-5', item.color)} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )
-      })}
-    </div>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+    </TooltipProvider>
   )
 }
