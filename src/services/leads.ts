@@ -46,10 +46,18 @@ export const deleteLead = async (id: string) => {
   return pb.collection('leads').delete(id)
 }
 
-export const convertLeadToSale = async (lead: Lead) => {
+export const convertLeadToSale = async (
+  lead: Lead,
+  clienteNome?: string,
+  valorEstimado?: number | null,
+) => {
   return pb.send('/backend/v1/convert-lead', {
     method: 'POST',
-    body: JSON.stringify({ lead_id: lead.id }),
+    body: JSON.stringify({
+      lead_id: lead.id,
+      cliente_nome: clienteNome,
+      valor_estimado: valorEstimado,
+    }),
     headers: { 'Content-Type': 'application/json' },
   })
 }

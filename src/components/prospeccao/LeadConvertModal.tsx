@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Lead } from '@/services/leads'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage, extractFieldErrors } from '@/lib/pocketbase/errors'
 import { Loader2 } from 'lucide-react'
@@ -27,7 +27,15 @@ interface LeadConvertModalProps {
 export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadConvertModalProps) {
   const [loading, setLoading] = useState(false)
   const [valorEstimado, setValorEstimado] = useState('')
+  const [clienteNome, setClienteNome] = useState(lead.nome || '')
   const { toast } = useToast()
+
+  useEffect(() => {
+    if (open) {
+      setClienteNome(lead.nome || '')
+      setValorEstimado('')
+    }
+  }, [open, lead])
 
   const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
@@ -52,17 +60,28 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
         ? Number(valorEstimado.replace(/\./g, '').replace(',', '.'))
         : null
 
-      await pb.send('/backend/v1/convert-lead', {
+      const res = await pb.send('/backend/v1/convert-lead', {
         method: 'POST',
         body: JSON.stringify({
           lead_id: lead.id,
           valor_estimado: valorNum,
+          cliente_nome: clienteNome,
         }),
         headers: { 'Content-Type': 'application/json' },
       })
-      toast({
-        title: 'Lead convertido com sucesso! O novo negócio já está no seu funil.',
-      })
+
+      if (res.warning) {
+        toast({
+          title: 'Lead convertido com aviso',
+          description: res.warning,
+          duration: 6000,
+        })
+      } else {
+        toast({
+          title: 'Lead convertido com sucesso! O novo negócio já está no seu funil.',
+        })
+      }
+
       onSuccess()
       onOpenChange(false)
     } catch (e: any) {
@@ -70,6 +89,7 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
       const errorMsg = getErrorMessage(e)
 
       let msg =
+        fieldErrs.cliente_nome ||
         fieldErrs.nome ||
         fieldErrs.error ||
         fieldErrs.valor_estimado ||
@@ -78,10 +98,11 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
 
       if (
         msg.toLowerCase().includes('nome de cliente já existe') ||
+        msg.toLowerCase().includes('já existe um cliente com este nome') ||
         (msg.toLowerCase().includes('nome') && msg.toLowerCase().includes('já existe'))
       ) {
         msg =
-          "Este nome de cliente já existe. Por favor, utilize um nome único ou adicione um identificador (ex: 'NOME - Unidade X') para diferenciar o registro."
+          'Já existe um cliente com este nome. Por favor, revise ou adicione um identificador (ex: - Filial).'
       } else if (msg === 'Something went wrong.' || msg === 'An unexpected error occurred.') {
         msg =
           'Não foi possível realizar a conversão. Verifique os campos obrigatórios (Cliente, Contato).'
@@ -109,7 +130,19 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="py-4">
+        <div className="py-4 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="cliente_nome">Nome do Cliente *</Label>
+            <Input
+              id="cliente_nome"
+              type="text"
+              placeholder="Nome do cliente/empresa"
+              value={clienteNome}
+              onChange={(e) => setClienteNome(e.target.value)}
+              disabled={loading}
+              required
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="valor">Valor Estimado (Opcional)</Label>
             <Input

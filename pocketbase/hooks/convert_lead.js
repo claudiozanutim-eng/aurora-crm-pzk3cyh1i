@@ -20,27 +20,73 @@ routerAdd(
           throw new Error('Lead not found')
         }
 
+        const novoNomeCliente = (body.cliente_nome || lead.getString('nome')).trim()
+
         let clienteExists = false
         try {
-          txApp.findFirstRecordByData('clientes', 'nome', lead.getString('nome'))
-          clienteExists = true
-        } catch (_) {
-          // Not found, continue execution safely
-        }
+          const rs = txApp
+            .db()
+            .newQuery(
+              'SELECT id FROM clientes WHERE LOWER(TRIM(nome)) = LOWER(TRIM({:nome})) LIMIT 1',
+            )
+            .bind({ nome: novoNomeCliente })
+            .all()
+          if (rs && rs.length > 0) {
+            clienteExists = true
+          }
+        } catch (_) {}
 
         if (clienteExists) {
           customError = new BadRequestError(
-            "Este nome de cliente já existe. Por favor, utilize um nome único ou adicione um identificador (ex: 'NOME - Unidade X') para diferenciar o registro.",
+            'Já existe um cliente com este nome. Por favor, revise ou adicione um identificador (ex: - Filial).',
             {
-              nome: "Este nome de cliente já existe. Por favor, utilize um nome único ou adicione um identificador (ex: 'NOME - Unidade X') para diferenciar o registro.",
+              cliente_nome:
+                'Já existe um cliente com este nome. Por favor, revise ou adicione um identificador (ex: - Filial).',
             },
           )
           throw new Error('Validation')
         }
 
+        let warningMsg = null
+        let leadEmail = lead.getString('email')
+        let leadPhone = lead.getString('telefone')
+        if (leadEmail || leadPhone) {
+          let filterParts = []
+          let params = {}
+          if (leadEmail) {
+            filterParts.push('email = {:email}')
+            params.email = leadEmail
+          }
+          if (leadPhone) {
+            filterParts.push('telefone = {:phone}')
+            params.phone = leadPhone
+          }
+
+          try {
+            const existingContato = txApp.findFirstRecordByFilter(
+              'contatos',
+              filterParts.join(' || '),
+              params,
+            )
+            if (existingContato) {
+              const cliId = existingContato.getString('cliente_id')
+              if (cliId) {
+                try {
+                  const cli = txApp.findRecordById('clientes', cliId)
+                  warningMsg = `Atenção: O e-mail ou telefone já está associado ao cliente "${cli.getString('nome')}".`
+                } catch (_) {
+                  warningMsg = `Atenção: O e-mail ou telefone já existe na base de contatos.`
+                }
+              } else {
+                warningMsg = `Atenção: O e-mail ou telefone já existe na base de contatos.`
+              }
+            }
+          } catch (_) {}
+        }
+
         const clientesCol = txApp.findCollectionByNameOrId('clientes')
         const cliente = new Record(clientesCol)
-        cliente.set('nome', lead.getString('nome'))
+        cliente.set('nome', novoNomeCliente)
         cliente.set('tipo', lead.getString('tipo'))
         cliente.set('segmento', lead.getString('segmento'))
         cliente.set('status', 'Ativo')
@@ -118,7 +164,12 @@ routerAdd(
           throw err
         }
 
-        result = { success: true, cliente_id: cliente.id, negocio_id: negocio.id }
+        result = {
+          success: true,
+          cliente_id: cliente.id,
+          negocio_id: negocio.id,
+          warning: warningMsg,
+        }
       })
     } catch (err) {
       if (customError) throw customError
