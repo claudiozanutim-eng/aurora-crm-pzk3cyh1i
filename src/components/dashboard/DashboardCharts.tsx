@@ -23,7 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Link } from 'react-router-dom'
-import { XCircle, TrendingDown, Target, Trophy } from 'lucide-react'
+import { XCircle, TrendingDown, Target } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DashboardChartsProps {
@@ -124,8 +124,6 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
       .slice(0, 4)
 
     const wonCount = negocios.filter((n) => n.status === 'Fechado/Ganho').length
-    const totalFinished = wonCount + count
-    const winRate = totalFinished > 0 ? Math.round((wonCount / totalFinished) * 100) : 0
 
     const totalQualified = negocios.filter((n) =>
       ['Qualificação', 'Proposta Enviada', 'Negociação', 'Fechado/Ganho', 'Perdido'].includes(
@@ -141,7 +139,7 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
           }).format((wonCount / totalQualified) * 100)
         : '0,0'
 
-    return { count, value, topReasons, winRate, topToBottom }
+    return { count, value, topReasons, topToBottom }
   }, [data.negocios, funnelData])
 
   const targetYear = data.year || new Date().getFullYear()
@@ -369,20 +367,6 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
                     Nenhum dado registrado.
                   </div>
                 )}
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-red-200/50 relative z-10">
-                <div className="flex items-center justify-between bg-white/80 p-3 rounded-xl border border-green-100 shadow-sm">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-green-500" />
-                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      Win Rate
-                    </span>
-                  </div>
-                  <span className="text-xl font-black text-green-600">
-                    {lostDealsInfo.winRate}%
-                  </span>
-                </div>
               </div>
             </div>
           </div>
