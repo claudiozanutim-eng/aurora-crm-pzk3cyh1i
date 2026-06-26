@@ -37,15 +37,6 @@ interface DashboardChartsProps {
   loading: boolean
 }
 
-const funnelColors = [
-  'bg-slate-500',
-  'bg-indigo-500',
-  'bg-blue-500',
-  'bg-cyan-500',
-  'bg-teal-500',
-  'bg-emerald-500',
-]
-
 const chartConfig = {
   valorPrev: {
     label: 'Ano Anterior (R$)',
@@ -66,44 +57,50 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
   } | null>(null)
 
   const funnelData = useMemo(() => {
-    if (!data.negocios || !data.leads) return []
+    if (!data.negocios) return []
 
-    const novosLeads = data.leads.filter((l) => l.status === 'Novos Leads')
-    const leadsConvertidos = data.leads.filter((l) => l.status === 'Convertido')
+    const prospeccao = data.negocios.filter((n) => n.status === 'Prospecção')
     const qualificacao = data.negocios.filter((n) => n.status === 'Qualificação')
     const propostaEnviada = data.negocios.filter((n) => n.status === 'Proposta Enviada')
     const negociacao = data.negocios.filter((n) => n.status === 'Negociação')
     const ganhos = data.negocios.filter((n) => n.status === 'Fechado/Ganho')
+    const perdidos = data.negocios.filter((n) => n.status === 'Perdido')
 
     const stages = [
-      { stage: 'Novos Leads', items: novosLeads, isLead: true },
-      { stage: 'Leads Convertidos', items: leadsConvertidos, isLead: true },
-      { stage: 'Qualificação', items: qualificacao, isLead: false },
-      { stage: 'Proposta Enviada', items: propostaEnviada, isLead: false },
-      { stage: 'Negociação', items: negociacao, isLead: false },
-      { stage: 'Ganhos', items: ganhos, isLead: false },
+      { stage: 'Prospecção', items: prospeccao },
+      { stage: 'Qualificação', items: qualificacao },
+      { stage: 'Proposta Enviada', items: propostaEnviada },
+      { stage: 'Negociação', items: negociacao },
+      { stage: 'Fechado/Ganho', items: ganhos },
+      { stage: 'Perdido', items: perdidos },
     ]
 
     const maxCount = Math.max(...stages.map((s) => s.items.length), 1)
 
+    const stageColors = [
+      'bg-slate-400',
+      'bg-indigo-400',
+      'bg-blue-400',
+      'bg-cyan-400',
+      'bg-emerald-500',
+      'bg-red-400',
+    ]
+
     return stages.map((s, idx) => {
       const count = s.items.length
-      const value = s.isLead
-        ? 0
-        : s.items.reduce((acc, n) => acc + (Number(n.valor_estimado) || 0), 0)
+      const value = s.items.reduce((acc, n) => acc + (Number(n.valor_estimado) || 0), 0)
 
-      const widthPct = Math.max(30, (count / maxCount) * 100)
+      const widthPct = Math.max(2, (count / maxCount) * 100)
 
       return {
         stage: s.stage,
         count,
         value,
-        color: funnelColors[idx],
+        color: stageColors[idx],
         width: `${widthPct}%`,
-        isLead: s.isLead,
       }
     })
-  }, [data.negocios, data.leads])
+  }, [data.negocios])
 
   const lostDealsInfo = useMemo(() => {
     const negocios = data.negocios || []
@@ -265,50 +262,40 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Funnel Area */}
-            <div className="lg:col-span-2 flex flex-col justify-center py-2 relative">
-              <div className="w-full max-w-lg mx-auto flex flex-col items-center mt-2 lg:mt-2">
-                {funnelData.map((item, idx) => {
-                  const prevItem = idx > 0 ? funnelData[idx - 1] : null
-                  const convRate =
-                    prevItem && prevItem.count > 0
-                      ? Math.round((item.count / prevItem.count) * 100)
-                      : 0
+            <div className="lg:col-span-2 flex flex-col justify-center py-4 px-2 relative space-y-4 w-full">
+              {funnelData.map((item) => {
+                return (
+                  <div key={item.stage} className="flex items-center gap-4 w-full max-w-full">
+                    {/* Left Column: Label */}
+                    <div className="w-32 sm:w-40 flex-shrink-0 text-right">
+                      <span
+                        className="font-semibold text-sm text-gray-700 truncate block"
+                        title={item.stage}
+                      >
+                        {item.stage}
+                      </span>
+                    </div>
 
-                  return (
-                    <React.Fragment key={item.stage}>
-                      {idx > 0 && (
-                        <div className="flex flex-col items-center -my-1.5 relative z-0">
-                          <div className="w-px h-7 bg-gray-200" />
-                          <div className="bg-white border border-gray-200 shadow-sm text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full absolute top-1/2 -translate-y-1/2 z-10">
-                            {convRate}%
-                          </div>
-                        </div>
-                      )}
+                    {/* Right Column: Proportional Bar & Data */}
+                    <div className="flex-1 flex items-center gap-3 overflow-hidden pr-2">
                       <div
                         className={cn(
-                          'relative z-10 flex items-center justify-between px-4 py-2.5 rounded-xl shadow-sm text-white transition-transform hover:scale-[1.02]',
+                          'h-10 rounded-md shadow-sm transition-all duration-500 hover:opacity-90',
                           item.color,
                         )}
                         style={{ width: item.width }}
-                      >
-                        <span className="font-semibold text-sm drop-shadow-sm truncate pr-2">
-                          {item.stage}
+                      />
+                      <div className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap text-gray-700 flex-shrink-0">
+                        <span className="font-bold min-w-[24px] text-center bg-gray-100 rounded px-1.5 py-0.5">
+                          {item.count}
                         </span>
-                        <div className="flex items-center gap-2 text-xs md:text-sm">
-                          {!item.isLead && (
-                            <span className="font-medium opacity-90 hidden sm:inline-block">
-                              {formatCurrency(item.value)}
-                            </span>
-                          )}
-                          <span className="bg-black/15 font-bold px-2 py-0.5 rounded-lg drop-shadow-sm min-w-[2rem] text-center">
-                            {item.count}
-                          </span>
-                        </div>
+                        <span className="text-gray-300">|</span>
+                        <span className="font-medium">{formatCurrency(item.value)}</span>
                       </div>
-                    </React.Fragment>
-                  )
-                })}
-              </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
 
             {/* Lost Deals Sidebar */}
