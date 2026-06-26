@@ -71,8 +71,9 @@ routerAdd(
         cliente.set('status', 'Ativo')
 
         const now = new Date()
-        cliente.set('data_cadastro', now.toISOString())
-        cliente.set('data_conversao', now.toISOString())
+        const pbDate = now.toISOString().replace('T', ' ').replace('Z', '')
+        cliente.set('data_cadastro', pbDate)
+        cliente.set('data_conversao', pbDate)
         cliente.set('porte', 'Pequeno')
 
         if (lead.get('tags')) {
@@ -122,7 +123,10 @@ routerAdd(
 
         const closingDate = new Date(now)
         closingDate.setDate(closingDate.getDate() + 30)
-        negocio.set('data_prevista_fechamento', closingDate.toISOString())
+        negocio.set(
+          'data_prevista_fechamento',
+          closingDate.toISOString().replace('T', ' ').replace('Z', ''),
+        )
 
         try {
           txApp.save(negocio)
