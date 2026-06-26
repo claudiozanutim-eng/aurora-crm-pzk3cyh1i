@@ -36,7 +36,6 @@ export default function Prospeccao() {
   const [convertingLead, setConvertingLead] = useState<Lead | null>(null)
   const [leadToEdit, setLeadToEdit] = useState<Lead | null>(null)
   const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null)
-  const [convertedClientNames, setConvertedClientNames] = useState<Set<string>>(new Set())
   const [isExporting, setIsExporting] = useState(false)
 
   const loadData = async () => {
@@ -48,26 +47,12 @@ export default function Prospeccao() {
     }
   }
 
-  const loadClients = async () => {
-    try {
-      const clients = await pb.collection('clientes').getFullList({ fields: 'nome' })
-      setConvertedClientNames(new Set(clients.map((c) => c.nome)))
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
   useEffect(() => {
     loadData()
-    loadClients()
   }, [])
 
   useRealtime('leads', () => {
     loadData()
-  })
-
-  useRealtime('clientes', () => {
-    loadClients()
   })
 
   const handleStatusChange = async (lead: Lead, newStatus: Lead['status']) => {
@@ -297,7 +282,6 @@ export default function Prospeccao() {
             setIsNewLeadOpen(true)
           }}
           onDeleteLead={(lead) => setLeadToDelete(lead)}
-          convertedClientNames={convertedClientNames}
         />
       </div>
 

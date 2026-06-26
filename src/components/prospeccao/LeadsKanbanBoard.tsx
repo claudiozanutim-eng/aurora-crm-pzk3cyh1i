@@ -38,7 +38,6 @@ interface LeadsKanbanBoardProps {
   onConvertLead?: (lead: Lead) => void
   onEditLead?: (lead: Lead) => void
   onDeleteLead?: (lead: Lead) => void
-  convertedClientNames?: Set<string>
 }
 
 export function LeadsKanbanBoard({
@@ -47,7 +46,6 @@ export function LeadsKanbanBoard({
   onConvertLead,
   onEditLead,
   onDeleteLead,
-  convertedClientNames = new Set(),
 }: LeadsKanbanBoardProps) {
   const [activeColumn, setActiveColumn] = useState<Status | null>(null)
   const navigate = useNavigate()
@@ -151,7 +149,7 @@ export function LeadsKanbanBoard({
 
                     {column === 'Convertido' && (
                       <div className="mt-3 pt-3 border-t border-gray-100">
-                        {convertedClientNames.has(lead.nome) ? (
+                        {lead.cliente_id ? (
                           <div className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 py-1.5 px-3 rounded-md text-sm font-medium border border-emerald-100">
                             <CheckCircle2 className="h-4 w-4" />
                             <span>Convertido para Venda</span>

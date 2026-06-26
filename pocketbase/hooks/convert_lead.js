@@ -34,7 +34,7 @@ routerAdd(
             )
             .bind({ nome: novoNomeCliente })
             .all()
-          if (rs && rs.length > 0) duplicates.push('Empresa (Nome)')
+          if (rs && rs.length > 0) duplicates.push('Já existe um cliente com este nome.')
         } catch (_) {}
 
         let leadEmail = lead.getString('email')
@@ -49,7 +49,8 @@ routerAdd(
               )
               .bind({ email: leadEmail })
               .all()
-            if (rs && rs.length > 0) duplicates.push('E-mail')
+            if (rs && rs.length > 0)
+              duplicates.push('Um cliente existente foi encontrado com este e-mail.')
           } catch (_) {}
         }
 
@@ -60,7 +61,8 @@ routerAdd(
               .newQuery('SELECT id FROM contatos WHERE TRIM(telefone) = TRIM({:phone}) LIMIT 1')
               .bind({ phone: leadPhone })
               .all()
-            if (rs && rs.length > 0) duplicates.push('Telefone')
+            if (rs && rs.length > 0)
+              duplicates.push('Um cliente existente foi encontrado com este telefone.')
           } catch (_) {}
         }
 
@@ -142,6 +144,7 @@ routerAdd(
         }
 
         lead.set('status', 'Convertido')
+        lead.set('cliente_id', cliente.id)
         try {
           txApp.save(lead)
         } catch (err) {

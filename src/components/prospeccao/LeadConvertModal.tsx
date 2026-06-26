@@ -127,10 +127,10 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
                 Atenção: Dados Duplicados
               </AlertDialogTitle>
               <AlertDialogDescription className="text-base text-gray-700 mt-2">
-                Encontramos registros existentes com os seguintes dados deste lead no sistema:
+                Encontramos conflitos com os dados deste lead no sistema:
                 <ul className="list-disc pl-5 mt-2 mb-4 font-medium text-gray-900">
-                  {duplicateWarning.map((dup) => (
-                    <li key={dup}>{dup}</li>
+                  {duplicateWarning.map((dup, i) => (
+                    <li key={i}>{dup}</li>
                   ))}
                 </ul>
                 Deseja continuar e criar um novo cliente mesmo assim?

@@ -22,6 +22,7 @@ export interface Lead extends RecordModel {
   vendedor_id: string
   observacoes?: string
   tags?: string[]
+  cliente_id?: string
 }
 
 export const getLeadById = async (id: string) => {
