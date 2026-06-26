@@ -67,13 +67,15 @@ export function DashboardKpis({ data, loading }: DashboardKpisProps) {
         'O valor ponderado é o valor total do seu pipeline de vendas considerando a probabilidade de fechamento de cada negócio. Por exemplo: se você tem um negócio de R$ 100.000 com 50% de chance de fechar, ele contribui com R$ 50.000 para esse indicador. Somamos todos os negócios abertos multiplicados pela sua probabilidade de fechamento.',
     },
     {
-      title: 'Taxa de Conversão',
+      title: 'Win Rate',
       value: `${data.taxaConversao.toFixed(1)}%`,
       icon: Percent,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100',
+      color: 'text-green-600',
+      bgColor: 'bg-green-100',
+      borderColor: 'border-green-100',
       tooltip:
-        'A taxa de conversão mostra o percentual de negócios que foram convertidos em vendas. Calculamos dividindo o número de negócios ganhos pelo total de negócios que já concluíram o ciclo (ganhos + perdidos).',
+        'O Win Rate mede sua eficiência comercial. Calculamos dividindo o número de negócios ganhos pelo total de negócios que já concluíram o ciclo (ganhos + perdidos). Por exemplo: se você fechou 3 negócios e perdeu 3, seu Win Rate é de 50%.',
+      tooltipPosition: 'bottom-right',
     },
     {
       title: 'Ticket Médio',
@@ -118,17 +120,22 @@ export function DashboardKpis({ data, loading }: DashboardKpisProps) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {kpiConfig.map((item) => {
         const Icon = item.icon
+        const hasBottomTooltip = item.tooltipPosition === 'bottom-right'
+
         return (
           <Card
             key={item.title}
-            className="bg-white border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 group rounded-xl"
+            className={cn(
+              'bg-white shadow-sm hover:shadow-md transition-all duration-200 group rounded-xl relative',
+              item.borderColor || 'border-gray-100',
+            )}
           >
             <CardContent className="p-5">
               <div className="flex justify-between items-start">
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5">
                     <p className="text-sm font-medium text-gray-500">{item.title}</p>
-                    {item.tooltip && (
+                    {item.tooltip && !hasBottomTooltip && (
                       <Tooltip>
                         <TooltipTrigger className="inline-flex cursor-help focus:outline-none">
                           <Info className="h-4 w-4 text-[#e55320]" />
@@ -149,6 +156,19 @@ export function DashboardKpis({ data, loading }: DashboardKpisProps) {
                   <Icon className={cn('h-5 w-5', item.color)} />
                 </div>
               </div>
+
+              {item.tooltip && hasBottomTooltip && (
+                <div className="absolute bottom-3 right-3">
+                  <Tooltip>
+                    <TooltipTrigger className="inline-flex cursor-help focus:outline-none">
+                      <Info className="h-4 w-4 text-[#e55320]" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[300px] bg-white text-black border border-gray-200 shadow-md">
+                      <p className="text-xs font-normal leading-relaxed">{item.tooltip}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
             </CardContent>
           </Card>
         )
