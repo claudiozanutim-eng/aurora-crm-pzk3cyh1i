@@ -9,6 +9,7 @@ import { AuroProvider } from './hooks/use-auro'
 // Pages
 import Index from './pages/Index'
 import Clientes from './pages/Clientes'
+import Contatos from './pages/Contatos'
 import Prospeccao from './pages/Prospeccao'
 import Funil from './pages/Funil'
 import Relatorios from './pages/Relatorios'
@@ -42,6 +43,7 @@ const AppRoutes = () => (
     >
       <Route path="/" element={<Index />} />
       <Route path="/clientes" element={<Clientes />} />
+      <Route path="/contatos" element={<Contatos />} />
       <Route path="/prospeccao" element={<Prospeccao />} />
       <Route path="/funil" element={<Funil />} />
       <Route path="/relatorios" element={<Relatorios />} />

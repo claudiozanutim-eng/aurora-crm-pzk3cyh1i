@@ -1,5 +1,12 @@
 import pb from '@/lib/pocketbase/client'
-import type { Contato } from './clientes'
+import type { Contato, Cliente } from './clientes'
+
+export const getAllContatos = async () => {
+  return pb.collection('contatos').getFullList<Contato & { expand?: { cliente_id: Cliente } }>({
+    expand: 'cliente_id',
+    sort: '-created',
+  })
+}
 
 export const getContatosByClienteId = async (clienteId: string) => {
   return pb.collection('contatos').getFullList<Contato>({

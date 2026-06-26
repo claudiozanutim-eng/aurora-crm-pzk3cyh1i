@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/use-auth'
 import {
   LayoutDashboard,
   Users,
+  Contact,
   Target,
   KanbanSquare,
   CheckSquare,
@@ -25,6 +26,7 @@ import { AuroAvatar } from '@/components/auro/AuroAvatar'
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Clientes', href: '/clientes', icon: Users },
+  { name: 'Contatos', href: '/contatos', icon: Contact },
   { name: 'Prospecção', href: '/prospeccao', icon: Target },
   { name: 'Funil de Vendas', href: '/funil', icon: KanbanSquare },
   { name: 'Relatórios', href: '/relatorios', icon: BarChart },
