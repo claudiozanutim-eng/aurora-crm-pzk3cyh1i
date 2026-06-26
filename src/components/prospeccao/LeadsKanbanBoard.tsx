@@ -1,12 +1,13 @@
+import { useState, useMemo } from 'react'
 import { Lead } from '@/services/leads'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { User, Phone, Briefcase, CheckCircle2, Pencil, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { User, Phone, Briefcase, CheckCircle2, Pencil, Trash2, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
 import { TagBadge } from '@/components/ui/tag-badge'
+import { Input } from '@/components/ui/input'
 
 const COLUMNS = [
   'Novos Leads',
@@ -49,163 +50,166 @@ export function LeadsKanbanBoard({
   onDeleteLead,
   convertedClientNames = new Set(),
 }: LeadsKanbanBoardProps) {
-  const [activeColumn, setActiveColumn] = useState<Status | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
   const navigate = useNavigate()
 
-  const safeLeads = Array.isArray(leads) ? leads : []
+  const filteredLeads = useMemo(() => {
+    if (!searchTerm) return leads
+    const lower = searchTerm.toLowerCase()
+    return leads.filter((l) => {
+      const nome = l.nome?.toLowerCase() || ''
+      const contatoNome = l.contato_nome?.toLowerCase() || ''
+      return nome.includes(lower) || contatoNome.includes(lower)
+    })
+  }, [leads, searchTerm])
 
   const handleDragStart = (e: React.DragEvent, lead: Lead) => {
     e.dataTransfer.setData('leadId', lead.id)
-    e.dataTransfer.effectAllowed = 'move'
   }
 
-  const handleDragOver = (e: React.DragEvent, column: Status) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    if (activeColumn !== column) setActiveColumn(column)
   }
 
-  const handleDragLeave = () => {
-    setActiveColumn(null)
-  }
-
-  const handleDrop = (e: React.DragEvent, columnStatus: Status) => {
+  const handleDrop = async (e: React.DragEvent, status: Status) => {
     e.preventDefault()
-    setActiveColumn(null)
     const leadId = e.dataTransfer.getData('leadId')
-    const lead = safeLeads.find((n) => n.id === leadId)
-    if (lead && lead.status !== columnStatus && onStatusChange) {
-      onStatusChange(lead, columnStatus)
+    const lead = leads.find((l) => l.id === leadId)
+    if (lead && lead.status !== status) {
+      if (onStatusChange) onStatusChange(lead, status)
     }
   }
 
   return (
-    <div className="flex h-full w-full gap-4 overflow-x-auto p-4 hide-scrollbar snap-x">
-      {COLUMNS.map((column) => {
-        const columnLeads = safeLeads.filter((n) => n.status === column)
-        const isActive = activeColumn === column
+    <div className="flex flex-col space-y-4 h-full">
+      <div className="flex items-center space-x-2 bg-white p-2 rounded-md shadow-sm border border-gray-200 max-w-md">
+        <Search className="h-5 w-5 text-orange-500" />
+        <Input
+          placeholder="Buscar empresa ou contato"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-black placeholder:text-gray-400"
+        />
+      </div>
 
-        return (
+      <div className="flex flex-1 gap-4 overflow-x-auto pb-4">
+        {COLUMNS.map((column) => (
           <div
             key={column}
-            className={cn(
-              'flex-shrink-0 w-80 lg:w-auto lg:flex-1 lg:min-w-0 flex flex-col rounded-xl border transition-colors snap-start',
-              isActive ? 'border-orange-400 bg-orange-50/30' : 'bg-gray-50 border-gray-100',
-            )}
-            onDragOver={(e) => handleDragOver(e, column)}
-            onDragLeave={handleDragLeave}
+            className="flex flex-col min-w-[300px] max-w-[300px] bg-gray-50 rounded-lg p-3"
+            onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, column)}
           >
-            <div className="flex items-center justify-between p-3 border-b border-gray-100/50 bg-white/50 rounded-t-xl backdrop-blur-sm">
-              <h3 className="font-semibold text-gray-700">{column}</h3>
-              <span className="bg-white text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full border border-gray-200 shadow-sm">
-                {columnLeads.length}
-              </span>
-            </div>
+            <h3 className="font-semibold text-gray-700 mb-3 flex items-center justify-between">
+              {column}
+              <Badge variant="secondary" className="bg-white text-black">
+                {filteredLeads.filter((l) => l.status === column).length}
+              </Badge>
+            </h3>
 
-            <div className="flex-1 p-3 overflow-y-auto space-y-3">
-              {columnLeads.map((lead) => (
-                <Card
-                  key={lead.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, lead)}
-                  onClick={() => navigate(`/leads/${lead.id}`)}
-                  className="cursor-pointer hover:border-orange-300 transition-colors shadow-sm border-gray-200 relative group"
-                >
-                  <CardContent className="p-3 pb-8">
-                    <div className="flex justify-between items-start mb-2">
-                      <PriorityBadge priority={lead.prioridade} />
-                      <Badge variant="outline" className="text-[10px] uppercase text-gray-500">
-                        {lead.origem}
-                      </Badge>
-                    </div>
-                    <h4 className="font-semibold text-gray-900 mb-2 line-clamp-1">{lead.nome}</h4>
-                    <div className="space-y-1.5 text-sm text-gray-500">
-                      {lead.contato_nome && (
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-gray-400" />
-                          <span className="truncate">{lead.contato_nome}</span>
-                        </div>
+            <div className="flex-1 space-y-3 overflow-y-auto">
+              {filteredLeads
+                .filter((l) => l.status === column)
+                .map((lead) => {
+                  const isConvertedClient = convertedClientNames.has(lead.nome)
+                  return (
+                    <Card
+                      key={lead.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, lead)}
+                      className={cn(
+                        'cursor-move transition-colors bg-white hover:border-orange-500',
+                        lead.status === 'Convertido' ? 'border-green-200 bg-green-50/30' : '',
                       )}
-                      {lead.telefone && (
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-gray-400" />
-                          <span>{lead.telefone}</span>
-                        </div>
-                      )}
-                      {lead.segmento && (
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="h-4 w-4 text-gray-400" />
-                          <span>{lead.segmento}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {lead.tags && lead.tags.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {lead.tags.map((tag) => (
-                          <TagBadge key={tag} tag={tag} />
-                        ))}
-                      </div>
-                    )}
-
-                    {column === 'Convertido' && (
-                      <div className="mt-3 pt-3 border-t border-gray-100">
-                        {convertedClientNames.has(lead.nome) ? (
-                          <div className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 py-1.5 px-3 rounded-md text-sm font-medium border border-emerald-100">
-                            <CheckCircle2 className="h-4 w-4" />
-                            <span>Convertido para Venda</span>
-                          </div>
-                        ) : (
-                          <Button
-                            className="w-full bg-[#F97316] hover:bg-[#EA580C] text-white h-8 text-sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onConvertLead?.(lead)
-                            }}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <div
+                            className="font-medium text-sm text-black hover:text-orange-500 cursor-pointer"
+                            onClick={() => navigate(`/leads/${lead.id}`)}
                           >
-                            Enviar para Vendas
-                          </Button>
-                        )}
-                      </div>
-                    )}
+                            {lead.nome}
+                          </div>
+                          <div className="flex space-x-1">
+                            {lead.status !== 'Convertido' && onConvertLead && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-green-600 hover:bg-green-50"
+                                onClick={() => onConvertLead(lead)}
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {onEditLead && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-blue-600 hover:bg-blue-50"
+                                onClick={() => onEditLead(lead)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {onDeleteLead && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-red-600 hover:bg-red-50"
+                                onClick={() => onDeleteLead(lead)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
 
-                    <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white/90 p-1 rounded-md shadow-sm backdrop-blur-sm">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-gray-500 hover:text-blue-600"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onEditLead?.(lead)
-                        }}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-gray-500 hover:text-red-600"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onDeleteLead?.(lead)
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {columnLeads.length === 0 && (
-                <div className="h-24 border-2 border-dashed border-gray-200 rounded-lg flex items-center justify-center text-gray-400 text-sm">
-                  Solte aqui
-                </div>
-              )}
+                        <div className="space-y-1 mb-3">
+                          {lead.contato_nome && (
+                            <div className="flex items-center text-xs text-gray-500">
+                              <User className="h-3 w-3 mr-1" />
+                              {lead.contato_nome}
+                            </div>
+                          )}
+                          {lead.telefone && (
+                            <div className="flex items-center text-xs text-gray-500">
+                              <Phone className="h-3 w-3 mr-1" />
+                              {lead.telefone}
+                            </div>
+                          )}
+                          <div className="flex items-center text-xs text-gray-500">
+                            <Briefcase className="h-3 w-3 mr-1" />
+                            {lead.segmento}
+                          </div>
+                        </div>
+
+                        {Array.isArray(lead.tags) && lead.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {lead.tags.map((tag: any, idx: number) => (
+                              <TagBadge key={idx} tag={tag} />
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-xs border-t pt-2 mt-2">
+                          <PriorityBadge priority={lead.prioridade} />
+                          <div className="flex items-center text-gray-400">
+                            {lead.expand?.vendedor_id?.name || 'Não atribuído'}
+                          </div>
+                        </div>
+                        {isConvertedClient && lead.status !== 'Convertido' && (
+                          <div className="mt-2 text-[10px] text-orange-600 bg-orange-50 p-1 rounded text-center font-medium">
+                            Já existe cliente com este nome
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
             </div>
           </div>
-        )
-      })}
+        ))}
+      </div>
     </div>
   )
 }

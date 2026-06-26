@@ -1,156 +1,126 @@
-import { useEffect, useState } from 'react'
-import { getInteracoes, createInteracao, Interacao } from '@/services/interacoes'
-import { useAuth } from '@/hooks/use-auth'
-import { useRealtime } from '@/hooks/use-realtime'
-import { useToast } from '@/hooks/use-toast'
-import { Button } from '@/components/ui/button'
+import { Interacao } from '@/services/interacoes'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { Input } from '@/components/ui/input'
-import { Mail, MessageCircle, Phone, Users, FileText, Send, Plus } from 'lucide-react'
+  Mail,
+  MessageCircle,
+  Phone,
+  Users,
+  FileText,
+  Send,
+  ArrowRightLeft,
+  Calendar,
+  User,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-const icons = {
-  'E-mail': <Mail className="w-4 h-4 text-blue-500" />,
-  WhatsApp: <MessageCircle className="w-4 h-4 text-green-500" />,
-  Telefonema: <Phone className="w-4 h-4 text-purple-500" />,
-  Reunião: <Users className="w-4 h-4 text-orange-500" />,
-  'Proposta Enviada': <FileText className="w-4 h-4 text-red-500" />,
-  'Enviar Proposta': <Send className="w-4 h-4 text-indigo-500" />,
+interface InteractionsTimelineProps {
+  interacoes: Interacao[]
 }
 
-export function InteractionsTimeline({
-  targetId,
-  targetType,
-}: {
-  targetId: string
-  targetType: 'cliente' | 'lead'
-}) {
-  const { user } = useAuth()
-  const { toast } = useToast()
-  const [interacoes, setInteracoes] = useState<Interacao[]>([])
-  const [open, setOpen] = useState(false)
-
-  const [tipo, setTipo] = useState<Interacao['tipo']>('Telefonema')
-  const [dataHora, setDataHora] = useState('')
-  const [resumo, setResumo] = useState('')
-
-  const load = async () => {
-    try {
-      const data = await getInteracoes(targetId, targetType)
-      setInteracoes(data)
-    } catch (e) {
-      console.error(e)
-    }
+const getIconForType = (tipo: string) => {
+  switch (tipo) {
+    case 'E-mail':
+      return <Mail className="h-4 w-4" />
+    case 'WhatsApp':
+      return <MessageCircle className="h-4 w-4" />
+    case 'Telefonema':
+      return <Phone className="h-4 w-4" />
+    case 'Reunião':
+      return <Users className="h-4 w-4" />
+    case 'Proposta Enviada':
+      return <FileText className="h-4 w-4" />
+    case 'Enviar Proposta':
+      return <Send className="h-4 w-4" />
+    case 'Movimentação de Funil':
+      return <ArrowRightLeft className="h-4 w-4 text-white" />
+    default:
+      return <Calendar className="h-4 w-4" />
   }
+}
 
-  useEffect(() => {
-    load()
-  }, [targetId])
-  useRealtime('interacoes', load)
+const getColorForType = (tipo: string) => {
+  switch (tipo) {
+    case 'E-mail':
+      return 'bg-blue-100 text-blue-600'
+    case 'WhatsApp':
+      return 'bg-green-100 text-green-600'
+    case 'Telefonema':
+      return 'bg-purple-100 text-purple-600'
+    case 'Reunião':
+      return 'bg-indigo-100 text-indigo-600'
+    case 'Proposta Enviada':
+      return 'bg-rose-100 text-rose-600'
+    case 'Enviar Proposta':
+      return 'bg-amber-100 text-amber-600'
+    case 'Movimentação de Funil':
+      return 'bg-orange-500 border border-orange-500'
+    default:
+      return 'bg-gray-100 text-gray-600'
+  }
+}
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      await createInteracao({
-        tipo,
-        data_hora: new Date(dataHora).toISOString(),
-        resumo,
-        vendedor_id: user.id,
-        ...(targetType === 'cliente' ? { cliente_id: targetId } : { lead_id: targetId }),
-      })
-      toast({ title: 'Interação registrada.' })
-      setOpen(false)
-      setResumo('')
-      setDataHora('')
-    } catch (err) {
-      toast({ title: 'Erro ao registrar', variant: 'destructive' })
-    }
+export function InteractionsTimeline({ interacoes = [] }: InteractionsTimelineProps) {
+  if (!interacoes.length) {
+    return <div className="text-center py-8 text-gray-500">Nenhuma interação registrada ainda.</div>
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-800">Histórico de Interações</h2>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#FF6B00] hover:bg-[#E66000] text-white">
-              <Plus className="w-4 h-4 mr-2" /> Nova Interação
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Registrar Interação</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSave} className="space-y-4">
-              <Select value={tipo} onValueChange={(v: any) => setTipo(v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(icons).map((k) => (
-                    <SelectItem key={k} value={k}>
-                      {k}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                type="datetime-local"
-                value={dataHora}
-                onChange={(e) => setDataHora(e.target.value)}
-                required
-              />
-              <Textarea
-                placeholder="Resumo da interação..."
-                value={resumo}
-                onChange={(e) => setResumo(e.target.value)}
-                required
-                rows={4}
-              />
-              <Button type="submit" className="w-full bg-[#FF6B00]">
-                Salvar
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+      <div className="relative border-l border-gray-200 ml-3">
+        {interacoes.map((interacao, idx) => {
+          const isMovimentacao = interacao.tipo === 'Movimentação de Funil'
+          return (
+            <div key={interacao.id || idx} className="mb-6 ml-6 relative group">
+              <span
+                className={cn(
+                  'absolute -left-10 flex h-8 w-8 items-center justify-center rounded-full ring-8 ring-white',
+                  getColorForType(interacao.tipo),
+                )}
+              >
+                {getIconForType(interacao.tipo)}
+              </span>
 
-      <div className="relative pl-6 border-l-2 border-gray-100 space-y-8 mt-4">
-        {interacoes.map((i) => (
-          <div key={i.id} className="relative">
-            <div className="absolute -left-[35px] bg-white p-2 rounded-full border-2 border-gray-100 shadow-sm flex items-center justify-center">
-              {icons[i.tipo]}
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4 shadow-sm border border-gray-100">
-              <div className="flex justify-between items-start mb-2">
-                <span className="font-semibold text-gray-800">{i.tipo}</span>
-                <span className="text-sm text-gray-500">
-                  {new Date(i.data_hora).toLocaleString('pt-BR')}
-                </span>
+              <div
+                className={cn(
+                  'rounded-lg border p-4 shadow-sm bg-white transition-shadow hover:shadow-md',
+                  isMovimentacao ? 'border-orange-200 bg-orange-50/30' : 'border-gray-100',
+                )}
+              >
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 gap-2">
+                  <h4
+                    className={cn(
+                      'text-sm font-semibold',
+                      isMovimentacao ? 'text-orange-700' : 'text-gray-900',
+                    )}
+                  >
+                    {interacao.tipo}
+                  </h4>
+                  <time className="text-xs text-gray-500 font-medium">
+                    {format(new Date(interacao.data_hora), "dd 'de' MMMM, yyyy 'às' HH:mm", {
+                      locale: ptBR,
+                    })}
+                  </time>
+                </div>
+
+                <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                  {interacao.resumo}
+                </p>
+
+                {interacao.observacoes && (
+                  <div className="mt-3 text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-100 italic">
+                    {interacao.observacoes}
+                  </div>
+                )}
+
+                <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-400 font-medium">
+                  <User className="h-3 w-3" />
+                  <span>{interacao.expand?.vendedor_id?.name || 'Sistema'}</span>
+                </div>
               </div>
-              <p className="text-gray-700 text-sm whitespace-pre-wrap">{i.resumo}</p>
-              <p className="text-xs text-gray-400 mt-3 pt-3 border-t border-gray-200">
-                Por: {i.expand?.vendedor_id?.name || 'Usuário Desconhecido'}
-              </p>
             </div>
-          </div>
-        ))}
-        {interacoes.length === 0 && (
-          <p className="text-gray-500 text-sm italic">Nenhuma interação registrada.</p>
-        )}
+          )
+        })}
       </div>
     </div>
   )
