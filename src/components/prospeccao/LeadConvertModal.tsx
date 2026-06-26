@@ -124,7 +124,7 @@ export function LeadConvertModal({ lead, open, onOpenChange, onSuccess }: LeadCo
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
                 <AlertTriangle className="h-5 w-5" />
-                Atenção: Dados Duplicados
+                Possível duplicidade detectada
               </AlertDialogTitle>
               <AlertDialogDescription className="text-base text-gray-700 mt-2">
                 Encontramos conflitos com os dados deste lead no sistema:

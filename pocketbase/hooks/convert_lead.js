@@ -7,6 +7,22 @@ routerAdd(
       throw new BadRequestError('Missing lead_id')
     }
 
+    function normalize(str) {
+      if (!str) return ''
+      const accents = 'ÀÁÂÃÄÅàáâãäåÒÓÔÕÕÖØòóôõöøÈÉÊËèéêëðÇçÐÌÍÎÏìíîïÙÚÛÜùúûüÑñŠšŸÿýŽž'
+      const accentsOut = 'AAAAAAaaaaaaOOOOOOOooooooEEEEeeeeeCcDIIIIiiiiUUUUuuuuNnSsYyyZz'
+      let s = str
+        .split('')
+        .map((letter) => {
+          let accentIndex = accents.indexOf(letter)
+          return accentIndex !== -1 ? accentsOut[accentIndex] : letter
+        })
+        .join('')
+      s = s.replace(/[^\w\s]/gi, '')
+      s = s.replace(/\s+/g, ' ')
+      return s.trim().toLowerCase()
+    }
+
     let result
     let customError = null
     let conflictResponse = null
@@ -23,47 +39,91 @@ routerAdd(
         }
 
         const novoNomeCliente = (body.cliente_nome || lead.getString('nome')).trim()
+        const normalizedNewName = normalize(novoNomeCliente)
+        let leadEmail = lead.getString('email')
+        let leadPhone = lead.getString('telefone')
+        const normalizedPhone = leadPhone ? leadPhone.replace(/\D/g, '') : ''
 
         let duplicates = []
 
-        try {
-          const rs = txApp
-            .db()
-            .newQuery(
-              'SELECT id FROM clientes WHERE LOWER(TRIM(nome)) = LOWER(TRIM({:nome})) LIMIT 1',
-            )
-            .bind({ nome: novoNomeCliente })
-            .all()
-          if (rs && rs.length > 0) duplicates.push('Já existe um cliente com este nome.')
-        } catch (_) {}
-
-        let leadEmail = lead.getString('email')
-        let leadPhone = lead.getString('telefone')
-
-        if (leadEmail) {
-          try {
-            const rs = txApp
-              .db()
-              .newQuery(
-                'SELECT id FROM contatos WHERE LOWER(TRIM(email)) = LOWER(TRIM({:email})) LIMIT 1',
-              )
-              .bind({ email: leadEmail })
-              .all()
-            if (rs && rs.length > 0)
-              duplicates.push('Um cliente existente foi encontrado com este e-mail.')
-          } catch (_) {}
+        const rsClientes = txApp.db().newQuery('SELECT id, nome FROM clientes').all() || []
+        for (const r of rsClientes) {
+          if (normalize(r.nome) === normalizedNewName) {
+            duplicates.push(`Nome similar encontrado em Clientes: ${r.nome}`)
+            break
+          }
         }
 
-        if (leadPhone) {
-          try {
-            const rs = txApp
+        if (leadEmail) {
+          const rsEmail =
+            txApp
               .db()
-              .newQuery('SELECT id FROM contatos WHERE TRIM(telefone) = TRIM({:phone}) LIMIT 1')
-              .bind({ phone: leadPhone })
-              .all()
-            if (rs && rs.length > 0)
-              duplicates.push('Um cliente existente foi encontrado com este telefone.')
-          } catch (_) {}
+              .newQuery(`
+            SELECT contatos.id, clientes.nome
+            FROM contatos
+            JOIN clientes ON clientes.id = contatos.cliente_id
+            WHERE LOWER(TRIM(contatos.email)) = LOWER(TRIM({:email}))
+            LIMIT 1
+          `)
+              .bind({ email: leadEmail })
+              .all() || []
+          if (rsEmail.length > 0) {
+            duplicates.push(
+              `E-mail já existente em Clientes: ${leadEmail} (Cliente: ${rsEmail[0].nome})`,
+            )
+          }
+        }
+
+        if (normalizedPhone) {
+          const rsPhone =
+            txApp
+              .db()
+              .newQuery(`
+            SELECT contatos.telefone, clientes.nome
+            FROM contatos
+            JOIN clientes ON clientes.id = contatos.cliente_id
+            WHERE contatos.telefone != "" AND contatos.telefone IS NOT NULL
+          `)
+              .all() || []
+          for (const r of rsPhone) {
+            if (r.telefone.replace(/\D/g, '') === normalizedPhone) {
+              duplicates.push(
+                `Telefone já existente em Clientes: ${leadPhone} (Cliente: ${r.nome})`,
+              )
+              break
+            }
+          }
+        }
+
+        const rsLeads =
+          txApp
+            .db()
+            .newQuery('SELECT id, nome, email, telefone FROM leads WHERE id != {:id}')
+            .bind({ id: lead.id })
+            .all() || []
+        for (const r of rsLeads) {
+          if (normalize(r.nome) === normalizedNewName) {
+            duplicates.push(`Nome similar encontrado em outro Lead: ${r.nome}`)
+            break
+          }
+        }
+
+        if (leadEmail) {
+          for (const r of rsLeads) {
+            if (r.email && r.email.toLowerCase().trim() === leadEmail.toLowerCase().trim()) {
+              duplicates.push(`E-mail já existente em outro Lead: ${r.email}`)
+              break
+            }
+          }
+        }
+
+        if (normalizedPhone) {
+          for (const r of rsLeads) {
+            if (r.telefone && r.telefone.replace(/\D/g, '') === normalizedPhone) {
+              duplicates.push(`Telefone já existente em outro Lead: ${r.telefone}`)
+              break
+            }
+          }
         }
 
         if (duplicates.length > 0 && !ignoreDuplicates) {
@@ -88,29 +148,17 @@ routerAdd(
           cliente.set('tags', lead.get('tags'))
         }
 
-        try {
-          txApp.save(cliente)
-        } catch (err) {
-          customError = new BadRequestError('Erro ao criar cliente. Verifique os dados.', {
-            error: err.message,
-          })
-          throw err
-        }
+        txApp.save(cliente)
 
         const contatosCol = txApp.findCollectionByNameOrId('contatos')
         const contato = new Record(contatosCol)
         contato.set('cliente_id', cliente.id)
         contato.set('nome', lead.getString('contato_nome') || lead.getString('nome'))
-        if (lead.getString('email')) contato.set('email', lead.getString('email'))
-        if (lead.getString('telefone')) contato.set('telefone', lead.getString('telefone'))
+        if (leadEmail) contato.set('email', leadEmail)
+        if (leadPhone) contato.set('telefone', leadPhone)
         contato.set('is_principal', true)
 
-        try {
-          txApp.save(contato)
-        } catch (err) {
-          customError = new BadRequestError('Erro ao criar contato.', { error: err.message })
-          throw err
-        }
+        txApp.save(contato)
 
         const negociosCol = txApp.findCollectionByNameOrId('negocios')
         const negocio = new Record(negociosCol)
@@ -136,21 +184,12 @@ routerAdd(
           closingDate.toISOString().split('.')[0].replace('T', ' ') + 'Z',
         )
 
-        try {
-          txApp.save(negocio)
-        } catch (err) {
-          customError = new BadRequestError('Erro ao criar negócio.', { error: err.message })
-          throw err
-        }
+        txApp.save(negocio)
 
         lead.set('status', 'Convertido')
         lead.set('cliente_id', cliente.id)
-        try {
-          txApp.save(lead)
-        } catch (err) {
-          customError = new BadRequestError('Erro ao atualizar lead.', { error: err.message })
-          throw err
-        }
+
+        txApp.save(lead)
 
         result = {
           success: true,

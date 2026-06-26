@@ -276,7 +276,17 @@ export default function Prospeccao() {
         <LeadsKanbanBoard
           leads={filteredLeads}
           onStatusChange={handleStatusChange}
-          onConvertLead={setConvertingLead}
+          onConvertLead={(lead) => {
+            if (lead.cliente_id) {
+              toast({
+                title: 'Ação não permitida',
+                description: 'Este lead já foi convertido e está vinculado a um cliente.',
+                variant: 'destructive',
+              })
+              return
+            }
+            setConvertingLead(lead)
+          }}
           onEditLead={(lead) => {
             setLeadToEdit(lead)
             setIsNewLeadOpen(true)
