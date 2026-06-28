@@ -128,9 +128,19 @@ routerAdd(
                   contato.getString('email'),
                   contato.getString('telefone'),
                   contato.getString('cargo'),
-                  contato.getString('data_aniversario')
-                    ? contato.getString('data_aniversario').substring(0, 10)
-                    : '',
+                  (function () {
+                    var raw = contato.getString('data_aniversario')
+                    if (!raw) return ''
+                    var parts = raw.substring(0, 10).split('-')
+                    if (parts.length !== 3) return raw.substring(0, 10)
+                    var year = parts[0]
+                    var month = parts[1]
+                    var day = parts[2]
+                    if (year === '1900') {
+                      return day + '/' + month
+                    }
+                    return day + '/' + month + '/' + year
+                  })(),
                   contato.getBool('is_principal') ? 'Principal' : 'Adicional',
                 ])
               }
