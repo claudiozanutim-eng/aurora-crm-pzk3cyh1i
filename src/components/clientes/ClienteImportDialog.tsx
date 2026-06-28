@@ -161,7 +161,7 @@ export function ClienteImportDialog({
       const tipo = ['PF', 'PJ'].includes(tipoRaw) ? tipoRaw : 'PJ'
 
       const statusRaw = val('status').toLowerCase()
-      const statusOptions = ['Ativo', 'Inativo', 'Lead']
+      const statusOptions = ['Ativo', 'Inativo', 'Prospect']
       const status = statusOptions.find((o) => o.toLowerCase() === statusRaw) || 'Lead'
 
       const segRaw = val('segmento').toLowerCase()

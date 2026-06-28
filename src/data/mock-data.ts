@@ -159,7 +159,7 @@ export const clientsData = [
     name: 'StartupX',
     contact: 'Lucas Lima',
     email: 'lucas@startupx.com',
-    status: 'Lead',
+    status: 'Prospect',
     lastInteraction: '2023-10-27',
   },
 ]

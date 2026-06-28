@@ -364,7 +364,7 @@ export default function Clientes() {
                 <SelectItem value="Todos">Todos os Status</SelectItem>
                 <SelectItem value="Ativo">Ativo</SelectItem>
                 <SelectItem value="Inativo">Inativo</SelectItem>
-                <SelectItem value="Lead">Lead</SelectItem>
+                <SelectItem value="Prospect">Prospect</SelectItem>
               </SelectContent>
             </Select>
 
@@ -468,14 +468,14 @@ export default function Clientes() {
                           variant={
                             client.status === 'Ativo'
                               ? 'default'
-                              : client.status === 'Lead'
+                              : client.status === 'Prospect'
                                 ? 'secondary'
                                 : 'outline'
                           }
                           className={
                             client.status === 'Ativo'
                               ? 'bg-green-100 text-green-800 hover:bg-green-100'
-                              : client.status === 'Lead'
+                              : client.status === 'Prospect'
                                 ? 'bg-blue-100 text-blue-800 hover:bg-blue-100'
                                 : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
                           }

@@ -95,7 +95,7 @@ const clientSchema = z
       'Outro',
     ]),
     porte: z.enum(['Micro', 'Pequeno', 'Médio', 'Grande']),
-    status: z.enum(['Ativo', 'Inativo', 'Lead']),
+    status: z.enum(['Ativo', 'Inativo', 'Prospect']),
     contatos: z
       .array(
         z.object({
@@ -227,7 +227,7 @@ export function ClienteFormSheet({
     resolver: zodResolver(clientSchema),
     defaultValues: {
       tipo: 'PJ',
-      status: 'Lead',
+      status: 'Prospect',
       segmento: 'Educação',
       porte: 'Pequeno',
       pf_email: '',
@@ -307,7 +307,7 @@ export function ClienteFormSheet({
       } else {
         reset({
           tipo: 'PJ',
-          status: 'Lead',
+          status: 'Prospect',
           segmento: 'Educação',
           porte: 'Pequeno',
           pf_email: '',
@@ -636,7 +636,7 @@ export function ClienteFormSheet({
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Lead">Lead</SelectItem>
+                        <SelectItem value="Prospect">Prospect</SelectItem>
                         <SelectItem value="Ativo">Ativo</SelectItem>
                         <SelectItem value="Inativo">Inativo</SelectItem>
                       </SelectContent>

@@ -26,7 +26,7 @@ export interface Cliente extends RecordModel {
     | 'Cooperativa'
     | 'Outro'
   porte: 'Micro' | 'Pequeno' | 'Médio' | 'Grande'
-  status: 'Ativo' | 'Inativo' | 'Lead'
+  status: 'Ativo' | 'Inativo' | 'Prospect'
   data_cadastro: string
   observacoes?: string
   tags?: string[]

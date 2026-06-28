@@ -185,7 +185,7 @@ export const ClientDataForm = forwardRef<
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {['Ativo', 'Inativo', 'Lead'].map((s) => (
+              {['Ativo', 'Inativo', 'Prospect'].map((s) => (
                 <SelectItem key={s} value={s}>
                   {s}
                 </SelectItem>

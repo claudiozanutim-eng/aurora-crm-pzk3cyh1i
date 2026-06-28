@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-28T01:34:28.807Z",
+  "generatedAt": "2026-06-28T01:40:52.930Z",
   "collections": [
     {
       "name": "users",
@@ -123,13 +123,6 @@
           "selectValues": ["Micro", "Pequeno", "Médio", "Grande"]
         },
         {
-          "name": "status",
-          "type": "select",
-          "required": true,
-          "system": false,
-          "selectValues": ["Ativo", "Inativo", "Lead"]
-        },
-        {
           "name": "data_cadastro",
           "type": "date",
           "required": true,
@@ -166,6 +159,13 @@
           "type": "json",
           "required": false,
           "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": true,
+          "system": false,
+          "selectValues": ["Ativo", "Inativo", "Prospect"]
         }
       ],
       "indexes": [
