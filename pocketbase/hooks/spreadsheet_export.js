@@ -105,9 +105,19 @@ routerAdd(
               cliente.getString('segmento'),
               cliente.getString('porte'),
               cliente.getString('status'),
-              cliente.getString('data_cadastro')
-                ? cliente.getString('data_cadastro').substring(0, 10)
-                : '',
+              (function () {
+                var raw = cliente.getString('data_cadastro')
+                if (!raw) return ''
+                var parts = raw.substring(0, 10).split('-')
+                if (parts.length !== 3) return raw.substring(0, 10)
+                var year = parts[0]
+                var month = parts[1]
+                var day = parts[2]
+                if (year === '1900') {
+                  return day + '/' + month
+                }
+                return day + '/' + month + '/' + year
+              })(),
             ]
 
             const contatos = $app.findRecordsByFilter(
