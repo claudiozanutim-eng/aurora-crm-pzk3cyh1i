@@ -11,33 +11,39 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, Star } from 'lucide-react'
+import { Plus, Search, Star, Pencil, Download, Upload, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { getClientes, type Cliente, type Contato } from '@/services/clientes'
-import { getAllContatos, createContato } from '@/services/contatos'
+import { getAllContatos } from '@/services/contatos'
+import { ContatoFormDialog } from '@/components/contatos/ContatoFormDialog'
+import { ContatoImportDialog } from '@/components/contatos/ContatoImportDialog'
+
+type ContatoWithExpand = Contato & { expand?: { cliente_id?: Cliente } }
 
 export default function Contatos() {
   const navigate = useNavigate()
-  const [contatos, setContatos] = useState<(Contato & { expand?: { cliente_id?: Cliente } })[]>([])
+  const [contatos, setContatos] = useState<ContatoWithExpand[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [search, setSearch] = useState('')
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingContato, setEditingContato] = useState<Contato | null>(null)
+  const [isImportOpen, setIsImportOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   const loadData = async () => {
     try {
-      const data = await getAllContatos()
+      const [data, clientData] = await Promise.all([getAllContatos(), getClientes()])
       setContatos(data)
+      setClientes(clientData)
     } catch (e) {
       console.error(e)
     }
@@ -45,46 +51,79 @@ export default function Contatos() {
 
   useEffect(() => {
     loadData()
-    getClientes().then(setClientes).catch(console.error)
   }, [])
 
   useRealtime('contatos', loadData)
-  useRealtime('clientes', () => {
-    getClientes().then(setClientes).catch(console.error)
-  })
+  useRealtime('clientes', loadData)
 
   const filteredContatos = useMemo(() => {
-    return contatos.filter((c) => {
-      const term = search.toLowerCase()
-      const matchName = c.nome?.toLowerCase().includes(term)
-      const matchEmail = c.email?.toLowerCase().includes(term)
-      const matchClient = c.expand?.cliente_id?.nome?.toLowerCase().includes(term)
-      return matchName || matchEmail || matchClient
-    })
+    return contatos
+      .filter((c) => c.nome && c.nome.trim() !== '')
+      .filter((c) => {
+        const term = search.toLowerCase()
+        const matchName = c.nome?.toLowerCase().includes(term)
+        const matchEmail = c.email?.toLowerCase().includes(term)
+        const matchClient = c.expand?.cliente_id?.nome?.toLowerCase().includes(term)
+        return matchName || matchEmail || matchClient
+      })
   }, [contatos, search])
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const fd = new FormData(e.currentTarget)
-    const data = Object.fromEntries(fd.entries())
-
-    const clientContatos = contatos.filter((c) => c.cliente_id === data.cliente_id)
-    const isFirst = clientContatos.length === 0
+  const handleExport = async (format: 'csv' | 'xlsx') => {
+    if (isExporting || filteredContatos.length === 0) return
+    setIsExporting(true)
+    const toastId = toast.loading(`Exportando contatos para ${format.toUpperCase()}...`)
 
     try {
-      await createContato({
-        nome: data.nome as string,
-        email: data.email as string,
-        telefone: data.telefone as string,
-        cargo: data.cargo as string,
-        cliente_id: data.cliente_id as string,
-        is_principal: isFirst,
+      const contactIds = filteredContatos.map((c) => c.id)
+      const res = await pb.send('/backend/v1/spreadsheet/export', {
+        method: 'POST',
+        body: JSON.stringify({
+          source: 'contatos',
+          ids: contactIds,
+          format: format,
+        }),
+        headers: { 'Content-Type': 'application/json' },
       })
-      toast.success('Contato criado com sucesso')
-      setIsModalOpen(false)
-    } catch (e) {
-      toast.error('Erro ao criar contato')
+
+      if (res && res.base64) {
+        const binaryStr = atob(res.base64)
+        const len = binaryStr.length
+        const bytes = new Uint8Array(len)
+        for (let i = 0; i < len; i++) bytes[i] = binaryStr.charCodeAt(i)
+
+        const blobType =
+          format === 'csv'
+            ? 'text/csv;charset=utf-8;'
+            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+        const blob = new Blob([bytes], { type: blobType })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `contatos_${new Date().toISOString().split('T')[0]}.${format}`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        toast.success('Exportação concluída com sucesso!', { id: toastId })
+      } else {
+        toast.error('Erro ao processar o arquivo de exportação', { id: toastId })
+      }
+    } catch (err) {
+      console.error('Export error:', err)
+      toast.error('Erro ao exportar arquivo', { id: toastId })
+    } finally {
+      setIsExporting(false)
     }
+  }
+
+  const openEdit = (contato: Contato) => {
+    setEditingContato(contato)
+    setIsFormOpen(true)
+  }
+
+  const openCreate = () => {
+    setEditingContato(null)
+    setIsFormOpen(true)
   }
 
   return (
@@ -96,12 +135,38 @@ export default function Contatos() {
             Gerencie todos os contatos vinculados aos seus clientes.
           </p>
         </div>
-        <Button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-[#e55320] hover:bg-[#e55320]/90 text-white"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Novo Contato
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="bg-white"
+                disabled={isExporting || filteredContatos.length === 0}
+              >
+                {isExporting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                {isExporting ? 'Exportando...' : 'Exportar'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                Exportar como CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('xlsx')}>
+                Exportar como Excel (.xlsx)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button onClick={() => setIsImportOpen(true)} variant="outline" className="bg-white">
+            <Upload className="mr-2 h-4 w-4" /> Importar
+          </Button>
+          <Button onClick={openCreate} className="bg-[#e55320] hover:bg-[#e55320]/90 text-white">
+            <Plus className="mr-2 h-4 w-4" /> Novo Contato
+          </Button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-subtle border border-gray-100 overflow-hidden">
@@ -122,10 +187,10 @@ export default function Contatos() {
             <TableHeader className="bg-gray-50/50">
               <TableRow>
                 <TableHead>Nome</TableHead>
-                <TableHead>Cargo</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>E-mail</TableHead>
                 <TableHead>Empresa / Cliente</TableHead>
+                <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -142,23 +207,42 @@ export default function Contatos() {
                     className="hover:bg-gray-50/50 transition-colors cursor-pointer"
                     onClick={() => navigate(`/clientes/${contato.cliente_id}`)}
                   >
-                    <TableCell className="font-medium text-gray-900 flex items-center gap-2">
-                      {contato.nome || '-'}
-                      {contato.is_principal && (
-                        <Badge
-                          variant="outline"
-                          className="bg-orange-50 text-[#e55320] border-[#e55320]/20 flex items-center gap-1 text-[10px] py-0 px-1.5 h-5 shrink-0"
-                        >
-                          <Star className="w-3 h-3 fill-current" />
-                          Principal
-                        </Badge>
-                      )}
+                    <TableCell className="font-medium text-gray-900">
+                      <div className="flex items-center gap-2">
+                        {contato.nome}
+                        {contato.is_principal && (
+                          <Badge
+                            variant="outline"
+                            className="bg-orange-50 text-[#e55320] border-[#e55320]/20 flex items-center gap-1 text-[10px] py-0 px-1.5 h-5 shrink-0"
+                          >
+                            <Star className="w-3 h-3 fill-current" />
+                            Principal
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-gray-500">{contato.cargo || '-'}</TableCell>
-                    <TableCell className="text-gray-500">{contato.telefone || '-'}</TableCell>
-                    <TableCell className="text-gray-500">{contato.email || '-'}</TableCell>
+                    <TableCell className="text-gray-600">{contato.telefone || '-'}</TableCell>
+                    <TableCell className="text-gray-600">{contato.email || '-'}</TableCell>
                     <TableCell className="text-gray-600 font-medium">
                       {contato.expand?.cliente_id?.nome || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-gray-500 hover:text-[#e55320]"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openEdit(contato)
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Editar Contato</TooltipContent>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))
@@ -168,49 +252,19 @@ export default function Contatos() {
         </div>
       </div>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Novo Contato</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Nome</Label>
-              <Input name="nome" required />
-            </div>
-            <div className="space-y-2">
-              <Label>E-mail</Label>
-              <Input name="email" type="email" />
-            </div>
-            <div className="space-y-2">
-              <Label>Telefone</Label>
-              <Input name="telefone" />
-            </div>
-            <div className="space-y-2">
-              <Label>Cargo</Label>
-              <Input name="cargo" />
-            </div>
-            <div className="space-y-2">
-              <Label>Cliente</Label>
-              <Select name="cliente_id" required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clientes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="submit" className="w-full bg-[#e55320] hover:bg-[#e55320]/90 text-white">
-              Salvar Contato
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ContatoFormDialog
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        onSuccess={loadData}
+        initialData={editingContato}
+        clientes={clientes}
+      />
+
+      <ContatoImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        onSuccess={loadData}
+      />
     </div>
   )
 }

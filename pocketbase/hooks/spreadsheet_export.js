@@ -202,6 +202,39 @@ routerAdd(
       }
     }
 
+    if (body.source === 'contatos' && Array.isArray(body.ids)) {
+      try {
+        const ids = body.ids
+        const headers = ['Nome', 'E-mail', 'Telefone', 'Cargo', 'Cliente', 'Contato Principal']
+
+        dataArray = [headers]
+
+        for (const id of ids) {
+          try {
+            const contato = $app.findRecordById('contatos', id)
+            let clienteNome = ''
+            try {
+              if (contato.getString('cliente_id')) {
+                const cliente = $app.findRecordById('clientes', contato.getString('cliente_id'))
+                clienteNome = cliente.getString('nome')
+              }
+            } catch (err) {}
+
+            dataArray.push([
+              contato.getString('nome'),
+              contato.getString('email'),
+              contato.getString('telefone'),
+              contato.getString('cargo'),
+              clienteNome,
+              contato.getBool('is_principal') ? 'Sim' : 'Não',
+            ])
+          } catch (err) {}
+        }
+      } catch (err) {
+        return e.badRequestError('Erro ao buscar contatos: ' + err.message)
+      }
+    }
+
     if (!dataArray || !Array.isArray(dataArray)) {
       return e.badRequestError('missing data array')
     }
