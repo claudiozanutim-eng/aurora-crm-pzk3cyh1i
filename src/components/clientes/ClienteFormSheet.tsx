@@ -106,7 +106,19 @@ const clientSchema = z
             .optional()
             .refine((val) => !val || val.length >= 14, 'Telefone inválido'),
           cargo: z.string().optional(),
-          data_aniversario: z.string().optional(),
+          data_aniversario: z
+            .string()
+            .optional()
+            .refine((val) => {
+              if (!val || !val.trim()) return true
+              const match = val.match(/^(\d{2})\/(\d{2})(?:\/(\d{0,4}))?$/)
+              if (!match) return false
+              const day = parseInt(match[1], 10)
+              const month = parseInt(match[2], 10)
+              if (day < 1 || day > 31) return false
+              if (month < 1 || month > 12) return false
+              return true
+            }, 'Data inválida (DD/MM/AAAA)'),
         }),
       )
       .default([{}]),
@@ -172,6 +184,15 @@ function maskPhone(value: string) {
     .replace(/(\d{2})(\d)/, '($1) $2')
     .replace(/(\d{4,5})(\d)/, '$1-$2')
     .replace(/(-\d{4})\d+?$/, '$1')
+}
+
+function maskBirthday(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 8)
+  let result = ''
+  if (digits.length > 0) result += digits.substring(0, 2)
+  if (digits.length > 2) result += '/' + digits.substring(2, 4)
+  if (digits.length > 4) result += '/' + digits.substring(4, 8)
+  return result
 }
 
 interface ClienteFormSheetProps {
@@ -253,7 +274,17 @@ export function ClienteFormSheet({
             email: c.email || '',
             telefone: c.telefone || '',
             cargo: c.cargo || '',
-            data_aniversario: c.data_aniversario ? c.data_aniversario.substring(0, 10) : '',
+            data_aniversario: c.data_aniversario
+              ? (() => {
+                  const d = new Date(c.data_aniversario)
+                  const day = String(d.getUTCDate()).padStart(2, '0')
+                  const month = String(d.getUTCMonth() + 1).padStart(2, '0')
+                  if (d.getUTCFullYear() === 1900) {
+                    return `${day}/${month}`
+                  }
+                  return `${day}/${month}/${d.getUTCFullYear()}`
+                })()
+              : '',
           }))
         }
 
@@ -383,9 +414,18 @@ export function ClienteFormSheet({
             email: c.email?.trim() || '',
             telefone: c.telefone?.trim() || '',
             cargo: c.cargo?.trim() || '',
-            data_aniversario: c.data_aniversario
-              ? new Date(c.data_aniversario).toISOString()
-              : undefined,
+            data_aniversario: (() => {
+              const val = c.data_aniversario?.trim()
+              if (!val) return undefined
+              const parts = val.split('/')
+              const day = parts[0] || ''
+              const month = parts[1] || ''
+              const year = parts[2]?.length === 4 ? parts[2] : '1900'
+              if (!day || !month) return undefined
+              return new Date(
+                `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00.000Z`,
+              ).toISOString()
+            })(),
           }))
       }
 
@@ -725,9 +765,25 @@ export function ClienteFormSheet({
                     <Label htmlFor={`data_aniversario-${index}`}>Data de Aniversário</Label>
                     <Input
                       id={`data_aniversario-${index}`}
-                      type="date"
-                      {...register(`contatos.${index}.data_aniversario`)}
+                      type="text"
+                      value={watch(`contatos.${index}.data_aniversario`) || ''}
+                      onChange={(e) => {
+                        setValue(
+                          `contatos.${index}.data_aniversario`,
+                          maskBirthday(e.target.value),
+                          {
+                            shouldValidate: true,
+                          },
+                        )
+                      }}
+                      placeholder="DD/MM/AAAA"
+                      inputMode="numeric"
                     />
+                    {errors.contatos?.[index]?.data_aniversario && (
+                      <span className="text-sm text-red-500">
+                        {errors.contatos[index]?.data_aniversario?.message}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
