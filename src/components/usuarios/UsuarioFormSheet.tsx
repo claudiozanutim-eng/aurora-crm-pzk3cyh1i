@@ -34,7 +34,10 @@ const formSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
   email: z.string().email('E-mail inválido'),
   perfil: z.enum(['Admin', 'Usuário']),
-  password: z.string().optional(),
+  password: z
+    .string()
+    .optional()
+    .refine((val) => !val || val.length >= 8, 'A senha deve ter pelo menos 8 caracteres'),
 })
 
 interface Props {
@@ -85,6 +88,10 @@ export function UsuarioFormSheet({ open, onOpenChange, userToEdit, onSuccess }: 
           name: values.name,
           email: values.email,
           perfil: values.perfil,
+        }
+        if (values.password && values.password.length >= 8) {
+          payload.password = values.password
+          payload.passwordConfirm = values.password
         }
         await updateUser(userToEdit.id, payload)
         toast.success('Usuário atualizado com sucesso')
@@ -193,21 +200,27 @@ export function UsuarioFormSheet({ open, onOpenChange, userToEdit, onSuccess }: 
               )}
             />
 
-            {!userToEdit && (
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Senha</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Mínimo 8 caracteres" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{userToEdit ? 'Nova Senha' : 'Senha'}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder={
+                        userToEdit
+                          ? 'Deixe em branco para manter a senha atual'
+                          : 'Mínimo 8 caracteres'
+                      }
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="pt-6 flex flex-col gap-3">
               <Button

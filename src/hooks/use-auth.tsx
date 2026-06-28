@@ -1,11 +1,39 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import pb from '@/lib/pocketbase/client'
 
+const PB_AUTH_KEY = 'pocketbase_auth'
+
+function moveAuthToSession() {
+  const raw = localStorage.getItem(PB_AUTH_KEY)
+  if (raw) {
+    sessionStorage.setItem(PB_AUTH_KEY, raw)
+    localStorage.removeItem(PB_AUTH_KEY)
+  }
+}
+
+function restoreFromSession(): boolean {
+  const raw = sessionStorage.getItem(PB_AUTH_KEY)
+  if (!raw) return false
+  try {
+    const parsed = JSON.parse(raw)
+    const token = parsed.token || ''
+    const record = parsed.record || parsed.model || null
+    if (token) {
+      pb.authStore.save(token, record)
+      localStorage.removeItem(PB_AUTH_KEY)
+      return true
+    }
+  } catch {
+    sessionStorage.removeItem(PB_AUTH_KEY)
+  }
+  return false
+}
+
 interface AuthContextType {
   user: any
   isAuthenticated: boolean
   signUp: (email: string, password: string) => Promise<{ error: any }>
-  signIn: (email: string, password: string) => Promise<{ error: any }>
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: any }>
   signOut: () => void
   loading: boolean
 }
@@ -24,9 +52,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!pb.authStore.isValid) {
+      restoreFromSession()
+    }
+
     const unsubscribe = pb.authStore.onChange((_token, record) => {
       if (record && record.ativo === false) {
         pb.authStore.clear()
+        sessionStorage.removeItem(PB_AUTH_KEY)
         setUser(null)
         setIsAuthenticated(false)
       } else {
@@ -41,9 +74,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .then((authData) => {
           if (authData.record.ativo === false) {
             pb.authStore.clear()
+            sessionStorage.removeItem(PB_AUTH_KEY)
+          }
+          if (sessionStorage.getItem(PB_AUTH_KEY)) {
+            moveAuthToSession()
           }
         })
-        .catch(() => pb.authStore.clear())
+        .catch(() => {
+          pb.authStore.clear()
+          sessionStorage.removeItem(PB_AUTH_KEY)
+        })
         .finally(() => setLoading(false))
     } else {
       if (pb.authStore.record) pb.authStore.clear()
@@ -65,12 +105,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, rememberMe: boolean = true) => {
     try {
       const authData = await pb.collection('users').authWithPassword(email, password)
       if (authData.record.ativo === false) {
         pb.authStore.clear()
+        sessionStorage.removeItem(PB_AUTH_KEY)
         return { error: new Error('Usuário inativo. Contate um administrador.') }
+      }
+      if (!rememberMe) {
+        moveAuthToSession()
       }
       return { error: null }
     } catch (error) {
@@ -80,6 +124,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = () => {
     pb.authStore.clear()
+    sessionStorage.removeItem(PB_AUTH_KEY)
   }
 
   return (
