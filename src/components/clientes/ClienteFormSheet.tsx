@@ -33,6 +33,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useEffect } from 'react'
 import { createClienteEContatos, updateClienteEContatos, type Cliente } from '@/services/clientes'
+import { AddressFields, type AddressValues } from '@/components/clientes/AddressFields'
 
 function isValidCPF(cpf: string) {
   cpf = cpf.replace(/[^\d]+/g, '')
@@ -128,6 +129,14 @@ const clientSchema = z
       .optional()
       .refine((val) => !val || val.length >= 14, 'Telefone inválido'),
     tags: z.array(z.string()).default([]),
+    pais: z.string().default('Brasil'),
+    cep: z.string().optional(),
+    rua: z.string().optional(),
+    numero: z.string().optional(),
+    complemento: z.string().optional(),
+    bairro: z.string().optional(),
+    cidade: z.string().optional(),
+    estado: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -208,7 +217,7 @@ export function ClienteFormSheet({
   onSuccess,
   initialData,
 }: ClienteFormSheetProps) {
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [isLoading, setIsLoading] = useState(false)
   const [showConfirmEmptyDoc, setShowConfirmEmptyDoc] = useState(false)
   const [showConfirmEmptyContact, setShowConfirmEmptyContact] = useState(false)
@@ -233,6 +242,14 @@ export function ClienteFormSheet({
       pf_email: '',
       pf_telefone: '',
       tags: [],
+      pais: 'Brasil',
+      cep: '',
+      rua: '',
+      numero: '',
+      complemento: '',
+      bairro: '',
+      cidade: '',
+      estado: '',
       contatos: [
         {
           nome_contato: '',
@@ -302,6 +319,14 @@ export function ClienteFormSheet({
           pf_email,
           pf_telefone,
           tags: initialData.tags || [],
+          pais: initialData.pais || 'Brasil',
+          cep: initialData.cep || '',
+          rua: initialData.rua || '',
+          numero: initialData.numero || '',
+          complemento: initialData.complemento || '',
+          bairro: initialData.bairro || '',
+          cidade: initialData.cidade || '',
+          estado: initialData.estado || '',
           contatos: mappedContatos,
         })
       } else {
@@ -316,6 +341,14 @@ export function ClienteFormSheet({
           nome: '',
           nome_fantasia: '',
           tags: [],
+          pais: 'Brasil',
+          cep: '',
+          rua: '',
+          numero: '',
+          complemento: '',
+          bairro: '',
+          cidade: '',
+          estado: '',
           contatos: [
             { nome_contato: '', email: '', telefone: '', cargo: '', data_aniversario: '' },
           ],
@@ -326,7 +359,7 @@ export function ClienteFormSheet({
   }, [open, initialData, reset])
 
   const handleNext = async () => {
-    const isStep1Valid = await trigger([
+    const fields: string[] = [
       'tipo',
       'nome',
       'nome_fantasia',
@@ -334,7 +367,11 @@ export function ClienteFormSheet({
       'segmento',
       'porte',
       'status',
-    ])
+    ]
+    if (tipo === 'PF') {
+      fields.push('pf_email', 'pf_telefone')
+    }
+    const isStep1Valid = await trigger(fields as any)
     if (isStep1Valid) {
       setStep(2)
     }
@@ -441,6 +478,14 @@ export function ClienteFormSheet({
             porte: data.porte,
             status: data.status,
             tags: data.tags || [],
+            pais: data.pais || 'Brasil',
+            cep: data.cep || '',
+            rua: data.rua || '',
+            numero: data.numero || '',
+            complemento: data.complemento || '',
+            bairro: data.bairro || '',
+            cidade: data.cidade || '',
+            estado: data.estado || '',
           },
           validContacts,
         )
@@ -456,6 +501,14 @@ export function ClienteFormSheet({
             porte: data.porte,
             status: data.status,
             tags: data.tags || [],
+            pais: data.pais || 'Brasil',
+            cep: data.cep || '',
+            rua: data.rua || '',
+            numero: data.numero || '',
+            complemento: data.complemento || '',
+            bairro: data.bairro || '',
+            cidade: data.cidade || '',
+            estado: data.estado || '',
             data_cadastro: new Date().toISOString(),
           },
           validContacts,
@@ -482,7 +535,11 @@ export function ClienteFormSheet({
         <SheetHeader>
           <SheetTitle>{initialData ? 'Editar Cliente' : 'Novo Cliente'}</SheetTitle>
           <SheetDescription>
-            {step === 1 ? 'Preencha os dados do cliente.' : 'Adicione os contatos do cliente.'}
+            {step === 1
+              ? 'Preencha os dados do cliente.'
+              : step === 2
+                ? 'Informe o endereço do cliente.'
+                : 'Adicione os contatos do cliente.'}
           </SheetDescription>
         </SheetHeader>
 
@@ -669,27 +726,63 @@ export function ClienteFormSheet({
                 />
               </div>
 
-              {tipo === 'PJ' ? (
-                <Button
-                  type="button"
-                  onClick={handleNext}
-                  className="w-full bg-[#e55320] hover:bg-[#e55320]/90 text-white"
-                >
-                  Próximo Passo
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-[#e55320] hover:bg-[#e55320]/90 text-white"
-                >
-                  {isLoading ? 'Salvando...' : initialData ? 'Atualizar' : 'Salvar'}
-                </Button>
-              )}
+              <Button
+                type="button"
+                onClick={handleNext}
+                className="w-full bg-[#e55320] hover:bg-[#e55320]/90 text-white"
+              >
+                Próximo Passo
+              </Button>
             </div>
           )}
 
           {step === 2 && (
+            <div className="space-y-4">
+              <AddressFields
+                values={{
+                  pais: watch('pais') || 'Brasil',
+                  cep: watch('cep') || '',
+                  rua: watch('rua') || '',
+                  numero: watch('numero') || '',
+                  complemento: watch('complemento') || '',
+                  bairro: watch('bairro') || '',
+                  cidade: watch('cidade') || '',
+                  estado: watch('estado') || '',
+                }}
+                onChange={(field, value) => setValue(field as keyof AddressValues, value as any)}
+              />
+
+              <div className="sticky bottom-0 bg-background pt-4 pb-2 border-t mt-4 flex gap-4 z-10">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep(1)}
+                  className="flex-1"
+                >
+                  Voltar
+                </Button>
+                {tipo === 'PJ' ? (
+                  <Button
+                    type="button"
+                    onClick={() => setStep(3)}
+                    className="flex-1 bg-[#e55320] hover:bg-[#e55320]/90 text-white"
+                  >
+                    Próximo
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="flex-1 bg-[#e55320] hover:bg-[#e55320]/90 text-white"
+                  >
+                    {isLoading ? 'Salvando...' : initialData ? 'Atualizar' : 'Salvar'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
             <div className="space-y-4">
               {fields.map((field, index) => (
                 <div key={field.id} className="space-y-4 p-4 border rounded-md relative bg-card">
@@ -809,7 +902,7 @@ export function ClienteFormSheet({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setStep(1)}
+                  onClick={() => setStep(2)}
                   className="flex-1"
                 >
                   Voltar

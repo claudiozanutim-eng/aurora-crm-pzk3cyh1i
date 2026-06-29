@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-28T01:40:52.930Z",
+  "generatedAt": "2026-06-29T23:21:27.957Z",
   "collections": [
     {
       "name": "users",
@@ -166,6 +166,54 @@
           "required": true,
           "system": false,
           "selectValues": ["Ativo", "Inativo", "Prospect"]
+        },
+        {
+          "name": "pais",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cep",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "rua",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "numero",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "complemento",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "bairro",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "cidade",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "estado",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": [

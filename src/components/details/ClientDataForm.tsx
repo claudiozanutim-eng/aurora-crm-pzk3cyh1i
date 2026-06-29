@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { AddressFields } from '@/components/clientes/AddressFields'
 import {
   Select,
   SelectContent,
@@ -33,6 +34,14 @@ export const ClientDataForm = forwardRef<
     status: cliente.status,
     observacoes: cliente.observacoes || '',
     tags: cliente.tags || [],
+    pais: cliente.pais || 'Brasil',
+    cep: cliente.cep || '',
+    rua: cliente.rua || '',
+    numero: cliente.numero || '',
+    complemento: cliente.complemento || '',
+    bairro: cliente.bairro || '',
+    cidade: cliente.cidade || '',
+    estado: cliente.estado || '',
   })
 
   const [isDirty, setIsDirty] = useState(false)
@@ -49,6 +58,14 @@ export const ClientDataForm = forwardRef<
         status: cliente.status,
         observacoes: cliente.observacoes || '',
         tags: cliente.tags || [],
+        pais: cliente.pais || 'Brasil',
+        cep: cliente.cep || '',
+        rua: cliente.rua || '',
+        numero: cliente.numero || '',
+        complemento: cliente.complemento || '',
+        bairro: cliente.bairro || '',
+        cidade: cliente.cidade || '',
+        estado: cliente.estado || '',
       })
     }
   }, [cliente, isDirty])
@@ -63,7 +80,15 @@ export const ClientDataForm = forwardRef<
       data.porte !== cliente.porte ||
       data.status !== cliente.status ||
       data.observacoes !== (cliente.observacoes || '') ||
-      JSON.stringify(data.tags || []) !== JSON.stringify(cliente.tags || [])
+      JSON.stringify(data.tags || []) !== JSON.stringify(cliente.tags || []) ||
+      data.pais !== (cliente.pais || 'Brasil') ||
+      data.cep !== (cliente.cep || '') ||
+      data.rua !== (cliente.rua || '') ||
+      data.numero !== (cliente.numero || '') ||
+      data.complemento !== (cliente.complemento || '') ||
+      data.bairro !== (cliente.bairro || '') ||
+      data.cidade !== (cliente.cidade || '') ||
+      data.estado !== (cliente.estado || '')
     setIsDirty(dirty)
   }, [data, cliente])
 
@@ -217,6 +242,22 @@ export const ClientDataForm = forwardRef<
           rows={4}
           value={data.observacoes}
           onChange={(e) => handleChange('observacoes', e.target.value)}
+        />
+      </div>
+      <div className="border-t border-gray-200 pt-6">
+        <h3 className="text-lg font-semibold mb-4">Endereço</h3>
+        <AddressFields
+          values={{
+            pais: data.pais || 'Brasil',
+            cep: data.cep || '',
+            rua: data.rua || '',
+            numero: data.numero || '',
+            complemento: data.complemento || '',
+            bairro: data.bairro || '',
+            cidade: data.cidade || '',
+            estado: data.estado || '',
+          }}
+          onChange={(field, value) => handleChange(field as keyof Cliente, value)}
         />
       </div>
       <div className="flex items-center gap-3 pt-4">

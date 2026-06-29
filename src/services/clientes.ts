@@ -30,6 +30,14 @@ export interface Cliente extends RecordModel {
   data_cadastro: string
   observacoes?: string
   tags?: string[]
+  pais?: string
+  cep?: string
+  rua?: string
+  numero?: string
+  complemento?: string
+  bairro?: string
+  cidade?: string
+  estado?: string
   expand?: {
     contatos_via_cliente_id?: Contato[]
   }
