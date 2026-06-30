@@ -59,7 +59,7 @@ export function AppSidebar({ className, onNavigate }: AppSidebarProps) {
           <img
             src={auroraLogoHorizontal}
             alt="Aurora CRM"
-            className="h-[4.5rem] w-auto max-w-full object-contain"
+            className="h-[132px] w-auto max-w-full object-contain"
           />
         </Link>
       </div>
