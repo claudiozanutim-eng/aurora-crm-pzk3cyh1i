@@ -171,7 +171,6 @@ export default function Funil() {
   })
 
   const visibleNegocios = filteredNegocios.filter((n) => {
-    if (n.status === 'Prospecção') return false
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
       const clientName = n.expand?.cliente_id?.nome?.toLowerCase() || ''
@@ -205,6 +204,7 @@ export default function Funil() {
     Prospect: 0,
     'Proposta Enviada': 0,
     Negociação: 0,
+    'Stand By': 0,
     'Fechado/Ganho': 0,
     Perdido: 0,
   } as Record<string, number>

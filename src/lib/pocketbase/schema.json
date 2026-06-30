@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-30T12:20:46.433Z",
+  "generatedAt": "2026-06-30T12:59:57.470Z",
   "collections": [
     {
       "name": "users",
@@ -347,10 +347,10 @@
           "required": true,
           "system": false,
           "selectValues": [
-            "Prospecção",
             "Prospect",
             "Proposta Enviada",
             "Negociação",
+            "Stand By",
             "Fechado/Ganho",
             "Perdido"
           ]

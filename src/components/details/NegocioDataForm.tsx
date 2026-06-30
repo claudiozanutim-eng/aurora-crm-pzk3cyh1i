@@ -83,6 +83,7 @@ export const NegocioDataForm = forwardRef<
           ? selectedNegocio.data_prevista_fechamento.split(' ')[0]
           : '',
         prioridade: selectedNegocio.prioridade,
+        status: selectedNegocio.status,
       })
       setIsDirty(false)
       setFieldErrors({})
@@ -101,6 +102,7 @@ export const NegocioDataForm = forwardRef<
       probabilidade_nivel: data.probabilidade_nivel,
       data_prevista_fechamento: data.data_prevista_fechamento,
       prioridade: data.prioridade,
+      status: data.status,
     })
     const initialDataStr = JSON.stringify({
       descricao: selectedNegocio.descricao || '',
@@ -112,6 +114,7 @@ export const NegocioDataForm = forwardRef<
         ? selectedNegocio.data_prevista_fechamento.split(' ')[0]
         : '',
       prioridade: selectedNegocio.prioridade,
+      status: selectedNegocio.status,
     })
     setIsDirty(currentDataStr !== initialDataStr)
   }, [data, selectedNegocio])
@@ -314,6 +317,27 @@ export const NegocioDataForm = forwardRef<
           {fieldErrors.prioridade && (
             <p className="text-sm text-red-500">{fieldErrors.prioridade}</p>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Status</Label>
+          <Select
+            value={data.status || undefined}
+            onValueChange={(val) => handleChange('status', val)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Prospect">Prospect</SelectItem>
+              <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
+              <SelectItem value="Negociação">Negociação</SelectItem>
+              <SelectItem value="Stand By">Stand By</SelectItem>
+              <SelectItem value="Fechado/Ganho">Fechado/Ganho</SelectItem>
+              <SelectItem value="Perdido">Perdido</SelectItem>
+            </SelectContent>
+          </Select>
+          {fieldErrors.status && <p className="text-sm text-red-500">{fieldErrors.status}</p>}
         </div>
       </div>
 

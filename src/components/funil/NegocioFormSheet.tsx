@@ -278,6 +278,7 @@ export function NegocioFormSheet({
                   <SelectItem value="Prospect">Prospect</SelectItem>
                   <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
                   <SelectItem value="Negociação">Negociação</SelectItem>
+                  <SelectItem value="Stand By">Stand By</SelectItem>{' '}
                 </SelectContent>
               </Select>
             </div>

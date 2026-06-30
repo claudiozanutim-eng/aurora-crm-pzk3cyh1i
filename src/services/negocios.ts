@@ -7,13 +7,7 @@ export interface Negocio {
   probabilidade: number
   data_prevista_fechamento: string
   data_fechamento_real: string
-  status:
-    | 'Prospecção'
-    | 'Prospect'
-    | 'Proposta Enviada'
-    | 'Negociação'
-    | 'Fechado/Ganho'
-    | 'Perdido'
+  status: 'Prospect' | 'Proposta Enviada' | 'Negociação' | 'Stand By' | 'Fechado/Ganho' | 'Perdido'
   prioridade: 'Alta' | 'Média' | 'Baixa'
   descricao: string
   ciclo_vendas_dias: number
@@ -50,7 +44,7 @@ export const buildNegociosFilter = (options: {
   vendedorId?: string
   periodo?: string
 }): string => {
-  const filters: string[] = [`status != "Prospecção"`]
+  const filters: string[] = [`status != ""`]
   if (options.vendedorId && options.vendedorId !== 'todos') {
     filters.push(`vendedor_id = "${options.vendedorId}"`)
   }

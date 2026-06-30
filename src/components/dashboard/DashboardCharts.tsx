@@ -63,6 +63,7 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
     const prospect = data.negocios.filter((n) => n.status === 'Prospect')
     const propostaEnviada = data.negocios.filter((n) => n.status === 'Proposta Enviada')
     const negociacao = data.negocios.filter((n) => n.status === 'Negociação')
+    const standby = data.negocios.filter((n) => n.status === 'Stand By')
     const ganhos = data.negocios.filter((n) => n.status === 'Fechado/Ganho')
     const perdidos = data.negocios.filter((n) => n.status === 'Perdido')
 
@@ -71,6 +72,7 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
       { stage: 'Prospect', items: prospect },
       { stage: 'Proposta Enviada', items: propostaEnviada },
       { stage: 'Negociação', items: negociacao },
+      { stage: 'Stand By', items: standby },
       { stage: 'Fechado/Ganho', items: ganhos },
       { stage: 'Perdido', items: perdidos },
     ]
@@ -82,6 +84,7 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
       'bg-indigo-400',
       'bg-blue-400',
       'bg-cyan-400',
+      'bg-amber-400',
       'bg-emerald-500',
       'bg-red-400',
     ]
@@ -123,7 +126,14 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
     const wonCount = negocios.filter((n) => n.status === 'Fechado/Ganho').length
 
     const totalQualified = negocios.filter((n) =>
-      ['Prospect', 'Proposta Enviada', 'Negociação', 'Fechado/Ganho', 'Perdido'].includes(n.status),
+      [
+        'Prospect',
+        'Proposta Enviada',
+        'Negociação',
+        'Stand By',
+        'Fechado/Ganho',
+        'Perdido',
+      ].includes(n.status),
     ).length
 
     const topToBottom =
