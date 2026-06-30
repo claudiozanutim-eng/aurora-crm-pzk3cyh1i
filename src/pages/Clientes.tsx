@@ -561,7 +561,7 @@ export default function Clientes() {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
-                                className="gap-2.5 h-11 px-5 font-semibold transition-colors duration-200 group"
+                                className="gap-2.5 h-11 px-5 font-semibold transition-colors duration-200 group text-[#4a4a4a] bg-[#fffafa] shadow-[0px_0px_6px_0px_#e55320]"
                                 onClick={() => triggerAnalysis('cliente', client.id, client.nome)}
                               >
                                 <AuroAvatar className="h-7 w-7 transition-transform duration-300 group-hover:scale-110" />
