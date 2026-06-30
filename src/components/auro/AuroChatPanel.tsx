@@ -6,20 +6,13 @@ import { streamAgentChat, type DisplayMessage } from '@/lib/skipAi'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { X, Send, Loader2 } from 'lucide-react'
+import { Send, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AuroAvatar } from '@/components/auro/AuroAvatar'
 
 export function AuroChatPanel() {
-  const {
-    isOpen,
-    setIsOpen,
-    conversationId,
-    setConversationId,
-    initialPrompt,
-    clearInitialPrompt,
-    analysisContext,
-  } = useAuro()
+  const { conversationId, setConversationId, initialPrompt, clearInitialPrompt, analysisContext } =
+    useAuro()
   const { user } = useAuth()
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<DisplayMessage[]>([])
@@ -175,7 +168,7 @@ export function AuroChatPanel() {
 
   return (
     <div className="flex flex-col h-full bg-gray-50/50">
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-b shadow-sm">
+      <div className="flex items-center px-4 py-3 bg-white border-b shadow-sm">
         <div className="flex items-center gap-3">
           <AuroAvatar className="h-10 w-10" />
           <div>
@@ -183,14 +176,6 @@ export function AuroChatPanel() {
             <p className="text-xs text-gray-500">Assistente IA da IC Educ</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsOpen(false)}
-          className="text-gray-500 hover:text-gray-700"
-        >
-          <X className="h-5 w-5" />
-        </Button>
       </div>
 
       <ScrollArea className="flex-1 p-4" ref={scrollContainerRef}>

@@ -3,9 +3,12 @@ import { Outlet } from 'react-router-dom'
 import { AppSidebar } from '@/components/layout/AppSidebar'
 import { Header } from '@/components/layout/Header'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { AuroChatPanel } from '@/components/auro/AuroChatPanel'
+import { useAuro } from '@/hooks/use-auro'
 
 export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { isOpen, setIsOpen } = useAuro()
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -25,6 +28,12 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-[440px] p-0 flex flex-col">
+          <AuroChatPanel />
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
