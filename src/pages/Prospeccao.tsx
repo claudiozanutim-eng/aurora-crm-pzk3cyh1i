@@ -57,7 +57,7 @@ export default function Prospeccao() {
       return
     }
     pb.collection('leads')
-      .getOne<Lead>(e.record.id)
+      .getOne<Lead>(e.record.id, { expand: 'cliente_id' })
       .then((record) => {
         setLeads((prev) => {
           const exists = prev.some((l) => l.id === record.id)
@@ -88,13 +88,19 @@ export default function Prospeccao() {
       const term = searchTerm.toLowerCase()
       const nome = lead.nome?.toLowerCase() || ''
       const contato = lead.contato_nome?.toLowerCase() || ''
-      if (!nome.includes(term) && !contato.includes(term)) {
+      const nomeFantasia = (lead as any).expand?.cliente_id?.nome_fantasia?.toLowerCase() || ''
+      const clienteNome = (lead as any).expand?.cliente_id?.nome?.toLowerCase() || ''
+      if (
+        !nome.includes(term) &&
+        !contato.includes(term) &&
+        !nomeFantasia.includes(term) &&
+        !clienteNome.includes(term)
+      ) {
         return false
       }
     }
     return true
   })
-
   let totalLeads = filteredLeads.length
   let leadsNovosMes = 0
   let leadsConvertidos = 0

@@ -15,6 +15,7 @@ export interface Interacao extends RecordModel {
   data_hora: string
   vendedor_id: string
   resumo: string
+  observacoes?: string
   expand?: { vendedor_id?: { name: string } }
 }
 
@@ -29,4 +30,12 @@ export const getInteracoes = async (targetId: string, targetType: 'cliente' | 'l
 
 export const createInteracao = async (data: Partial<Interacao>) => {
   return pb.collection('interacoes').create<Interacao>(data)
+}
+
+export const updateInteracao = async (id: string, data: Partial<Interacao>) => {
+  return pb.collection('interacoes').update<Interacao>(id, data)
+}
+
+export const deleteInteracao = async (id: string) => {
+  return pb.collection('interacoes').delete(id)
 }

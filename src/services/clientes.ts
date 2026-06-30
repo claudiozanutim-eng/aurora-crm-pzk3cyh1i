@@ -135,7 +135,7 @@ export const deleteCliente = async (id: string) => {
 export const buildClientesFilter = (search?: string, status?: string, tipo?: string): string => {
   const filters: string[] = []
   const s = (search || '').replace(/"/g, '').trim()
-  if (s) filters.push(`(nome ~ "${s}" || documento ~ "${s}")`)
+  if (s) filters.push(`(nome ~ "${s}" || nome_fantasia ~ "${s}" || documento ~ "${s}")`)
   if (status && status !== 'Todos') filters.push(`status = "${status}"`)
   if (tipo && tipo !== 'Todos') filters.push(`tipo = "${tipo}"`)
   return filters.join(' && ')

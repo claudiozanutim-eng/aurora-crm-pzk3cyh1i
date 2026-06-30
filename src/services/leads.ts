@@ -32,6 +32,7 @@ export const getLeadById = async (id: string) => {
 export const getLeads = async () => {
   return pb.collection('leads').getFullList<Lead>({
     sort: '-created',
+    expand: 'cliente_id',
   })
 }
 

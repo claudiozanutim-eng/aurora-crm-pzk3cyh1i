@@ -3,6 +3,7 @@ import { KanbanBoard } from '@/components/dashboard/KanbanBoard'
 import { Button } from '@/components/ui/button'
 import { Plus, Filter, Download, Loader2, Search } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
+import { useNavigate } from 'react-router-dom'
 import { getNegocios, Negocio, updateNegocio, deleteNegocio } from '@/services/negocios'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
@@ -31,6 +32,7 @@ export default function Funil() {
   const { vendedorId, periodo, setVendedorId, setPeriodo } = useDashboardStore()
   const { toast } = useToast()
   const [isExporting, setIsExporting] = useState(false)
+  const navigate = useNavigate()
 
   const handleExportFunnel = async () => {
     setIsExporting(true)
@@ -210,7 +212,7 @@ export default function Funil() {
   } as Record<string, number>
 
   const isActiveStatus = (status: string) =>
-    ['Prospect', 'Proposta Enviada', 'Negociação'].includes(status)
+    ['Prospect', 'Proposta Enviada', 'Negociação', 'Stand By'].includes(status)
 
   visibleNegocios.forEach((n) => {
     totalDeals++
@@ -397,6 +399,7 @@ export default function Funil() {
           negocios={visibleNegocios}
           onStatusChange={handleStatusChange}
           onDeleteDeal={handleDeleteDeal}
+          onCardClick={(deal) => navigate(`/clientes/${deal.cliente_id}`)}
         />
       </div>
 

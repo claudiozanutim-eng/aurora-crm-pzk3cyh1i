@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Trash2, GripVertical, Calendar, User } from 'lucide-react'
 import type { Negocio } from '@/services/negocios'
 import { cn } from '@/lib/utils'
@@ -40,13 +40,21 @@ interface KanbanBoardProps {
   negocios: Negocio[]
   onStatusChange: (deal: Negocio, newStatus: Negocio['status']) => void
   onDeleteDeal: (deal: Negocio) => void
+  onCardClick?: (deal: Negocio) => void
 }
 
-export function KanbanBoard({ negocios, onStatusChange, onDeleteDeal }: KanbanBoardProps) {
+export function KanbanBoard({
+  negocios,
+  onStatusChange,
+  onDeleteDeal,
+  onCardClick,
+}: KanbanBoardProps) {
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null)
+  const wasDraggedRef = useRef(false)
 
   const handleDragStart = (e: React.DragEvent, dealId: string) => {
+    wasDraggedRef.current = true
     e.dataTransfer.setData('text/plain', dealId)
     setDraggedId(dealId)
   }
@@ -120,8 +128,15 @@ export function KanbanBoard({ negocios, onStatusChange, onDeleteDeal }: KanbanBo
                       draggable
                       onDragStart={(e) => handleDragStart(e, deal.id)}
                       onDragEnd={() => {
+                        setTimeout(() => {
+                          wasDraggedRef.current = false
+                        }, 0)
                         setDraggedId(null)
                         setDragOverStatus(null)
+                      }}
+                      onClick={() => {
+                        if (wasDraggedRef.current) return
+                        onCardClick?.(deal)
                       }}
                       className={cn(
                         'group relative bg-white rounded-md border border-gray-200 p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-sm hover:border-gray-300',
@@ -129,7 +144,10 @@ export function KanbanBoard({ negocios, onStatusChange, onDeleteDeal }: KanbanBo
                       )}
                     >
                       <button
-                        onClick={() => onDeleteDeal(deal)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDeleteDeal(deal)
+                        }}
                         className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

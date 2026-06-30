@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { User, Phone, Briefcase, CheckCircle2, Pencil, Trash2, GripVertical } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
 import { TagBadge } from '@/components/ui/tag-badge'
@@ -46,11 +46,13 @@ export function LeadsKanbanBoard({
 }: LeadsKanbanBoardProps) {
   const [activeColumn, setActiveColumn] = useState<string | null>(null)
   const [draggedId, setDraggedId] = useState<string | null>(null)
+  const wasDraggedRef = useRef(false)
   const navigate = useNavigate()
 
   const safeLeads = Array.isArray(leads) ? leads : []
 
   const handleDragStart = (e: React.DragEvent, lead: Lead) => {
+    wasDraggedRef.current = true
     e.dataTransfer.setData('text/plain', lead.id)
     setDraggedId(lead.id)
   }
@@ -120,12 +122,16 @@ export function LeadsKanbanBoard({
                     draggable
                     onDragStart={(e) => handleDragStart(e, lead)}
                     onDragEnd={() => {
+                      setTimeout(() => {
+                        wasDraggedRef.current = false
+                      }, 0)
                       setDraggedId(null)
                       setActiveColumn(null)
                     }}
-                    onClick={() =>
+                    onClick={() => {
+                      if (wasDraggedRef.current) return
                       navigate(`/leads/${lead.id}`, { state: { from: '/prospeccao' } })
-                    }
+                    }}
                     className={cn(
                       'group relative bg-white rounded-md border border-gray-200 p-2.5 cursor-grab active:cursor-grabbing transition-all hover:shadow-sm hover:border-gray-300',
                       draggedId === lead.id && 'opacity-50',

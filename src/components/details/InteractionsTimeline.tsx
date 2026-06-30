@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react'
-import { getInteracoes, createInteracao, Interacao } from '@/services/interacoes'
+import {
+  getInteracoes,
+  createInteracao,
+  updateInteracao,
+  deleteInteracao,
+  Interacao,
+} from '@/services/interacoes'
+import { extractFieldErrors, type FieldErrors } from '@/lib/pocketbase/errors'
 import { useAuth } from '@/hooks/use-auth'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
@@ -21,6 +28,16 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Mail,
   MessageCircle,
   Phone,
@@ -32,6 +49,8 @@ import {
   CheckCircle,
   Upload,
   Download,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import pb from '@/lib/pocketbase/client'
 import { cn } from '@/lib/utils'
@@ -45,6 +64,24 @@ const icons: Record<string, any> = {
   'Enviar Proposta': <Send className="w-4 h-4 text-indigo-500" />,
   'Movimentação de Funil': <ArrowRightLeft className="w-4 h-4 text-[#e55320]" />,
   'Proposta Aprovada': <CheckCircle className="w-4 h-4 text-green-500" />,
+}
+
+const editableTipos = [
+  'E-mail',
+  'WhatsApp',
+  'Telefonema',
+  'Reunião',
+  'Proposta Enviada',
+  'Enviar Proposta',
+  'Proposta Aprovada',
+]
+
+function toDatetimeLocal(isoStr: string): string {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  if (isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 export function InteractionsTimeline({
@@ -69,6 +106,16 @@ export function InteractionsTimeline({
   const [extFile, setExtFile] = useState<File | null>(null)
   const [extNegocio, setExtNegocio] = useState('')
   const [clientNegocios, setClientNegocios] = useState<any[]>([])
+
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingInteracao, setEditingInteracao] = useState<Interacao | null>(null)
+  const [editTipo, setEditTipo] = useState<Interacao['tipo']>('Telefonema')
+  const [editDataHora, setEditDataHora] = useState('')
+  const [editResumo, setEditResumo] = useState('')
+  const [editObservacoes, setEditObservacoes] = useState('')
+  const [editFieldErrors, setEditFieldErrors] = useState<FieldErrors>({})
+
+  const [deleteTarget, setDeleteTarget] = useState<Interacao | null>(null)
 
   useEffect(() => {
     if (targetType === 'cliente' && externalDialogOpen) {
@@ -188,6 +235,49 @@ export function InteractionsTimeline({
     }
   }
 
+  const openEdit = (interacao: Interacao) => {
+    setEditingInteracao(interacao)
+    setEditTipo(interacao.tipo)
+    setEditDataHora(toDatetimeLocal(interacao.data_hora))
+    setEditResumo(interacao.resumo || '')
+    setEditObservacoes(interacao.observacoes || '')
+    setEditFieldErrors({})
+    setEditOpen(true)
+  }
+
+  const handleEditSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingInteracao) return
+    setEditFieldErrors({})
+    try {
+      await updateInteracao(editingInteracao.id, {
+        tipo: editTipo,
+        resumo: editResumo,
+        observacoes: editObservacoes,
+        data_hora: new Date(editDataHora).toISOString(),
+      })
+      toast({ title: 'Interação atualizada.' })
+      setEditOpen(false)
+      setEditingInteracao(null)
+    } catch (err) {
+      setEditFieldErrors(extractFieldErrors(err))
+      toast({ title: 'Erro ao atualizar interação', variant: 'destructive' })
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      await deleteInteracao(deleteTarget.id)
+      toast({ title: 'Interação excluída.' })
+      setDeleteTarget(null)
+    } catch (err) {
+      toast({ title: 'Erro ao excluir interação', variant: 'destructive' })
+    }
+  }
+
+  const isEditable = (i: Interacao) => i.tipo !== 'Movimentação de Funil'
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -286,13 +376,11 @@ export function InteractionsTimeline({
                     <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.keys(icons)
-                      .filter((k) => k !== 'Movimentação de Funil' && k !== 'Proposta Aprovada')
-                      .map((k) => (
-                        <SelectItem key={k} value={k}>
-                          {k}
-                        </SelectItem>
-                      ))}
+                    {editableTipos.map((k) => (
+                      <SelectItem key={k} value={k}>
+                        {k}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Input
@@ -340,9 +428,31 @@ export function InteractionsTimeline({
                 >
                   {i.tipo}
                 </span>
-                <span className="text-sm text-gray-500">
-                  {new Date(i.data_hora).toLocaleString('pt-BR')}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">
+                    {new Date(i.data_hora).toLocaleString('pt-BR')}
+                  </span>
+                  {isEditable(i) && (
+                    <div className="flex items-center gap-1 ml-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-500 hover:text-[#e55320] hover:bg-orange-50"
+                        onClick={() => openEdit(i)}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-500 hover:text-red-600 hover:bg-red-50"
+                        onClick={() => setDeleteTarget(i)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
               <p
                 className={cn(
@@ -352,6 +462,9 @@ export function InteractionsTimeline({
               >
                 {i.resumo}
               </p>
+              {i.observacoes && i.tipo !== 'Proposta Aprovada' && (
+                <p className="text-xs text-gray-500 mt-2 italic">{i.observacoes}</p>
+              )}
               {i.tipo === 'Proposta Aprovada' && (
                 <div className="flex gap-2 mt-3 items-center">
                   {(() => {
@@ -410,7 +523,6 @@ export function InteractionsTimeline({
                       }
                     }
 
-                    // Força o download nativo adicionando ?download=1 à URL do PocketBase
                     const finalDownloadUrl = downloadUrl.includes('?')
                       ? `${downloadUrl}&download=1`
                       : `${downloadUrl}?download=1`
@@ -453,6 +565,94 @@ export function InteractionsTimeline({
           <p className="text-gray-500 text-sm italic">Nenhuma interação registrada.</p>
         )}
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Interação</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSave} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Tipo</label>
+              <Select value={editTipo} onValueChange={(v: any) => setEditTipo(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {editableTipos.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {k}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Data e Hora</label>
+              <Input
+                type="datetime-local"
+                value={editDataHora}
+                onChange={(e) => setEditDataHora(e.target.value)}
+                required
+              />
+              {editFieldErrors.data_hora && (
+                <p className="text-sm text-red-500">{editFieldErrors.data_hora}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Resumo</label>
+              <Textarea
+                value={editResumo}
+                onChange={(e) => setEditResumo(e.target.value)}
+                required
+                rows={4}
+              />
+              {editFieldErrors.resumo && (
+                <p className="text-sm text-red-500">{editFieldErrors.resumo}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Observações</label>
+              <Textarea
+                value={editObservacoes}
+                onChange={(e) => setEditObservacoes(e.target.value)}
+                rows={3}
+              />
+              {editFieldErrors.observacoes && (
+                <p className="text-sm text-red-500">{editFieldErrors.observacoes}</p>
+              )}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="bg-[#e55320] hover:bg-[#cc4a1c] text-white">
+                Salvar Alterações
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Interação</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta interação? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
