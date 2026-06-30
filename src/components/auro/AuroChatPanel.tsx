@@ -11,8 +11,14 @@ import { cn } from '@/lib/utils'
 import { AuroAvatar } from '@/components/auro/AuroAvatar'
 
 export function AuroChatPanel() {
-  const { conversationId, setConversationId, initialPrompt, clearInitialPrompt, analysisContext } =
-    useAuro()
+  const {
+    conversationId,
+    setConversationId,
+    initialPrompt,
+    clearInitialPrompt,
+    analysisContext,
+    isOpen,
+  } = useAuro()
   const { user } = useAuth()
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<DisplayMessage[]>([])
