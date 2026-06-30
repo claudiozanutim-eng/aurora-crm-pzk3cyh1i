@@ -159,6 +159,22 @@ export function LeadsKanbanBoard({
                         <p className="text-sm font-medium text-gray-900 truncate leading-tight">
                           {lead.nome}
                         </p>
+                        {(() => {
+                          const cliente = (lead as any).expand?.cliente_id
+                          const nomeFantasia = cliente?.nome_fantasia
+                          if (
+                            nomeFantasia &&
+                            nomeFantasia.trim() !== '' &&
+                            nomeFantasia !== lead.nome
+                          ) {
+                            return (
+                              <p className="text-xs text-muted-foreground truncate leading-tight mt-0.5">
+                                {nomeFantasia}
+                              </p>
+                            )
+                          }
+                          return null
+                        })()}
                         <div className="mt-1 space-y-0.5">
                           {lead.contato_nome && (
                             <div className="flex items-center gap-1 text-[10px] text-gray-500">

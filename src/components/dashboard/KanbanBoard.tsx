@@ -157,8 +157,15 @@ export function KanbanBoard({
                         <GripVertical className="h-3 w-3 text-gray-300 shrink-0 mt-0.5" />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-gray-900 truncate leading-tight">
-                            {cliente?.nome || cliente?.nome_fantasia || 'Sem nome'}
+                            {cliente?.nome || 'Sem nome'}
                           </p>
+                          {cliente?.nome_fantasia &&
+                            cliente.nome_fantasia.trim() !== '' &&
+                            cliente.nome_fantasia !== cliente.nome && (
+                              <p className="text-xs text-muted-foreground truncate leading-tight mt-0.5">
+                                {cliente.nome_fantasia}
+                              </p>
+                            )}
                           <p className="text-sm font-semibold text-gray-700 mt-0.5">
                             {formatCurrency(deal.valor_estimado)}
                           </p>
