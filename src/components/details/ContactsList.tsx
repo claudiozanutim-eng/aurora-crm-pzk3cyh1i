@@ -22,14 +22,7 @@ import {
 import { User, Phone, Mail, Briefcase, Star, Plus, PhoneCall } from 'lucide-react'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
-
-function maskPhone(value: string) {
-  return value
-    .replace(/\D/g, '')
-    .replace(/(\d{2})(\d)/, '($1) $2')
-    .replace(/(\d{4,5})(\d)/, '$1-$2')
-    .replace(/(-\d{4})\d+?$/, '$1')
-}
+import { PhoneInput } from '@/components/ui/phone-input'
 
 export function ContactsList({ clienteId }: { clienteId: string }) {
   const { toast } = useToast()
@@ -138,23 +131,17 @@ export function ContactsList({ clienteId }: { clienteId: string }) {
                 <Label>E-mail</Label>
                 <Input name="email" type="email" defaultValue={editing?.email} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Telefone Celular</Label>
-                  <Input
-                    value={telefone}
-                    onChange={(e) => setTelefone(maskPhone(e.target.value))}
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Telefone Fixo</Label>
-                  <Input
-                    value={telefoneFixo}
-                    onChange={(e) => setTelefoneFixo(maskPhone(e.target.value))}
-                    placeholder="(11) 3333-3333"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Telefone Celular</Label>
+                <PhoneInput value={telefone} onChange={setTelefone} placeholder="99999-9999" />
+              </div>
+              <div className="space-y-2">
+                <Label>Telefone Fixo</Label>
+                <PhoneInput
+                  value={telefoneFixo}
+                  onChange={setTelefoneFixo}
+                  placeholder="3333-3333"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Cargo</Label>

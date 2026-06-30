@@ -628,41 +628,39 @@ export function ClienteFormSheet({
                       <span className="text-sm text-red-500">{errors.pf_email.message}</span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="pf_telefone">Telefone Celular</Label>
-                      <Input
-                        id="pf_telefone"
-                        value={watch('pf_telefone') || ''}
-                        onChange={(e) =>
-                          setValue('pf_telefone', maskPhone(e.target.value), {
-                            shouldValidate: true,
-                          })
-                        }
-                        placeholder="(11) 99999-9999"
-                      />
-                      {errors.pf_telefone && (
-                        <span className="text-sm text-red-500">{errors.pf_telefone.message}</span>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="pf_telefone_fixo">Telefone Fixo</Label>
-                      <Input
-                        id="pf_telefone_fixo"
-                        value={watch('pf_telefone_fixo') || ''}
-                        onChange={(e) =>
-                          setValue('pf_telefone_fixo', maskPhone(e.target.value), {
-                            shouldValidate: true,
-                          })
-                        }
-                        placeholder="(11) 3333-3333"
-                      />
-                      {errors.pf_telefone_fixo && (
-                        <span className="text-sm text-red-500">
-                          {errors.pf_telefone_fixo.message}
-                        </span>
-                      )}
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pf_telefone">Telefone Celular</Label>
+                    <Input
+                      id="pf_telefone"
+                      value={watch('pf_telefone') || ''}
+                      onChange={(e) =>
+                        setValue('pf_telefone', maskPhone(e.target.value), {
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder="(11) 99999-9999"
+                    />
+                    {errors.pf_telefone && (
+                      <span className="text-sm text-red-500">{errors.pf_telefone.message}</span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pf_telefone_fixo">Telefone Fixo</Label>
+                    <Input
+                      id="pf_telefone_fixo"
+                      value={watch('pf_telefone_fixo') || ''}
+                      onChange={(e) =>
+                        setValue('pf_telefone_fixo', maskPhone(e.target.value), {
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder="(11) 3333-3333"
+                    />
+                    {errors.pf_telefone_fixo && (
+                      <span className="text-sm text-red-500">
+                        {errors.pf_telefone_fixo.message}
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
@@ -811,39 +809,37 @@ export function ClienteFormSheet({
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor={`telefone-${index}`}>Telefone Celular</Label>
-                      <Input
-                        id={`telefone-${index}`}
-                        value={watch(`contatos.${index}.telefone`) || ''}
-                        onChange={(e) => handlePhoneChange(index, e)}
-                        placeholder="(11) 99999-9999"
-                      />
-                      {errors.contatos?.[index]?.telefone && (
-                        <span className="text-sm text-red-500">
-                          {errors.contatos[index]?.telefone?.message}
-                        </span>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`telefone_fixo-${index}`}>Telefone Fixo</Label>
-                      <Input
-                        id={`telefone_fixo-${index}`}
-                        value={watch(`contatos.${index}.telefone_fixo`) || ''}
-                        onChange={(e) =>
-                          setValue(`contatos.${index}.telefone_fixo`, maskPhone(e.target.value), {
-                            shouldValidate: true,
-                          })
-                        }
-                        placeholder="(11) 3333-3333"
-                      />
-                      {errors.contatos?.[index]?.telefone_fixo && (
-                        <span className="text-sm text-red-500">
-                          {errors.contatos[index]?.telefone_fixo?.message}
-                        </span>
-                      )}
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`telefone-${index}`}>Telefone Celular</Label>
+                    <Input
+                      id={`telefone-${index}`}
+                      value={watch(`contatos.${index}.telefone`) || ''}
+                      onChange={(e) => handlePhoneChange(index, e)}
+                      placeholder="(11) 99999-9999"
+                    />
+                    {errors.contatos?.[index]?.telefone && (
+                      <span className="text-sm text-red-500">
+                        {errors.contatos[index]?.telefone?.message}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`telefone_fixo-${index}`}>Telefone Fixo</Label>
+                    <Input
+                      id={`telefone_fixo-${index}`}
+                      value={watch(`contatos.${index}.telefone_fixo`) || ''}
+                      onChange={(e) =>
+                        setValue(`contatos.${index}.telefone_fixo`, maskPhone(e.target.value), {
+                          shouldValidate: true,
+                        })
+                      }
+                      placeholder="(11) 3333-3333"
+                    />
+                    {errors.contatos?.[index]?.telefone_fixo && (
+                      <span className="text-sm text-red-500">
+                        {errors.contatos[index]?.telefone_fixo?.message}
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor={`cargo-${index}`}>Cargo</Label>

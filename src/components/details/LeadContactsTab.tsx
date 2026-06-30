@@ -5,14 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
-
-function maskPhone(value: string) {
-  return value
-    .replace(/\D/g, '')
-    .replace(/(\d{2})(\d)/, '($1) $2')
-    .replace(/(\d{4,5})(\d)/, '$1-$2')
-    .replace(/(-\d{4})\d+?$/, '$1')
-}
+import { PhoneInput } from '@/components/ui/phone-input'
 
 export function LeadContactsTab({ lead }: { lead: Lead }) {
   const { toast } = useToast()
@@ -21,16 +14,8 @@ export function LeadContactsTab({ lead }: { lead: Lead }) {
     email: lead.email || '',
     telefone: lead.telefone || '',
   })
-  const [telefoneMasked, setTelefoneMasked] = useState(maskPhone(lead.telefone || ''))
-
   const handleChange = (field: keyof typeof data, value: string) => {
     setData((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handlePhoneChange = (value: string) => {
-    const masked = maskPhone(value)
-    setTelefoneMasked(masked)
-    setData((prev) => ({ ...prev, telefone: masked }))
   }
 
   const handleSave = async (e: React.FormEvent) => {
@@ -67,10 +52,10 @@ export function LeadContactsTab({ lead }: { lead: Lead }) {
           </div>
           <div className="space-y-2">
             <Label>Telefone Celular</Label>
-            <Input
-              value={telefoneMasked}
-              onChange={(e) => handlePhoneChange(e.target.value)}
-              placeholder="(11) 99999-9999"
+            <PhoneInput
+              value={data.telefone}
+              onChange={(value) => handleChange('telefone', value)}
+              placeholder="99999-9999"
             />
           </div>
           <Button type="submit" className="bg-[#FF6B00] hover:bg-[#E66000] text-white">
