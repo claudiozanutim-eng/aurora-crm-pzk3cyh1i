@@ -93,12 +93,21 @@
   }
 
   body {
-    @apply bg-gray-50/50 text-foreground font-sans antialiased;
+    @apply bg-white text-foreground font-sans antialiased;
   }
 
   section[aria-label='Notifications alt+T'] {
     padding: 0 !important;
     margin: 0 !important;
+  }
+}
+
+@layer components {
+  .card-standard {
+    @apply bg-card border border-border shadow-subtle rounded-xl;
+  }
+  .input-standard {
+    @apply bg-background border-input text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-ring;
   }
 }
 

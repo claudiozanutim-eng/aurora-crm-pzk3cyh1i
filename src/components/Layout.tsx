@@ -9,7 +9,7 @@ export default function Layout() {
   const { isOpen } = useAuro()
 
   return (
-    <div className="flex min-h-screen bg-gray-50/50 print:bg-white print:block overflow-hidden relative">
+    <div className="flex min-h-screen bg-white print:bg-white print:block overflow-hidden relative">
       {/* Desktop Sidebar */}
       <div className="hidden md:block w-64 flex-shrink-0 print:hidden">
         <AppSidebar className="fixed w-64 h-full print:hidden" />

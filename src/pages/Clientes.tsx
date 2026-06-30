@@ -327,17 +327,15 @@ export default function Clientes() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">Clientes</h1>
-          <p className="text-gray-500 mt-1">Gerencie sua base de clientes e contatos.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+            Clientes
+          </h1>
+          <p className="text-muted-foreground mt-1">Gerencie sua base de clientes e contatos.</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="bg-white"
-                disabled={isExporting || totalItems === 0}
-              >
+              <Button variant="outline" disabled={isExporting || totalItems === 0}>
                 {isExporting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -355,7 +353,7 @@ export default function Clientes() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={() => setIsImportOpen(true)} variant="outline" className="bg-white">
+          <Button onClick={() => setIsImportOpen(true)} variant="outline">
             <Upload className="mr-2 h-4 w-4" /> Importar
           </Button>
           <Button
@@ -363,7 +361,6 @@ export default function Clientes() {
               setClientToEdit(null)
               setIsSheetOpen(true)
             }}
-            className="bg-[#e55320] hover:bg-[#e55320]/90 text-white"
           >
             <Plus className="mr-2 h-4 w-4" /> Novo Cliente
           </Button>
@@ -402,29 +399,29 @@ export default function Clientes() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Sem Contato (&gt;30 dias)</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-500" />
+            <AlertCircle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{metrics.semContato}</div>
+            <div className="text-2xl font-bold text-destructive">{metrics.semContato}</div>
             <p className="text-xs text-muted-foreground">Clientes ativos</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="bg-white rounded-xl shadow-subtle border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row gap-4 items-center flex-wrap">
+      <div className="card-standard overflow-hidden">
+        <div className="p-4 border-b border-border flex flex-col md:flex-row gap-4 items-center flex-wrap">
           <div className="relative flex-1 w-full md:max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome ou documento..."
-              className="pl-8 bg-gray-50 border-gray-200 w-full"
+              className="pl-8 input-standard w-full"
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
             />
           </div>
           <div className="flex w-full md:w-auto gap-4 flex-wrap">
             <Select value={statusFilter} onValueChange={handleStatusChange}>
-              <SelectTrigger className="w-full md:w-[140px] bg-gray-50">
+              <SelectTrigger className="w-full md:w-[140px] input-standard">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -435,7 +432,7 @@ export default function Clientes() {
               </SelectContent>
             </Select>
             <Select value={tipoFilter} onValueChange={handleTipoChange}>
-              <SelectTrigger className="w-full md:w-[140px] bg-gray-50">
+              <SelectTrigger className="w-full md:w-[140px] input-standard">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -445,7 +442,7 @@ export default function Clientes() {
               </SelectContent>
             </Select>
             <Select value={sortOption} onValueChange={handleSortChange}>
-              <SelectTrigger className="w-full md:w-[220px] bg-gray-50">
+              <SelectTrigger className="w-full md:w-[220px] input-standard">
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
               <SelectContent>
@@ -462,7 +459,7 @@ export default function Clientes() {
 
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50/50">
+            <TableHeader className="bg-muted/30">
               <TableRow>
                 <TableHead>Empresa / Nome</TableHead>
                 <TableHead>Documento</TableHead>
@@ -479,12 +476,12 @@ export default function Clientes() {
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                   </TableCell>
                 </TableRow>
               ) : clientes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Nenhum cliente encontrado.
                   </TableCell>
                 </TableRow>
@@ -494,19 +491,19 @@ export default function Clientes() {
                     client.expand?.contatos_via_cliente_id?.find((c) => c.is_principal) ||
                     client.expand?.contatos_via_cliente_id?.[0]
                   return (
-                    <TableRow key={client.id} className="hover:bg-gray-50/50 transition-colors">
-                      <TableCell className="font-medium text-gray-900">
+                    <TableRow key={client.id} className="hover:bg-muted/30 transition-colors">
+                      <TableCell className="font-medium text-foreground">
                         {client.nome}
                         {client.nome_fantasia && (
-                          <span className="block text-xs text-gray-500 font-normal">
+                          <span className="block text-xs text-muted-foreground font-normal">
                             {client.nome_fantasia}
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-gray-500 whitespace-nowrap">
+                      <TableCell className="text-muted-foreground whitespace-nowrap">
                         {client.documento}
                       </TableCell>
-                      <TableCell className="text-gray-600">
+                      <TableCell className="text-muted-foreground">
                         {contatoPrincipal
                           ? displayContactName(
                               contatoPrincipal.nome,
@@ -515,28 +512,28 @@ export default function Clientes() {
                             )
                           : '-'}
                       </TableCell>
-                      <TableCell className="text-gray-500">
+                      <TableCell className="text-muted-foreground">
                         {contatoPrincipal?.email || '-'}
                       </TableCell>
-                      <TableCell className="text-gray-500">{client.segmento}</TableCell>
+                      <TableCell className="text-muted-foreground">{client.segmento}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1 max-w-[150px]">
                           {client.tags && client.tags.length > 0 ? (
                             client.tags.map((t) => <TagBadge key={t} tag={t} />)
                           ) : (
-                            <span className="text-xs text-gray-400">-</span>
+                            <span className="text-xs text-muted-foreground/60">-</span>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
                         {latestInteracaoByClient.get(client.id) ? (
-                          <span className="text-gray-600">
+                          <span className="text-muted-foreground">
                             {new Date(
                               latestInteracaoByClient.get(client.id)!.data_hora,
                             ).toLocaleDateString('pt-BR')}
                           </span>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-muted-foreground/60">-</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -553,7 +550,7 @@ export default function Clientes() {
                               ? 'bg-green-100 text-green-800 hover:bg-green-100'
                               : client.status === 'Prospect'
                                 ? 'bg-blue-100 text-blue-800 hover:bg-blue-100'
-                                : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+                                : 'bg-muted text-muted-foreground hover:bg-muted'
                           }
                         >
                           {client.status}
@@ -564,7 +561,7 @@ export default function Clientes() {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
-                                className="hover:bg-[#cc4a1c] hover:text-white gap-2.5 h-11 px-5 text-[#4A4A4A] bg-[#ffffff] shadow-[0px_0px_6px_0px_#e55320] font-semibold transition-colors duration-200 group"
+                                className="gap-2.5 h-11 px-5 font-semibold transition-colors duration-200 group"
                                 onClick={() => triggerAnalysis('cliente', client.id, client.nome)}
                               >
                                 <AuroAvatar className="h-7 w-7 transition-transform duration-300 group-hover:scale-110" />
@@ -578,7 +575,7 @@ export default function Clientes() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-gray-500 hover:text-[#e55320]"
+                                className="h-8 w-8 text-muted-foreground hover:text-primary"
                                 onClick={() => setTaskClient(client)}
                               >
                                 <Calendar className="h-4 w-4" />
@@ -591,7 +588,7 @@ export default function Clientes() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-gray-500 hover:text-[#e55320]"
+                                className="h-8 w-8 text-muted-foreground hover:text-primary"
                                 onClick={() => setInteractionClient(client)}
                               >
                                 <MessageCircle className="h-4 w-4" />
@@ -602,7 +599,7 @@ export default function Clientes() {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4 text-gray-500" />
+                                <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -618,7 +615,7 @@ export default function Clientes() {
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
                                 onClick={() => setClientToDelete(client)}
                               >
                                 Excluir
@@ -694,7 +691,9 @@ export default function Clientes() {
             </Select>
             <Input name="descricao" placeholder="Descrição" required />
             <div className="space-y-1">
-              <span className="text-sm font-medium text-gray-700">Data Limite (opcional)</span>
+              <span className="text-sm font-medium text-muted-foreground">
+                Data Limite (opcional)
+              </span>
               <Input name="data_limite" type="datetime-local" />
             </div>
             <Select name="prioridade" defaultValue="Média">
@@ -719,7 +718,7 @@ export default function Clientes() {
                 ))}
               </SelectContent>
             </Select>
-            <Button type="submit" className="w-full bg-[#e55320] hover:bg-[#e55320]/90 text-white">
+            <Button type="submit" className="w-full">
               Salvar Tarefa
             </Button>
           </form>
@@ -767,7 +766,7 @@ export default function Clientes() {
               </SelectContent>
             </Select>
             <div className="space-y-1">
-              <span className="text-sm font-medium text-gray-700">Data e Hora</span>
+              <span className="text-sm font-medium text-muted-foreground">Data e Hora</span>
               <Input
                 name="data_hora"
                 type="datetime-local"
@@ -778,7 +777,7 @@ export default function Clientes() {
               />
             </div>
             <Textarea name="resumo" placeholder="Resumo da interação..." required rows={4} />
-            <Button type="submit" className="w-full bg-[#e55320] hover:bg-[#e55320]/90 text-white">
+            <Button type="submit" className="w-full">
               Salvar
             </Button>
           </form>
@@ -797,7 +796,7 @@ export default function Clientes() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               onClick={async () => {
                 if (clientToDelete) {
                   try {
