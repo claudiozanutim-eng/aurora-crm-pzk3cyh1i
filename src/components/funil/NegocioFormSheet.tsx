@@ -270,12 +270,11 @@ export function NegocioFormSheet({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="status">Estágio Inicial</Label>
-              <Select name="status" defaultValue="Prospecção">
+              <Select name="status" defaultValue="Prospect">
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Prospecção">Prospecção</SelectItem>
                   <SelectItem value="Prospect">Prospect</SelectItem>
                   <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
                   <SelectItem value="Negociação">Negociação</SelectItem>
