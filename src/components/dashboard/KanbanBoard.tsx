@@ -89,15 +89,24 @@ export function KanbanBoard({ negocios, onStatusChange, onDeleteDeal }: KanbanBo
             >
               <div
                 className={cn(
-                  'flex items-center justify-between px-3 py-2 rounded-t-lg border-b border-gray-200',
+                  'flex flex-col px-3 py-2 rounded-t-lg border-b border-gray-200',
                   col.header,
                 )}
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className={cn('h-2 w-2 rounded-full shrink-0', col.dot)} />
-                  <span className="text-xs font-semibold text-gray-700 truncate">{col.label}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={cn('h-2 w-2 rounded-full shrink-0', col.dot)} />
+                    <span className="text-xs font-semibold text-gray-700 truncate">
+                      {col.label}
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold text-gray-500 shrink-0">
+                    {colDeals.length}
+                  </span>
                 </div>
-                <span className="text-xs font-bold text-gray-500 shrink-0">{colDeals.length}</span>
+                <span className="text-[11px] font-semibold text-gray-600 mt-0.5">
+                  {formatCurrency(colValue)}
+                </span>
               </div>
 
               <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-0">
@@ -174,12 +183,6 @@ export function KanbanBoard({ negocios, onStatusChange, onDeleteDeal }: KanbanBo
                   <div className="text-center py-6 text-xs text-gray-400">Nenhum negócio</div>
                 )}
               </div>
-
-              {colValue > 0 && (
-                <div className="px-3 py-1.5 border-t border-gray-200 text-[10px] text-gray-500 font-medium">
-                  Total: {formatCurrency(colValue)}
-                </div>
-              )}
             </div>
           )
         })}
