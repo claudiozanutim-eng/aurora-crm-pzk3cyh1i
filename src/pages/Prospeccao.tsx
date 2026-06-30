@@ -51,8 +51,20 @@ export default function Prospeccao() {
     loadData()
   }, [])
 
-  useRealtime('leads', () => {
-    loadData()
+  useRealtime('leads', (e) => {
+    if (e.action === 'delete') {
+      setLeads((prev) => prev.filter((l) => l.id !== e.record.id))
+      return
+    }
+    pb.collection('leads')
+      .getOne<Lead>(e.record.id)
+      .then((record) => {
+        setLeads((prev) => {
+          const exists = prev.some((l) => l.id === record.id)
+          return exists ? prev.map((l) => (l.id === record.id ? record : l)) : [...prev, record]
+        })
+      })
+      .catch(() => {})
   })
 
   const handleStatusChange = async (lead: Lead, newStatus: Lead['status']) => {

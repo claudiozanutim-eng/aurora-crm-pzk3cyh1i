@@ -99,11 +99,41 @@ export default function Funil() {
     loadData()
   }, [])
 
-  useRealtime('negocios', () => {
-    loadData()
+  useRealtime('negocios', (e) => {
+    if (e.action === 'delete') {
+      setNegocios((prev) => prev.filter((n) => n.id !== e.record.id))
+      return
+    }
+    pb.collection('negocios')
+      .getOne<Negocio>(e.record.id, {
+        expand: 'cliente_id,cliente_id.contatos_via_cliente_id,vendedor_id',
+      })
+      .then((record) => {
+        setNegocios((prev) => {
+          const exists = prev.some((n) => n.id === record.id)
+          return exists ? prev.map((n) => (n.id === record.id ? record : n)) : [...prev, record]
+        })
+      })
+      .catch(() => {})
   })
-  useRealtime('clientes', () => {
-    loadData()
+
+  useRealtime('clientes', (e) => {
+    if (e.action === 'delete') {
+      setNegocios((prev) => prev.filter((n) => n.cliente_id !== e.record.id))
+      return
+    }
+    pb.collection('clientes')
+      .getOne(e.record.id, { expand: 'contatos_via_cliente_id' })
+      .then((cliente) => {
+        setNegocios((prev) =>
+          prev.map((n) =>
+            n.cliente_id === cliente.id
+              ? { ...n, expand: { ...n.expand, cliente_id: cliente } }
+              : n,
+          ),
+        )
+      })
+      .catch(() => {})
   })
 
   const getPeriodFilter = (dateStr: string) => {

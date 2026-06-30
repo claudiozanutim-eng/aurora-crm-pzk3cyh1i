@@ -105,7 +105,23 @@ export default function Tarefas() {
   useEffect(() => {
     loadData()
   }, [])
-  useRealtime('tarefas', loadData)
+  useRealtime('tarefas', (e) => {
+    if (e.action === 'delete') {
+      setTarefas((prev) => prev.filter((t) => t.id !== e.record.id))
+      return
+    }
+    pb.collection('tarefas')
+      .getOne<Tarefa>(e.record.id, {
+        expand: 'vendedor_id,cliente_id,lead_id',
+      })
+      .then((record) => {
+        setTarefas((prev) => {
+          const exists = prev.some((t) => t.id === record.id)
+          return exists ? prev.map((t) => (t.id === record.id ? record : t)) : [...prev, record]
+        })
+      })
+      .catch(() => {})
+  })
 
   const formatDateForInput = (dateString?: string) => {
     if (!dateString) return ''

@@ -168,9 +168,82 @@ export default function Clientes() {
     fetchMetrics()
   }, [refreshTrigger])
 
-  useRealtime('clientes', () => setRefreshTrigger((t) => t + 1))
-  useRealtime('contatos', () => setRefreshTrigger((t) => t + 1))
-  useRealtime('interacoes', () => setRefreshTrigger((t) => t + 1))
+  useRealtime('clientes', (e) => {
+    if (e.action === 'delete') {
+      setClientes((prev) => prev.filter((c) => c.id !== e.record.id))
+      setMetrics((prev) => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1),
+        ativos: e.record['status'] === 'Ativo' ? Math.max(0, prev.ativos - 1) : prev.ativos,
+      }))
+      return
+    }
+    pb.collection('clientes')
+      .getOne<Cliente>(e.record.id, { expand: 'contatos_via_cliente_id' })
+      .then((record) => {
+        const matchesFilter = () => {
+          if (statusFilter !== 'Todos' && record.status !== statusFilter) return false
+          if (tipoFilter !== 'Todos' && record.tipo !== tipoFilter) return false
+          if (debouncedSearch) {
+            const s = debouncedSearch.toLowerCase()
+            if (
+              !record.nome?.toLowerCase().includes(s) &&
+              !record.documento?.toLowerCase().includes(s)
+            )
+              return false
+          }
+          return true
+        }
+
+        setClientes((prev) => {
+          const exists = prev.some((c) => c.id === record.id)
+          if (exists) {
+            return matchesFilter()
+              ? prev.map((c) => (c.id === record.id ? record : c))
+              : prev.filter((c) => c.id !== record.id)
+          }
+          return matchesFilter() ? [record, ...prev] : prev
+        })
+
+        if (e.action === 'create') {
+          setMetrics((prev) => ({
+            ...prev,
+            total: prev.total + 1,
+            ativos: record.status === 'Ativo' ? prev.ativos + 1 : prev.ativos,
+          }))
+        }
+      })
+      .catch(() => {})
+  })
+
+  useRealtime('contatos', (e) => {
+    const clienteId = e.record['cliente_id']
+    if (!clienteId) return
+    pb.collection('clientes')
+      .getOne<Cliente>(clienteId, { expand: 'contatos_via_cliente_id' })
+      .then((record) => {
+        setClientes((prev) => prev.map((c) => (c.id === clienteId ? record : c)))
+      })
+      .catch(() => {})
+  })
+
+  useRealtime('interacoes', (e) => {
+    if (e.action === 'delete') {
+      setInteracoes((prev) => prev.filter((i) => i.id !== e.record.id))
+      return
+    }
+    pb.collection('interacoes')
+      .getOne<Interacao>(e.record.id)
+      .then((record) => {
+        setInteracoes((prev) => {
+          const clientInPage = clientes.some((c) => c.id === record.cliente_id)
+          if (!clientInPage) return prev
+          const exists = prev.some((i) => i.id === record.id)
+          return exists ? prev.map((i) => (i.id === record.id ? record : i)) : [record, ...prev]
+        })
+      })
+      .catch(() => {})
+  })
 
   const latestInteracaoByClient = useMemo(() => {
     const map = new Map<string, Interacao>()
@@ -592,14 +665,12 @@ export default function Clientes() {
                 ? new Date(dataLimiteStr).toISOString()
                 : new Date().toISOString()
               try {
-                await pb
-                  .collection('tarefas')
-                  .create({
-                    ...data,
-                    status: 'Pendente',
-                    data_limite: finalDataLimite,
-                    cliente_id: taskClient.id,
-                  })
+                await pb.collection('tarefas').create({
+                  ...data,
+                  status: 'Pendente',
+                  data_limite: finalDataLimite,
+                  cliente_id: taskClient.id,
+                })
                 toast.success('Tarefa criada com sucesso.')
                 setTaskClient(null)
               } catch (err) {
@@ -667,15 +738,13 @@ export default function Clientes() {
               const fd = new FormData(e.currentTarget)
               const data = Object.fromEntries(fd.entries())
               try {
-                await pb
-                  .collection('interacoes')
-                  .create({
-                    tipo: data.tipo,
-                    data_hora: new Date(data.data_hora as string).toISOString(),
-                    resumo: data.resumo,
-                    vendedor_id: user.id,
-                    cliente_id: interactionClient.id,
-                  })
+                await pb.collection('interacoes').create({
+                  tipo: data.tipo,
+                  data_hora: new Date(data.data_hora as string).toISOString(),
+                  resumo: data.resumo,
+                  vendedor_id: user.id,
+                  cliente_id: interactionClient.id,
+                })
                 toast.success('Interação registrada com sucesso.')
                 setInteractionClient(null)
               } catch (err) {
