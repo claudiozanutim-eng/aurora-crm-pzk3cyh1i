@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
 import { DangerZone } from '@/components/configuracoes/DangerZone'
 import { BackupExport } from '@/components/configuracoes/BackupExport'
+import { BackupManagement } from '@/components/configuracoes/BackupManagement'
 import { AuditLogs } from '@/components/configuracoes/AuditLogs'
 
 export default function Configuracoes() {
@@ -221,6 +222,7 @@ export default function Configuracoes() {
       </Card>
 
       {currentUser?.perfil === 'Admin' && <BackupExport />}
+      {currentUser?.perfil === 'Admin' && <BackupManagement />}
       {currentUser?.perfil === 'Admin' && <AuditLogs />}
       {currentUser?.perfil === 'Admin' && <DangerZone />}
     </div>

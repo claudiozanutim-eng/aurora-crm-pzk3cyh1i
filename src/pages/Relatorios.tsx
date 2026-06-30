@@ -26,7 +26,7 @@ import pb from '@/lib/pocketbase/client'
 
 const STATUSES = [
   'Prospecção',
-  'Qualificação',
+  'Prospect',
   'Proposta Enviada',
   'Negociação',
   'Fechado/Ganho',

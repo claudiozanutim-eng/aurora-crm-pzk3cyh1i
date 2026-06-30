@@ -45,8 +45,8 @@ export const kanbanBoardData: KanbanColumn[] = [
     ],
   },
   {
-    id: 'qualificacao',
-    title: 'Qualificação',
+    id: 'prospect',
+    title: 'Prospect',
     deals: [
       { id: '4', company: 'GlobalCorp', value: 45000, priority: 'Alta', contact: 'Ana Souza' },
       { id: '5', company: 'StartupX', value: 12000, priority: 'Média', contact: 'Lucas Lima' },

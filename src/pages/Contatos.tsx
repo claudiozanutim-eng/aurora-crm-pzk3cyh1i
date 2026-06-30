@@ -26,6 +26,7 @@ import { getClientes, type Cliente, type Contato } from '@/services/clientes'
 import { getAllContatos } from '@/services/contatos'
 import { ContatoFormDialog } from '@/components/contatos/ContatoFormDialog'
 import { ContatoImportDialog } from '@/components/contatos/ContatoImportDialog'
+import { displayContactName } from '@/lib/contact-utils'
 
 type ContatoWithExpand = Contato & { expand?: { cliente_id?: Cliente } }
 
@@ -209,7 +210,11 @@ export default function Contatos() {
                   >
                     <TableCell className="font-medium text-gray-900">
                       <div className="flex items-center gap-2">
-                        {contato.nome}
+                        {displayContactName(
+                          contato.nome,
+                          contato.expand?.cliente_id?.nome,
+                          contato.expand?.cliente_id?.nome_fantasia,
+                        )}
                         {contato.is_principal && (
                           <Badge
                             variant="outline"

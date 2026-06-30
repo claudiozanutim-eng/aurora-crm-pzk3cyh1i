@@ -54,6 +54,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ClienteFormSheet } from '@/components/clientes/ClienteFormSheet'
 import { AuroAvatar } from '@/components/auro/AuroAvatar'
 import { ClienteImportDialog } from '@/components/clientes/ClienteImportDialog'
+import { displayContactName } from '@/lib/contact-utils'
 import { TagBadge } from '@/components/ui/tag-badge'
 import {
   AlertDialog,
@@ -437,7 +438,13 @@ export default function Clientes() {
                         {client.documento}
                       </TableCell>
                       <TableCell className="text-gray-600">
-                        {contatoPrincipal?.nome || '-'}
+                        {contatoPrincipal
+                          ? displayContactName(
+                              contatoPrincipal.nome,
+                              client.nome,
+                              client.nome_fantasia,
+                            )
+                          : '-'}
                       </TableCell>
                       <TableCell className="text-gray-500">
                         {contatoPrincipal?.email || '-'}

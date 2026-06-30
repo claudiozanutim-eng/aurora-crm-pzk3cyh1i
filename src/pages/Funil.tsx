@@ -172,7 +172,7 @@ export default function Funil() {
   let totalPerdidos = 0
 
   const statusCounts = {
-    Qualificação: 0,
+    Prospect: 0,
     'Proposta Enviada': 0,
     Negociação: 0,
     'Fechado/Ganho': 0,
@@ -180,7 +180,7 @@ export default function Funil() {
   } as Record<string, number>
 
   const isActiveStatus = (status: string) =>
-    ['Qualificação', 'Proposta Enviada', 'Negociação'].includes(status)
+    ['Prospect', 'Proposta Enviada', 'Negociação'].includes(status)
 
   visibleNegocios.forEach((n) => {
     totalDeals++

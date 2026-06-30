@@ -12,6 +12,7 @@ import {
 import { parseISO, isPast, isToday, format, differenceInDays, differenceInYears } from 'date-fns'
 import { AlertCircle, Clock, CheckCircle2, Target, Gift } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { displayContactName } from '@/lib/contact-utils'
 
 interface DashboardListsProps {
   data: {
@@ -244,7 +245,13 @@ export function DashboardLists({ data, loading }: DashboardListsProps) {
                   <TableRow key={b.id}>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-medium text-black">{b.nome}</span>
+                        <span className="font-medium text-black">
+                          {displayContactName(
+                            b.nome,
+                            b.expand?.cliente_id?.nome,
+                            b.expand?.cliente_id?.nome_fantasia,
+                          )}
+                        </span>
                         <span className="text-xs text-gray-500">
                           {b.expand?.cliente_id?.nome || 'N/A'}
                         </span>

@@ -60,7 +60,7 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
     if (!data.negocios) return []
 
     const prospeccao = data.negocios.filter((n) => n.status === 'Prospecção')
-    const qualificacao = data.negocios.filter((n) => n.status === 'Qualificação')
+    const prospect = data.negocios.filter((n) => n.status === 'Prospect')
     const propostaEnviada = data.negocios.filter((n) => n.status === 'Proposta Enviada')
     const negociacao = data.negocios.filter((n) => n.status === 'Negociação')
     const ganhos = data.negocios.filter((n) => n.status === 'Fechado/Ganho')
@@ -68,7 +68,7 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
 
     const stages = [
       { stage: 'Prospecção', items: prospeccao },
-      { stage: 'Qualificação', items: qualificacao },
+      { stage: 'Prospect', items: prospect },
       { stage: 'Proposta Enviada', items: propostaEnviada },
       { stage: 'Negociação', items: negociacao },
       { stage: 'Fechado/Ganho', items: ganhos },
@@ -123,9 +123,7 @@ export function DashboardCharts({ data, period, loading }: DashboardChartsProps)
     const wonCount = negocios.filter((n) => n.status === 'Fechado/Ganho').length
 
     const totalQualified = negocios.filter((n) =>
-      ['Qualificação', 'Proposta Enviada', 'Negociação', 'Fechado/Ganho', 'Perdido'].includes(
-        n.status,
-      ),
+      ['Prospect', 'Proposta Enviada', 'Negociação', 'Fechado/Ganho', 'Perdido'].includes(n.status),
     ).length
 
     const topToBottom =

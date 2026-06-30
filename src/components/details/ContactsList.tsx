@@ -5,7 +5,8 @@ import {
   updateContato,
   setContatoPrincipal,
 } from '@/services/contatos'
-import { Contato } from '@/services/clientes'
+import { Contato, getClienteById } from '@/services/clientes'
+import { displayContactName } from '@/lib/contact-utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -37,11 +38,18 @@ export function ContactsList({ clienteId }: { clienteId: string }) {
   const [editing, setEditing] = useState<Contato | null>(null)
   const [telefone, setTelefone] = useState('')
   const [telefoneFixo, setTelefoneFixo] = useState('')
+  const [clienteNome, setClienteNome] = useState<{ nome: string; nome_fantasia?: string } | null>(
+    null,
+  )
 
   const load = async () => {
     try {
-      const data = await getContatosByClienteId(clienteId)
+      const [data, clientData] = await Promise.all([
+        getContatosByClienteId(clienteId),
+        getClienteById(clienteId),
+      ])
       setContatos(data)
+      setClienteNome({ nome: clientData.nome, nome_fantasia: clientData.nome_fantasia })
     } catch (e) {
       console.error(e)
     }
@@ -165,7 +173,8 @@ export function ContactsList({ clienteId }: { clienteId: string }) {
             <CardContent className="p-4 flex flex-col gap-2">
               <div className="flex justify-between items-start">
                 <div className="font-semibold text-lg flex items-center gap-2">
-                  <User className="w-4 h-4 text-gray-400" /> {c.nome}
+                  <User className="w-4 h-4 text-gray-400" />{' '}
+                  {displayContactName(c.nome, clienteNome?.nome, clienteNome?.nome_fantasia)}
                   {c.is_principal && (
                     <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-0">
                       Principal

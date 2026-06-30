@@ -20,13 +20,7 @@ import { useNavigate } from 'react-router-dom'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRealtime } from '@/hooks/use-realtime'
 
-const COLUMNS = [
-  'Qualificação',
-  'Proposta Enviada',
-  'Negociação',
-  'Fechado/Ganho',
-  'Perdido',
-] as const
+const COLUMNS = ['Prospect', 'Proposta Enviada', 'Negociação', 'Fechado/Ganho', 'Perdido'] as const
 
 type Status = (typeof COLUMNS)[number]
 

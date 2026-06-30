@@ -276,7 +276,7 @@ export function NegocioFormSheet({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Prospecção">Prospecção</SelectItem>
-                  <SelectItem value="Qualificação">Qualificação</SelectItem>
+                  <SelectItem value="Prospect">Prospect</SelectItem>
                   <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
                   <SelectItem value="Negociação">Negociação</SelectItem>
                 </SelectContent>

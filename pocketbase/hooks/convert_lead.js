@@ -161,7 +161,7 @@ routerAdd(
         const negocio = new Record(negociosCol)
         negocio.set('cliente_id', cliente.id)
         negocio.set('vendedor_id', lead.getString('vendedor_id'))
-        negocio.set('status', 'Qualificação')
+        negocio.set('status', 'Prospect')
         negocio.set('prioridade', lead.getString('prioridade') || 'Média')
 
         if (

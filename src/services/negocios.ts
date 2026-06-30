@@ -9,7 +9,7 @@ export interface Negocio {
   data_fechamento_real: string
   status:
     | 'Prospecção'
-    | 'Qualificação'
+    | 'Prospect'
     | 'Proposta Enviada'
     | 'Negociação'
     | 'Fechado/Ganho'
