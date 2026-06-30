@@ -10,6 +10,7 @@ export interface Proposta extends RecordModel {
   valor_total: number
   descricao_servicos: string
   condicoes_comerciais: string
+  validade_dias: number
   validade_ate?: string
   status: 'Rascunho' | 'Enviada' | 'Aprovada' | 'Rejeitada' | 'Expirada'
   data_envio?: string

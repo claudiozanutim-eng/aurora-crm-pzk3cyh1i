@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useAuro } from '@/hooks/use-auro'
 import { useAuth } from '@/hooks/use-auth'
 import pb from '@/lib/pocketbase/client'
@@ -24,8 +24,19 @@ export function AuroChatPanel() {
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<DisplayMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  const scrollToBottom = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    const viewport = container.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]')
+    if (viewport) {
+      viewport.scrollTop = viewport.scrollHeight
+    } else {
+      container.scrollTop = container.scrollHeight
+    }
+  }, [])
 
   // Store analysis context locally so it survives clearInitialPrompt
   const activeContextRef = useRef(analysisContext)
@@ -34,10 +45,8 @@ export function AuroChatPanel() {
   }, [analysisContext])
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages, isLoading])
+    scrollToBottom()
+  }, [messages, isLoading, scrollToBottom])
 
   const handleSend = async (overrideMsg?: string, overrideConvId?: string | null) => {
     const userMsg = overrideMsg || input.trim()
@@ -184,7 +193,7 @@ export function AuroChatPanel() {
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-4" ref={scrollContainerRef}>
         <div className="space-y-6 pb-4">
           {messages.length === 0 && (
             <div className="text-center py-10">

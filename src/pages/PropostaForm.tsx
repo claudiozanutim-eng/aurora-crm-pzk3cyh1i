@@ -85,11 +85,16 @@ export default function PropostaForm() {
 
     setLoading(true)
     try {
+      const now = new Date()
+      const diffMs = formData.validade_ate.getTime() - now.getTime()
+      const validade_dias = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+
       const payload = {
         titulo: formData.titulo,
         cliente_id: formData.cliente_id,
         negocio_id: formData.negocio_id || undefined,
         valor_total: parseFloat(formData.valor_total),
+        validade_dias,
         validade_ate: formData.validade_ate.toISOString(),
         descricao_servicos: formData.descricao_servicos,
         condicoes_comerciais: formData.condicoes_comerciais,

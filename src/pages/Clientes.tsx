@@ -43,10 +43,17 @@ import {
 } from '@/components/ui/select'
 import { toast } from 'sonner'
 import pb from '@/lib/pocketbase/client'
-import { getClientes, deleteCliente, type Cliente } from '@/services/clientes'
+import {
+  getClientes,
+  getClientesPaginated,
+  buildClientesFilter,
+  deleteCliente,
+  type Cliente,
+} from '@/services/clientes'
 import { Interacao } from '@/services/interacoes'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useAuth } from '@/hooks/use-auth'
+import { useDebounce } from '@/hooks/use-debounce'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -54,6 +61,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ClienteFormSheet } from '@/components/clientes/ClienteFormSheet'
 import { AuroAvatar } from '@/components/auro/AuroAvatar'
 import { ClienteImportDialog } from '@/components/clientes/ClienteImportDialog'
+import { PaginationControls } from '@/components/PaginationControls'
 import { displayContactName } from '@/lib/contact-utils'
 import { TagBadge } from '@/components/ui/tag-badge'
 import {
@@ -67,46 +75,146 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+const PAGE_SIZE = 20
+
 export default function Clientes() {
   const { user } = useAuth()
+  const navigate = useNavigate()
+  const { triggerAnalysis } = useAuro()
+
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [interacoes, setInteracoes] = useState<Interacao[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 300)
   const [statusFilter, setStatusFilter] = useState('Todos')
   const [tipoFilter, setTipoFilter] = useState('Todos')
   const [sortOption, setSortOption] = useState('nome-asc')
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [metrics, setMetrics] = useState({ total: 0, ativos: 0, novos: 0, semContato: 0 })
+  const [isLoading, setIsLoading] = useState(true)
+  const [isExporting, setIsExporting] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [clientToEdit, setClientToEdit] = useState<Cliente | null>(null)
   const [clientToDelete, setClientToDelete] = useState<Cliente | null>(null)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [taskClient, setTaskClient] = useState<Cliente | null>(null)
   const [interactionClient, setInteractionClient] = useState<Cliente | null>(null)
-  const [isExporting, setIsExporting] = useState(false)
-  const { triggerAnalysis } = useAuro()
-
-  const navigate = useNavigate()
 
   useEffect(() => {
     pb.collection('users').getFullList({ sort: 'name' }).then(setUsers).catch(console.error)
   }, [])
 
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true)
+      try {
+        const result = await getClientesPaginated(page, PAGE_SIZE, {
+          search: debouncedSearch,
+          status: statusFilter,
+          tipo: tipoFilter,
+          sort: sortOption,
+        })
+        if (result.items.length === 0 && page > 1) {
+          setPage(page - 1)
+          return
+        }
+        setClientes(result.items)
+        setTotalPages(result.totalPages)
+        setTotalItems(result.totalItems)
+
+        if (result.items.length > 0) {
+          const clientIds = result.items.map((c) => c.id)
+          const intData = await pb.collection('interacoes').getFullList<Interacao>({
+            filter: clientIds.map((id) => `cliente_id = "${id}"`).join(' || '),
+            sort: '-data_hora',
+          })
+          setInteracoes(intData)
+        } else {
+          setInteracoes([])
+        }
+      } catch (error) {
+        console.error('Failed to load clients:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchData()
+  }, [page, debouncedSearch, statusFilter, tipoFilter, sortOption, refreshTrigger])
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+        const [allRes, ativosRes, novosRes] = await Promise.all([
+          pb.collection('clientes').getList(1, 1, {}),
+          pb.collection('clientes').getList(1, 1, { filter: 'status = "Ativo"' }),
+          pb.collection('clientes').getList(1, 1, { filter: `created >= "${thirtyDaysAgo}"` }),
+        ])
+        setMetrics({
+          total: allRes.totalItems,
+          ativos: ativosRes.totalItems,
+          novos: novosRes.totalItems,
+          semContato: 0,
+        })
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    fetchMetrics()
+  }, [refreshTrigger])
+
+  useRealtime('clientes', () => setRefreshTrigger((t) => t + 1))
+  useRealtime('contatos', () => setRefreshTrigger((t) => t + 1))
+  useRealtime('interacoes', () => setRefreshTrigger((t) => t + 1))
+
+  const latestInteracaoByClient = useMemo(() => {
+    const map = new Map<string, Interacao>()
+    for (const i of interacoes) {
+      if (i.cliente_id && !map.has(i.cliente_id)) map.set(i.cliente_id, i)
+    }
+    return map
+  }, [interacoes])
+
+  const handleSearchChange = (v: string) => {
+    setSearch(v)
+    setPage(1)
+  }
+  const handleStatusChange = (v: string) => {
+    setStatusFilter(v)
+    setPage(1)
+  }
+  const handleTipoChange = (v: string) => {
+    setTipoFilter(v)
+    setPage(1)
+  }
+  const handleSortChange = (v: string) => {
+    setSortOption(v)
+    setPage(1)
+  }
+
   const handleExport = async (format: 'csv' | 'xlsx') => {
-    if (isExporting || filteredClientes.length === 0) return
+    if (isExporting || totalItems === 0) return
     setIsExporting(true)
     const toastId = toast.loading(`Exportando clientes para ${format.toUpperCase()}...`)
-
     try {
-      const clientIds = filteredClientes.map((c) => c.id)
-
+      const filter = buildClientesFilter(debouncedSearch, statusFilter, tipoFilter)
+      const allClients = await pb
+        .collection('clientes')
+        .getFullList<Cliente>({ filter: filter || undefined, fields: 'id' })
+      const clientIds = allClients.map((c) => c.id)
       const res = await pb.send('/backend/v1/spreadsheet/export', {
         method: 'POST',
         body: JSON.stringify({
           source: 'clientes',
           ids: clientIds,
-          format: format,
+          format,
           filters: {
-            search,
+            search: debouncedSearch,
             status: statusFilter,
             tipo: tipoFilter,
             sort: sortOption,
@@ -114,18 +222,14 @@ export default function Clientes() {
         }),
         headers: { 'Content-Type': 'application/json' },
       })
-
-      if (res && res.base64) {
+      if (res?.base64) {
         const binaryStr = atob(res.base64)
-        const len = binaryStr.length
-        const bytes = new Uint8Array(len)
-        for (let i = 0; i < len; i++) bytes[i] = binaryStr.charCodeAt(i)
-
+        const bytes = new Uint8Array(binaryStr.length)
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i)
         const blobType =
           format === 'csv'
             ? 'text/csv;charset=utf-8;'
             : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-
         const blob = new Blob([bytes], { type: blobType })
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
@@ -139,123 +243,12 @@ export default function Clientes() {
         toast.error('Erro ao processar o arquivo de exportação', { id: toastId })
       }
     } catch (err) {
-      console.error('Export erro:', err)
+      console.error('Export error:', err)
       toast.error('Erro ao exportar arquivo', { id: toastId })
     } finally {
       setIsExporting(false)
     }
   }
-
-  const loadData = async () => {
-    try {
-      const [data, intData] = await Promise.all([
-        getClientes(),
-        pb.collection('interacoes').getFullList<Interacao>({ sort: '-data_hora' }),
-      ])
-      setClientes(data)
-      setInteracoes(intData)
-    } catch (error) {
-      console.error('Failed to load clients:', error)
-    }
-  }
-
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  useRealtime('clientes', () => {
-    loadData()
-  })
-
-  useRealtime('contatos', () => {
-    loadData()
-  })
-
-  useRealtime('interacoes', () => {
-    loadData()
-  })
-
-  const latestInteracaoByClient = useMemo(() => {
-    const map = new Map<string, Interacao>()
-    for (const i of interacoes) {
-      if (i.cliente_id && !map.has(i.cliente_id)) {
-        map.set(i.cliente_id, i)
-      }
-    }
-    return map
-  }, [interacoes])
-
-  const filteredClientes = useMemo(() => {
-    let result = clientes.filter((c) => {
-      const matchSearch =
-        c.nome.toLowerCase().includes(search.toLowerCase()) ||
-        c.documento.includes(search) ||
-        c.expand?.contatos_via_cliente_id?.some((contato) =>
-          contato.email?.toLowerCase().includes(search.toLowerCase()),
-        )
-      const matchStatus = statusFilter === 'Todos' || c.status === statusFilter
-      const matchTipo = tipoFilter === 'Todos' || c.tipo === tipoFilter
-      return matchSearch && matchStatus && matchTipo
-    })
-
-    result.sort((a, b) => {
-      switch (sortOption) {
-        case 'nome-asc':
-          return (a.nome || '').localeCompare(b.nome || '')
-        case 'nome-desc':
-          return (b.nome || '').localeCompare(a.nome || '')
-        case 'last_contact-desc':
-        case 'last_contact-asc': {
-          const lastA = latestInteracaoByClient.get(a.id)?.data_hora
-          const lastB = latestInteracaoByClient.get(b.id)?.data_hora
-          const timeA = lastA ? new Date(lastA).getTime() : 0
-          const timeB = lastB ? new Date(lastB).getTime() : 0
-          if (sortOption === 'last_contact-desc') {
-            return timeB - timeA
-          }
-          return timeA - timeB
-        }
-        case 'data_cadastro-desc':
-        case 'data_cadastro-asc': {
-          const timeA = new Date(a.data_cadastro || a.created).getTime()
-          const timeB = new Date(b.data_cadastro || b.created).getTime()
-          if (sortOption === 'data_cadastro-desc') {
-            return timeB - timeA
-          }
-          return timeA - timeB
-        }
-        default:
-          return 0
-      }
-    })
-
-    return result
-  }, [clientes, search, statusFilter, tipoFilter, sortOption, latestInteracaoByClient])
-
-  const metrics = useMemo(() => {
-    let ativos = 0
-    let novos = 0
-    let semContato = 0
-
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-    clientes.forEach((c) => {
-      if (c.status === 'Ativo') ativos++
-      if (new Date(c.data_cadastro || c.created) >= thirtyDaysAgo) novos++
-      if (c.status === 'Ativo') {
-        const lastInt = latestInteracaoByClient.get(c.id)
-        if (!lastInt || new Date(lastInt.data_hora) < thirtyDaysAgo) semContato++
-      }
-    })
-
-    return {
-      total: clientes.length,
-      ativos,
-      novos,
-      semContato,
-    }
-  }, [clientes, latestInteracaoByClient])
 
   return (
     <div className="space-y-6">
@@ -270,7 +263,7 @@ export default function Clientes() {
               <Button
                 variant="outline"
                 className="bg-white"
-                disabled={isExporting || filteredClientes.length === 0}
+                disabled={isExporting || totalItems === 0}
               >
                 {isExporting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -353,11 +346,11 @@ export default function Clientes() {
               placeholder="Buscar por nome ou documento..."
               className="pl-8 bg-gray-50 border-gray-200 w-full"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
             />
           </div>
           <div className="flex w-full md:w-auto gap-4 flex-wrap">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
               <SelectTrigger className="w-full md:w-[140px] bg-gray-50">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -368,8 +361,7 @@ export default function Clientes() {
                 <SelectItem value="Prospect">Prospect</SelectItem>
               </SelectContent>
             </Select>
-
-            <Select value={tipoFilter} onValueChange={setTipoFilter}>
+            <Select value={tipoFilter} onValueChange={handleTipoChange}>
               <SelectTrigger className="w-full md:w-[140px] bg-gray-50">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
@@ -379,8 +371,7 @@ export default function Clientes() {
                 <SelectItem value="PF">PF</SelectItem>
               </SelectContent>
             </Select>
-
-            <Select value={sortOption} onValueChange={setSortOption}>
+            <Select value={sortOption} onValueChange={handleSortChange}>
               <SelectTrigger className="w-full md:w-[220px] bg-gray-50">
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
@@ -412,18 +403,23 @@ export default function Clientes() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredClientes.length === 0 ? (
+              {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={9} className="text-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
+                  </TableCell>
+                </TableRow>
+              ) : clientes.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                     Nenhum cliente encontrado.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredClientes.map((client) => {
+                clientes.map((client) => {
                   const contatoPrincipal =
                     client.expand?.contatos_via_cliente_id?.find((c) => c.is_principal) ||
                     client.expand?.contatos_via_cliente_id?.[0]
-
                   return (
                     <TableRow key={client.id} className="hover:bg-gray-50/50 transition-colors">
                       <TableCell className="font-medium text-gray-900">
@@ -565,18 +561,18 @@ export default function Clientes() {
             </TableBody>
           </Table>
         </div>
+        <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
 
       <ClienteImportDialog
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
-        onSuccess={() => loadData()}
+        onSuccess={() => setRefreshTrigger((t) => t + 1)}
       />
-
       <ClienteFormSheet
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
-        onSuccess={() => loadData()}
+        onSuccess={() => setRefreshTrigger((t) => t + 1)}
         initialData={clientToEdit}
       />
 
@@ -596,12 +592,14 @@ export default function Clientes() {
                 ? new Date(dataLimiteStr).toISOString()
                 : new Date().toISOString()
               try {
-                await pb.collection('tarefas').create({
-                  ...data,
-                  status: 'Pendente',
-                  data_limite: finalDataLimite,
-                  cliente_id: taskClient.id,
-                })
+                await pb
+                  .collection('tarefas')
+                  .create({
+                    ...data,
+                    status: 'Pendente',
+                    data_limite: finalDataLimite,
+                    cliente_id: taskClient.id,
+                  })
                 toast.success('Tarefa criada com sucesso.')
                 setTaskClient(null)
               } catch (err) {
@@ -669,13 +667,15 @@ export default function Clientes() {
               const fd = new FormData(e.currentTarget)
               const data = Object.fromEntries(fd.entries())
               try {
-                await pb.collection('interacoes').create({
-                  tipo: data.tipo,
-                  data_hora: new Date(data.data_hora as string).toISOString(),
-                  resumo: data.resumo,
-                  vendedor_id: user.id,
-                  cliente_id: interactionClient.id,
-                })
+                await pb
+                  .collection('interacoes')
+                  .create({
+                    tipo: data.tipo,
+                    data_hora: new Date(data.data_hora as string).toISOString(),
+                    resumo: data.resumo,
+                    vendedor_id: user.id,
+                    cliente_id: interactionClient.id,
+                  })
                 toast.success('Interação registrada com sucesso.')
                 setInteractionClient(null)
               } catch (err) {
@@ -734,7 +734,7 @@ export default function Clientes() {
                   try {
                     await deleteCliente(clientToDelete.id)
                     toast.success('Cliente excluído com sucesso')
-                    loadData()
+                    setRefreshTrigger((t) => t + 1)
                   } catch (e) {
                     toast.error('Erro ao excluir cliente')
                   }

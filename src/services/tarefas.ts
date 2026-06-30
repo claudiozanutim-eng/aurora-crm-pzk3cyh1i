@@ -44,3 +44,51 @@ export const updateTarefa = async (id: string, data: Partial<Tarefa>) => {
 export const deleteTarefa = async (id: string) => {
   return pb.collection('tarefas').delete(id)
 }
+
+export const buildTarefasFilter = (options: {
+  search?: string
+  vendedorId?: string
+  status?: string
+  prioridade?: string
+  clienteId?: string
+  mostrarConcluidas?: boolean
+}): string => {
+  const filters: string[] = []
+  if (!options.mostrarConcluidas) filters.push('status != "Concluída"')
+  if (options.vendedorId && options.vendedorId !== 'all')
+    filters.push(`vendedor_id = "${options.vendedorId}"`)
+  if (options.status && options.status !== 'all') filters.push(`status = "${options.status}"`)
+  if (options.prioridade && options.prioridade !== 'all')
+    filters.push(`prioridade = "${options.prioridade}"`)
+  if (options.clienteId && options.clienteId !== 'all')
+    filters.push(`cliente_id = "${options.clienteId}"`)
+  const s = (options.search || '').replace(/"/g, '').trim()
+  if (s) filters.push(`(descricao ~ "${s}" || cliente_id.nome ~ "${s}")`)
+  return filters.join(' && ')
+}
+
+export const getTarefasPaginated = async (
+  page: number,
+  perPage: number,
+  options: {
+    search?: string
+    vendedorId?: string
+    status?: string
+    prioridade?: string
+    clienteId?: string
+    mostrarConcluidas?: boolean
+  },
+) => {
+  const filter = buildTarefasFilter(options)
+  const result = await pb.collection('tarefas').getList<Tarefa>(page, perPage, {
+    filter: filter || undefined,
+    sort: 'data_limite',
+    expand: 'vendedor_id,cliente_id,lead_id',
+  })
+  return {
+    items: result.items,
+    totalItems: result.totalItems,
+    totalPages: result.totalPages,
+    page: result.page,
+  }
+}

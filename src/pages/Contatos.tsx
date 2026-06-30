@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,7 @@ import { Plus, Search, Star, Pencil, Download, Upload, Loader2 } from 'lucide-re
 import { toast } from 'sonner'
 import pb from '@/lib/pocketbase/client'
 import { useRealtime } from '@/hooks/use-realtime'
+import { useDebounce } from '@/hooks/use-debounce'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,80 +24,84 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { getClientes, type Cliente, type Contato } from '@/services/clientes'
-import { getAllContatos } from '@/services/contatos'
+import { getContatosPaginated, buildContatosFilter, getAllContatos } from '@/services/contatos'
 import { ContatoFormDialog } from '@/components/contatos/ContatoFormDialog'
 import { ContatoImportDialog } from '@/components/contatos/ContatoImportDialog'
+import { PaginationControls } from '@/components/PaginationControls'
 import { displayContactName } from '@/lib/contact-utils'
 
 type ContatoWithExpand = Contato & { expand?: { cliente_id?: Cliente } }
+
+const PAGE_SIZE = 20
 
 export default function Contatos() {
   const navigate = useNavigate()
   const [contatos, setContatos] = useState<ContatoWithExpand[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 300)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingContato, setEditingContato] = useState<Contato | null>(null)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
-
-  const loadData = async () => {
-    try {
-      const [data, clientData] = await Promise.all([getAllContatos(), getClientes()])
-      setContatos(data)
-      setClientes(clientData)
-    } catch (e) {
-      console.error(e)
-    }
-  }
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   useEffect(() => {
-    loadData()
-  }, [])
+    const fetchData = async () => {
+      setIsLoading(true)
+      try {
+        const result = await getContatosPaginated(page, PAGE_SIZE, debouncedSearch)
+        if (result.items.length === 0 && page > 1) {
+          setPage(page - 1)
+          return
+        }
+        setContatos(result.items)
+        setTotalPages(result.totalPages)
+        setTotalItems(result.totalItems)
+        const clientData = await getClientes()
+        setClientes(clientData)
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchData()
+  }, [page, debouncedSearch, refreshTrigger])
 
-  useRealtime('contatos', loadData)
-  useRealtime('clientes', loadData)
+  useRealtime('contatos', () => setRefreshTrigger((t) => t + 1))
+  useRealtime('clientes', () => setRefreshTrigger((t) => t + 1))
 
-  const filteredContatos = useMemo(() => {
-    return contatos
-      .filter((c) => c.nome && c.nome.trim() !== '')
-      .filter((c) => {
-        const term = search.toLowerCase()
-        const matchName = c.nome?.toLowerCase().includes(term)
-        const matchEmail = c.email?.toLowerCase().includes(term)
-        const matchClient = c.expand?.cliente_id?.nome?.toLowerCase().includes(term)
-        return matchName || matchEmail || matchClient
-      })
-  }, [contatos, search])
+  const handleSearchChange = (v: string) => {
+    setSearch(v)
+    setPage(1)
+  }
 
   const handleExport = async (format: 'csv' | 'xlsx') => {
-    if (isExporting || filteredContatos.length === 0) return
+    if (isExporting || totalItems === 0) return
     setIsExporting(true)
     const toastId = toast.loading(`Exportando contatos para ${format.toUpperCase()}...`)
-
     try {
-      const contactIds = filteredContatos.map((c) => c.id)
+      const filter = buildContatosFilter(debouncedSearch)
+      const allContatos = await pb.collection('contatos').getFullList({ filter, fields: 'id' })
+      const contactIds = allContatos.map((c) => c.id)
       const res = await pb.send('/backend/v1/spreadsheet/export', {
         method: 'POST',
-        body: JSON.stringify({
-          source: 'contatos',
-          ids: contactIds,
-          format: format,
-        }),
+        body: JSON.stringify({ source: 'contatos', ids: contactIds, format }),
         headers: { 'Content-Type': 'application/json' },
       })
-
-      if (res && res.base64) {
+      if (res?.base64) {
         const binaryStr = atob(res.base64)
-        const len = binaryStr.length
-        const bytes = new Uint8Array(len)
-        for (let i = 0; i < len; i++) bytes[i] = binaryStr.charCodeAt(i)
-
+        const bytes = new Uint8Array(binaryStr.length)
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i)
         const blobType =
           format === 'csv'
             ? 'text/csv;charset=utf-8;'
             : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-
         const blob = new Blob([bytes], { type: blobType })
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
@@ -121,7 +126,6 @@ export default function Contatos() {
     setEditingContato(contato)
     setIsFormOpen(true)
   }
-
   const openCreate = () => {
     setEditingContato(null)
     setIsFormOpen(true)
@@ -142,7 +146,7 @@ export default function Contatos() {
               <Button
                 variant="outline"
                 className="bg-white"
-                disabled={isExporting || filteredContatos.length === 0}
+                disabled={isExporting || totalItems === 0}
               >
                 {isExporting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -178,7 +182,7 @@ export default function Contatos() {
               placeholder="Buscar por nome, e-mail ou empresa..."
               className="pl-8 bg-gray-50 border-gray-200 w-full"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
             />
           </div>
         </div>
@@ -195,14 +199,20 @@ export default function Contatos() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredContatos.length === 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
+                  </TableCell>
+                </TableRow>
+              ) : contatos.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                     Nenhum contato encontrado.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredContatos.map((contato) => (
+                contatos.map((contato) => (
                   <TableRow
                     key={contato.id}
                     className="hover:bg-gray-50/50 transition-colors cursor-pointer"
@@ -220,8 +230,7 @@ export default function Contatos() {
                             variant="outline"
                             className="bg-orange-50 text-[#e55320] border-[#e55320]/20 flex items-center gap-1 text-[10px] py-0 px-1.5 h-5 shrink-0"
                           >
-                            <Star className="w-3 h-3 fill-current" />
-                            Principal
+                            <Star className="w-3 h-3 fill-current" /> Principal
                           </Badge>
                         )}
                       </div>
@@ -255,20 +264,20 @@ export default function Contatos() {
             </TableBody>
           </Table>
         </div>
+        <PaginationControls page={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
 
       <ContatoFormDialog
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
-        onSuccess={loadData}
+        onSuccess={() => setRefreshTrigger((t) => t + 1)}
         initialData={editingContato}
         clientes={clientes}
       />
-
       <ContatoImportDialog
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
-        onSuccess={loadData}
+        onSuccess={() => setRefreshTrigger((t) => t + 1)}
       />
     </div>
   )

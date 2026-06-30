@@ -131,3 +131,40 @@ export const deleteCliente = async (id: string) => {
   }
   return pb.collection('clientes').delete(id)
 }
+
+export const buildClientesFilter = (search?: string, status?: string, tipo?: string): string => {
+  const filters: string[] = []
+  const s = (search || '').replace(/"/g, '').trim()
+  if (s) filters.push(`(nome ~ "${s}" || documento ~ "${s}")`)
+  if (status && status !== 'Todos') filters.push(`status = "${status}"`)
+  if (tipo && tipo !== 'Todos') filters.push(`tipo = "${tipo}"`)
+  return filters.join(' && ')
+}
+
+const clientesSortMap: Record<string, string> = {
+  'nome-asc': 'nome',
+  'nome-desc': '-nome',
+  'data_cadastro-desc': '-created',
+  'data_cadastro-asc': 'created',
+  'last_contact-desc': '-updated',
+  'last_contact-asc': 'updated',
+}
+
+export const getClientesPaginated = async (
+  page: number,
+  perPage: number,
+  options: { search?: string; status?: string; tipo?: string; sort?: string },
+) => {
+  const filter = buildClientesFilter(options.search, options.status, options.tipo)
+  const result = await pb.collection('clientes').getList<Cliente>(page, perPage, {
+    filter: filter || undefined,
+    sort: clientesSortMap[options.sort || 'nome-asc'] || 'nome',
+    expand: 'contatos_via_cliente_id',
+  })
+  return {
+    items: result.items,
+    totalItems: result.totalItems,
+    totalPages: result.totalPages,
+    page: result.page,
+  }
+}

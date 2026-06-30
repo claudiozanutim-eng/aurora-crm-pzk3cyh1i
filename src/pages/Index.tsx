@@ -30,6 +30,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { isBirthdayToday } from '@/lib/birthday-utils'
 
 function CustomDatePicker({
   date,
@@ -209,9 +210,7 @@ export default function Index() {
         filterTarefas = filterTarefas ? `(${filterTarefas}) && ${vFilter}` : vFilter
       }
 
-      const todayFilter = `"${format(new Date(), '-MM-dd')}"`
-
-      const [clientes, leads, negocios, tarefas, aniversariantes] = await Promise.all([
+      const [clientes, leads, negocios, tarefas, allContatos] = await Promise.all([
         pb.collection('clientes').getFullList({ filter: filterClientes }),
         pb.collection('leads').getFullList({ filter: filterLeads }),
         pb
@@ -222,8 +221,10 @@ export default function Index() {
           .getFullList({ expand: 'cliente_id,lead_id', filter: filterTarefas }),
         pb
           .collection('contatos')
-          .getFullList({ expand: 'cliente_id', filter: `data_aniversario ~ ${todayFilter}` }),
+          .getFullList({ expand: 'cliente_id', filter: 'data_aniversario != ""' }),
       ])
+
+      const aniversariantes = allContatos.filter((c) => isBirthdayToday(c.data_aniversario))
 
       let finalClientes = clientes
       if (vendedorId !== 'all') {
@@ -242,6 +243,18 @@ export default function Index() {
   useEffect(() => {
     loadData()
   }, [queryDates, vendedorId])
+
+  const loadAniversariantes = async () => {
+    try {
+      const allContatos = await pb
+        .collection('contatos')
+        .getFullList({ expand: 'cliente_id', filter: 'data_aniversario != ""' })
+      const aniversariantes = allContatos.filter((c) => isBirthdayToday(c.data_aniversario))
+      setData((prev) => ({ ...prev, aniversariantes }))
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   const handleRealtimeEvent = async (collection: string, action: string, record: any) => {
     if (action === 'delete') {
@@ -326,6 +339,7 @@ export default function Index() {
   useRealtime('interacoes', () => {
     // Placeholder as per requirements; interactions are not stored in Dashboard state directly.
   })
+  useRealtime('contatos', () => loadAniversariantes())
 
   const filteredData = useMemo(() => {
     const { startDate, endDate } = queryDates
