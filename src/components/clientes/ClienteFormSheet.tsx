@@ -79,6 +79,11 @@ function isValidCNPJ(cnpj: string) {
   return true
 }
 
+const phoneOptional = z
+  .string()
+  .optional()
+  .refine((val) => !val || val.length >= 14, 'Telefone inválido')
+
 const clientSchema = z
   .object({
     tipo: z.enum(['PF', 'PJ']),
@@ -102,10 +107,8 @@ const clientSchema = z
         z.object({
           nome_contato: z.string().optional(),
           email: z.string().trim().email('E-mail inválido').or(z.literal('')).optional(),
-          telefone: z
-            .string()
-            .optional()
-            .refine((val) => !val || val.length >= 14, 'Telefone inválido'),
+          telefone: phoneOptional,
+          telefone_fixo: phoneOptional,
           cargo: z.string().optional(),
           data_aniversario: z
             .string()
@@ -124,10 +127,8 @@ const clientSchema = z
       )
       .default([{}]),
     pf_email: z.string().trim().email('E-mail inválido').or(z.literal('')).optional(),
-    pf_telefone: z
-      .string()
-      .optional()
-      .refine((val) => !val || val.length >= 14, 'Telefone inválido'),
+    pf_telefone: phoneOptional,
+    pf_telefone_fixo: phoneOptional,
     tags: z.array(z.string()).default([]),
     pais: z.string().default('Brasil'),
     cep: z.string().optional(),
@@ -146,24 +147,18 @@ const clientSchema = z
         ? cleanDoc.length === 14 && isValidCNPJ(cleanDoc)
         : cleanDoc.length === 11 && isValidCPF(cleanDoc)
     },
-    {
-      message: 'Documento inválido',
-      path: ['documento'],
-    },
+    { message: 'Documento inválido', path: ['documento'] },
   )
   .refine(
     (data) => {
       if (data.tipo === 'PF') {
         const hasEmail = !!data.pf_email?.trim()
-        const hasPhone = !!data.pf_telefone?.trim()
+        const hasPhone = !!data.pf_telefone?.trim() || !!data.pf_telefone_fixo?.trim()
         return hasEmail || hasPhone
       }
       return true
     },
-    {
-      message: 'Salvar pelo menos uma forma de contato com a pessoa',
-      path: ['pf_telefone'],
-    },
+    { message: 'Salvar pelo menos uma forma de contato com a pessoa', path: ['pf_telefone'] },
   )
 
 type FormData = z.infer<typeof clientSchema>
@@ -176,7 +171,6 @@ function maskCPF(value: string) {
     .replace(/(\d{3})(\d{1,2})/, '$1-$2')
     .replace(/(-\d{2})\d+?$/, '$1')
 }
-
 function maskCNPJ(value: string) {
   return value
     .replace(/\D/g, '')
@@ -186,7 +180,6 @@ function maskCNPJ(value: string) {
     .replace(/(\d{4})(\d)/, '$1-$2')
     .replace(/(-\d{2})\d+?$/, '$1')
 }
-
 function maskPhone(value: string) {
   return value
     .replace(/\D/g, '')
@@ -194,7 +187,6 @@ function maskPhone(value: string) {
     .replace(/(\d{4,5})(\d)/, '$1-$2')
     .replace(/(-\d{4})\d+?$/, '$1')
 }
-
 function maskBirthday(value: string) {
   const digits = value.replace(/\D/g, '').slice(0, 8)
   let result = ''
@@ -203,6 +195,26 @@ function maskBirthday(value: string) {
   if (digits.length > 4) result += '/' + digits.substring(4, 8)
   return result
 }
+
+const DEFAULT_CONTACT = {
+  nome_contato: '',
+  email: '',
+  telefone: '',
+  telefone_fixo: '',
+  cargo: '',
+  data_aniversario: '',
+}
+const SEGMENTOS = [
+  'Educação',
+  'Tecnologia',
+  'Varejo',
+  'Agro',
+  'Indústria',
+  'Serviços',
+  'Cooperativa',
+  'Outro',
+]
+const PORTES = ['Micro', 'Pequeno', 'Médio', 'Grande']
 
 interface ClienteFormSheetProps {
   open: boolean
@@ -241,6 +253,7 @@ export function ClienteFormSheet({
       porte: 'Pequeno',
       pf_email: '',
       pf_telefone: '',
+      pf_telefone_fixo: '',
       tags: [],
       pais: 'Brasil',
       cep: '',
@@ -250,23 +263,11 @@ export function ClienteFormSheet({
       bairro: '',
       cidade: '',
       estado: '',
-      contatos: [
-        {
-          nome_contato: '',
-          email: '',
-          telefone: '',
-          cargo: '',
-          data_aniversario: '',
-        },
-      ],
+      contatos: [{ ...DEFAULT_CONTACT }],
     },
   })
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'contatos',
-  })
-
+  const { fields, append, remove } = useFieldArray({ control, name: 'contatos' })
   const tipo = watch('tipo')
 
   useEffect(() => {
@@ -274,40 +275,36 @@ export function ClienteFormSheet({
       if (initialData) {
         const isPF = initialData.tipo === 'PF'
         const contatos = initialData.expand?.contatos_via_cliente_id || []
-
         let pf_email = ''
         let pf_telefone = ''
-        let mappedContatos = [
-          { nome_contato: '', email: '', telefone: '', cargo: '', data_aniversario: '' },
-        ]
-
+        let pf_telefone_fixo = ''
+        let mappedContatos = [{ ...DEFAULT_CONTACT }]
         if (isPF && contatos.length > 0) {
           const c = contatos[0]
           pf_email = c.email || ''
           pf_telefone = c.telefone || ''
+          pf_telefone_fixo = c.telefone_fixo || ''
         } else if (!isPF && contatos.length > 0) {
           mappedContatos = contatos.map((c) => ({
             nome_contato: c.nome || '',
             email: c.email || '',
             telefone: c.telefone || '',
+            telefone_fixo: c.telefone_fixo || '',
             cargo: c.cargo || '',
             data_aniversario: c.data_aniversario
               ? (() => {
                   const d = new Date(c.data_aniversario)
                   const day = String(d.getUTCDate()).padStart(2, '0')
                   const month = String(d.getUTCMonth() + 1).padStart(2, '0')
-                  if (d.getUTCFullYear() === 1900) {
-                    return `${day}/${month}`
-                  }
+                  if (d.getUTCFullYear() === 1900) return `${day}/${month}`
                   return `${day}/${month}/${d.getUTCFullYear()}`
                 })()
               : '',
           }))
         }
-
-        const rawDoc = initialData.documento || ''
-        const maskedDoc = isPF ? maskCPF(rawDoc) : maskCNPJ(rawDoc)
-
+        const maskedDoc = isPF
+          ? maskCPF(initialData.documento || '')
+          : maskCNPJ(initialData.documento || '')
         reset({
           tipo: initialData.tipo,
           nome: initialData.nome,
@@ -318,6 +315,7 @@ export function ClienteFormSheet({
           status: initialData.status,
           pf_email,
           pf_telefone,
+          pf_telefone_fixo,
           tags: initialData.tags || [],
           pais: initialData.pais || 'Brasil',
           cep: initialData.cep || '',
@@ -337,6 +335,7 @@ export function ClienteFormSheet({
           porte: 'Pequeno',
           pf_email: '',
           pf_telefone: '',
+          pf_telefone_fixo: '',
           documento: '',
           nome: '',
           nome_fantasia: '',
@@ -349,9 +348,7 @@ export function ClienteFormSheet({
           bairro: '',
           cidade: '',
           estado: '',
-          contatos: [
-            { nome_contato: '', email: '', telefone: '', cargo: '', data_aniversario: '' },
-          ],
+          contatos: [{ ...DEFAULT_CONTACT }],
         })
       }
       setStep(1)
@@ -359,7 +356,7 @@ export function ClienteFormSheet({
   }, [open, initialData, reset])
 
   const handleNext = async () => {
-    const fields: string[] = [
+    const fieldsToValidate: string[] = [
       'tipo',
       'nome',
       'nome_fantasia',
@@ -368,18 +365,15 @@ export function ClienteFormSheet({
       'porte',
       'status',
     ]
-    if (tipo === 'PF') {
-      fields.push('pf_email', 'pf_telefone')
-    }
-    const isStep1Valid = await trigger(fields as any)
-    if (isStep1Valid) {
-      setStep(2)
-    }
+    if (tipo === 'PF') fieldsToValidate.push('pf_email', 'pf_telefone', 'pf_telefone_fixo')
+    const isStep1Valid = await trigger(fieldsToValidate as any)
+    if (isStep1Valid) setStep(2)
   }
 
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const masked = tipo === 'PJ' ? maskCNPJ(e.target.value) : maskCPF(e.target.value)
-    setValue('documento', masked, { shouldValidate: true })
+    setValue('documento', tipo === 'PJ' ? maskCNPJ(e.target.value) : maskCPF(e.target.value), {
+      shouldValidate: true,
+    })
   }
 
   const handlePhoneChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -388,11 +382,8 @@ export function ClienteFormSheet({
 
   const checkDocumento = (data: FormData) => {
     const cleanDoc = data.documento?.replace(/\D/g, '') || ''
-    if (cleanDoc.length === 0) {
-      setShowConfirmEmptyDoc(true)
-    } else {
-      checkContacts(data)
-    }
+    if (cleanDoc.length === 0) setShowConfirmEmptyDoc(true)
+    else checkContacts(data)
   }
 
   const checkContacts = (data: FormData) => {
@@ -400,20 +391,17 @@ export function ClienteFormSheet({
       executeSubmit(data)
       return
     }
-
     const hasAnyContact = data.contatos.some(
       (c) =>
         c.nome_contato?.trim() ||
         c.email?.trim() ||
         c.telefone?.trim() ||
+        c.telefone_fixo?.trim() ||
         c.cargo?.trim() ||
         c.data_aniversario?.trim(),
     )
-    if (!hasAnyContact) {
-      setShowConfirmEmptyContact(true)
-    } else {
-      executeSubmit(data)
-    }
+    if (!hasAnyContact) setShowConfirmEmptyContact(true)
+    else executeSubmit(data)
   }
 
   const onSubmit = async (data: FormData) => {
@@ -424,15 +412,14 @@ export function ClienteFormSheet({
   const executeSubmit = async (data: FormData) => {
     try {
       setIsLoading(true)
-
-      let validContacts = []
-
+      let validContacts: any[] = []
       if (data.tipo === 'PF') {
         validContacts = [
           {
             nome: data.nome,
             email: data.pf_email?.trim() || '',
             telefone: data.pf_telefone?.trim() || '',
+            telefone_fixo: data.pf_telefone_fixo?.trim() || '',
             cargo: '',
           },
         ]
@@ -443,6 +430,7 @@ export function ClienteFormSheet({
               c.nome_contato?.trim() ||
               c.email?.trim() ||
               c.telefone?.trim() ||
+              c.telefone_fixo?.trim() ||
               c.cargo?.trim() ||
               c.data_aniversario?.trim(),
           )
@@ -450,6 +438,7 @@ export function ClienteFormSheet({
             nome: c.nome_contato?.trim() || '',
             email: c.email?.trim() || '',
             telefone: c.telefone?.trim() || '',
+            telefone_fixo: c.telefone_fixo?.trim() || '',
             cargo: c.cargo?.trim() || '',
             data_aniversario: (() => {
               const val = c.data_aniversario?.trim()
@@ -466,56 +455,33 @@ export function ClienteFormSheet({
           }))
       }
 
-      if (initialData) {
-        await updateClienteEContatos(
-          initialData.id,
-          {
-            tipo: data.tipo,
-            nome: data.nome,
-            nome_fantasia: data.tipo === 'PJ' ? data.nome_fantasia : undefined,
-            documento: data.documento || '',
-            segmento: data.segmento,
-            porte: data.porte,
-            status: data.status,
-            tags: data.tags || [],
-            pais: data.pais || 'Brasil',
-            cep: data.cep || '',
-            rua: data.rua || '',
-            numero: data.numero || '',
-            complemento: data.complemento || '',
-            bairro: data.bairro || '',
-            cidade: data.cidade || '',
-            estado: data.estado || '',
-          },
-          validContacts,
-        )
-        toast.success('Cliente atualizado com sucesso!')
-      } else {
-        await createClienteEContatos(
-          {
-            tipo: data.tipo,
-            nome: data.nome,
-            nome_fantasia: data.tipo === 'PJ' ? data.nome_fantasia : undefined,
-            documento: data.documento || '',
-            segmento: data.segmento,
-            porte: data.porte,
-            status: data.status,
-            tags: data.tags || [],
-            pais: data.pais || 'Brasil',
-            cep: data.cep || '',
-            rua: data.rua || '',
-            numero: data.numero || '',
-            complemento: data.complemento || '',
-            bairro: data.bairro || '',
-            cidade: data.cidade || '',
-            estado: data.estado || '',
-            data_cadastro: new Date().toISOString(),
-          },
-          validContacts,
-        )
-        toast.success('Cliente cadastrado com sucesso!')
+      const clienteData = {
+        tipo: data.tipo,
+        nome: data.nome,
+        nome_fantasia: data.tipo === 'PJ' ? data.nome_fantasia : undefined,
+        documento: data.documento || '',
+        segmento: data.segmento,
+        porte: data.porte,
+        status: data.status,
+        tags: data.tags || [],
+        pais: data.pais || 'Brasil',
+        cep: data.cep || '',
+        rua: data.rua || '',
+        numero: data.numero || '',
+        complemento: data.complemento || '',
+        bairro: data.bairro || '',
+        cidade: data.cidade || '',
+        estado: data.estado || '',
+        ...(initialData ? {} : { data_cadastro: new Date().toISOString() }),
       }
 
+      if (initialData) {
+        await updateClienteEContatos(initialData.id, clienteData, validContacts)
+        toast.success('Cliente atualizado com sucesso!')
+      } else {
+        await createClienteEContatos(clienteData, validContacts)
+        toast.success('Cliente cadastrado com sucesso!')
+      }
       setStep(1)
       onSuccess()
       onOpenChange(false)
@@ -554,6 +520,7 @@ export function ClienteFormSheet({
                   if (v === 'PJ') {
                     setValue('pf_email', '')
                     setValue('pf_telefone', '')
+                    setValue('pf_telefone_fixo', '')
                   }
                 }}
                 className="w-full"
@@ -607,14 +574,11 @@ export function ClienteFormSheet({
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Educação">Educação</SelectItem>
-                            <SelectItem value="Tecnologia">Tecnologia</SelectItem>
-                            <SelectItem value="Varejo">Varejo</SelectItem>
-                            <SelectItem value="Agro">Agro</SelectItem>
-                            <SelectItem value="Indústria">Indústria</SelectItem>
-                            <SelectItem value="Serviços">Serviços</SelectItem>
-                            <SelectItem value="Cooperativa">Cooperativa</SelectItem>
-                            <SelectItem value="Outro">Outro</SelectItem>
+                            {SEGMENTOS.map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {s}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       )}
@@ -623,7 +587,6 @@ export function ClienteFormSheet({
                       <span className="text-sm text-red-500">{errors.segmento.message}</span>
                     )}
                   </div>
-
                   <div className="space-y-2">
                     <Label>Porte *</Label>
                     <Controller
@@ -635,10 +598,11 @@ export function ClienteFormSheet({
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Micro">Micro</SelectItem>
-                            <SelectItem value="Pequeno">Pequeno</SelectItem>
-                            <SelectItem value="Médio">Médio</SelectItem>
-                            <SelectItem value="Grande">Grande</SelectItem>
+                            {PORTES.map((p) => (
+                              <SelectItem key={p} value={p}>
+                                {p}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       )}
@@ -651,7 +615,7 @@ export function ClienteFormSheet({
               )}
 
               {tipo === 'PF' && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="pf_email">E-mail</Label>
                     <Input
@@ -664,20 +628,41 @@ export function ClienteFormSheet({
                       <span className="text-sm text-red-500">{errors.pf_email.message}</span>
                     )}
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="pf_telefone">Telefone</Label>
-                    <Input
-                      id="pf_telefone"
-                      value={watch('pf_telefone') || ''}
-                      onChange={(e) => {
-                        setValue('pf_telefone', maskPhone(e.target.value), { shouldValidate: true })
-                      }}
-                      placeholder="(11) 99999-9999"
-                    />
-                    {errors.pf_telefone && (
-                      <span className="text-sm text-red-500">{errors.pf_telefone.message}</span>
-                    )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pf_telefone">Telefone Celular</Label>
+                      <Input
+                        id="pf_telefone"
+                        value={watch('pf_telefone') || ''}
+                        onChange={(e) =>
+                          setValue('pf_telefone', maskPhone(e.target.value), {
+                            shouldValidate: true,
+                          })
+                        }
+                        placeholder="(11) 99999-9999"
+                      />
+                      {errors.pf_telefone && (
+                        <span className="text-sm text-red-500">{errors.pf_telefone.message}</span>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pf_telefone_fixo">Telefone Fixo</Label>
+                      <Input
+                        id="pf_telefone_fixo"
+                        value={watch('pf_telefone_fixo') || ''}
+                        onChange={(e) =>
+                          setValue('pf_telefone_fixo', maskPhone(e.target.value), {
+                            shouldValidate: true,
+                          })
+                        }
+                        placeholder="(11) 3333-3333"
+                      />
+                      {errors.pf_telefone_fixo && (
+                        <span className="text-sm text-red-500">
+                          {errors.pf_telefone_fixo.message}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -751,7 +736,6 @@ export function ClienteFormSheet({
                 }}
                 onChange={(field, value) => setValue(field as keyof AddressValues, value as any)}
               />
-
               <div className="sticky bottom-0 bg-background pt-4 pb-2 border-t mt-4 flex gap-4 z-10">
                 <Button
                   type="button"
@@ -800,7 +784,6 @@ export function ClienteFormSheet({
                       </Button>
                     )}
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor={`nome_contato-${index}`}>Nome do Contato</Label>
                     <Input
@@ -814,7 +797,6 @@ export function ClienteFormSheet({
                       </span>
                     )}
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor={`email-${index}`}>E-mail</Label>
                     <Input
@@ -829,22 +811,40 @@ export function ClienteFormSheet({
                       </span>
                     )}
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor={`telefone-${index}`}>Telefone</Label>
-                    <Input
-                      id={`telefone-${index}`}
-                      value={watch(`contatos.${index}.telefone`) || ''}
-                      onChange={(e) => handlePhoneChange(index, e)}
-                      placeholder="(11) 99999-9999"
-                    />
-                    {errors.contatos?.[index]?.telefone && (
-                      <span className="text-sm text-red-500">
-                        {errors.contatos[index]?.telefone?.message}
-                      </span>
-                    )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`telefone-${index}`}>Telefone Celular</Label>
+                      <Input
+                        id={`telefone-${index}`}
+                        value={watch(`contatos.${index}.telefone`) || ''}
+                        onChange={(e) => handlePhoneChange(index, e)}
+                        placeholder="(11) 99999-9999"
+                      />
+                      {errors.contatos?.[index]?.telefone && (
+                        <span className="text-sm text-red-500">
+                          {errors.contatos[index]?.telefone?.message}
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`telefone_fixo-${index}`}>Telefone Fixo</Label>
+                      <Input
+                        id={`telefone_fixo-${index}`}
+                        value={watch(`contatos.${index}.telefone_fixo`) || ''}
+                        onChange={(e) =>
+                          setValue(`contatos.${index}.telefone_fixo`, maskPhone(e.target.value), {
+                            shouldValidate: true,
+                          })
+                        }
+                        placeholder="(11) 3333-3333"
+                      />
+                      {errors.contatos?.[index]?.telefone_fixo && (
+                        <span className="text-sm text-red-500">
+                          {errors.contatos[index]?.telefone_fixo?.message}
+                        </span>
+                      )}
+                    </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor={`cargo-${index}`}>Cargo</Label>
                     <Input
@@ -853,22 +853,19 @@ export function ClienteFormSheet({
                       placeholder="Diretor, Gerente..."
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor={`data_aniversario-${index}`}>Data de Aniversário</Label>
                     <Input
                       id={`data_aniversario-${index}`}
                       type="text"
                       value={watch(`contatos.${index}.data_aniversario`) || ''}
-                      onChange={(e) => {
+                      onChange={(e) =>
                         setValue(
                           `contatos.${index}.data_aniversario`,
                           maskBirthday(e.target.value),
-                          {
-                            shouldValidate: true,
-                          },
+                          { shouldValidate: true },
                         )
-                      }}
+                      }
                       placeholder="DD/MM/AAAA"
                       inputMode="numeric"
                     />
@@ -880,24 +877,14 @@ export function ClienteFormSheet({
                   </div>
                 </div>
               ))}
-
               <Button
                 type="button"
                 variant="outline"
                 className="w-full border-dashed"
-                onClick={() =>
-                  append({
-                    nome_contato: '',
-                    email: '',
-                    telefone: '',
-                    cargo: '',
-                    data_aniversario: '',
-                  })
-                }
+                onClick={() => append({ ...DEFAULT_CONTACT })}
               >
                 + Novo Contato
               </Button>
-
               <div className="sticky bottom-0 bg-background pt-4 pb-2 border-t mt-4 flex gap-4 z-10">
                 <Button
                   type="button"
@@ -939,7 +926,6 @@ export function ClienteFormSheet({
               disabled={isLoading}
               className="bg-[#e55320] hover:bg-[#e55320]/90 text-white"
             >
-              {' '}
               Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -965,7 +951,6 @@ export function ClienteFormSheet({
               disabled={isLoading}
               className="bg-[#e55320] hover:bg-[#e55320]/90 text-white"
             >
-              {' '}
               {isLoading ? 'Salvando...' : 'Confirmar'}
             </AlertDialogAction>
           </AlertDialogFooter>

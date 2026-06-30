@@ -8,7 +8,9 @@ routerAdd(
     if (!base64) return e.badRequestError('missing base64 content')
 
     if (base64.startsWith('UEsD')) {
-      return e.badRequestError('Arquivos XLSX não são suportados. Por favor, envie um arquivo CSV.')
+      return e.badRequestError(
+        'Arquivos XLSX são processados localmente no navegador. Salve como CSV e tente novamente.',
+      )
     }
 
     try {

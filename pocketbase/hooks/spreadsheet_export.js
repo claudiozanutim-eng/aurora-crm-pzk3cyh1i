@@ -517,6 +517,21 @@ routerAdd(
         return out
       }
 
+      // Log to auditoria
+      try {
+        var auditCol = $app.findCollectionByNameOrId('auditoria')
+        var auditRecord = new Record(auditCol)
+        auditRecord.set('usuario_id', e.auth.id)
+        auditRecord.set('acao', 'Exportação de ' + (body.source || 'dados'))
+        auditRecord.set('recurso', body.source || 'desconhecido')
+        var recordCount = Array.isArray(dataArray) ? Math.max(0, dataArray.length - 1) : 0
+        auditRecord.set(
+          'detalhes',
+          'Formato: ' + (body.format || 'xlsx') + ' | ' + recordCount + ' registro(s)',
+        )
+        $app.save(auditRecord)
+      } catch (auditErr) {}
+
       if (body.format === 'csv') {
         const escapeCsvStr = (str) => {
           if (str === null || str === undefined || str === '') return '""'

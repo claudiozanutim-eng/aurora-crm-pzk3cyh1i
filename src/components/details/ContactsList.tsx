@@ -18,15 +18,25 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { User, Phone, Mail, Briefcase, Star, Plus } from 'lucide-react'
+import { User, Phone, Mail, Briefcase, Star, Plus, PhoneCall } from 'lucide-react'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useToast } from '@/hooks/use-toast'
+
+function maskPhone(value: string) {
+  return value
+    .replace(/\D/g, '')
+    .replace(/(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{4,5})(\d)/, '$1-$2')
+    .replace(/(-\d{4})\d+?$/, '$1')
+}
 
 export function ContactsList({ clienteId }: { clienteId: string }) {
   const { toast } = useToast()
   const [contatos, setContatos] = useState<Contato[]>([])
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Contato | null>(null)
+  const [telefone, setTelefone] = useState('')
+  const [telefoneFixo, setTelefoneFixo] = useState('')
 
   const load = async () => {
     try {
@@ -42,11 +52,36 @@ export function ContactsList({ clienteId }: { clienteId: string }) {
   }, [clienteId])
   useRealtime('contatos', load)
 
+  const openCreate = () => {
+    setEditing(null)
+    setTelefone('')
+    setTelefoneFixo('')
+    setOpen(true)
+  }
+
+  const openEdit = (c: Contato) => {
+    setEditing(c)
+    setTelefone(c.telefone || '')
+    setTelefoneFixo(c.telefone_fixo || '')
+    setOpen(true)
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
-    const data = Object.fromEntries(fd.entries())
+    const nome = (fd.get('nome') as string)?.trim()
+    if (!nome) {
+      toast({ title: 'Nome é obrigatório', variant: 'destructive' })
+      return
+    }
     try {
+      const data = {
+        nome,
+        email: (fd.get('email') as string)?.trim() || '',
+        telefone: telefone.trim(),
+        telefone_fixo: telefoneFixo.trim(),
+        cargo: (fd.get('cargo') as string)?.trim() || '',
+      }
       if (editing) await updateContato(editing.id, data)
       else
         await createContato({ ...data, cliente_id: clienteId, is_principal: contatos.length === 0 })
@@ -55,11 +90,6 @@ export function ContactsList({ clienteId }: { clienteId: string }) {
     } catch (err) {
       toast({ title: 'Erro ao salvar', variant: 'destructive' })
     }
-  }
-
-  const openEdit = (c: Contato) => {
-    setEditing(c)
-    setOpen(true)
   }
 
   const handlePrincipal = async (id: string) => {
@@ -83,7 +113,7 @@ export function ContactsList({ clienteId }: { clienteId: string }) {
           }}
         >
           <DialogTrigger asChild>
-            <Button className="bg-[#FF6B00] hover:bg-[#E66000] text-white">
+            <Button onClick={openCreate} className="bg-[#FF6B00] hover:bg-[#E66000] text-white">
               <Plus className="w-4 h-4 mr-2" /> Adicionar Contato
             </Button>
           </DialogTrigger>
@@ -100,15 +130,29 @@ export function ContactsList({ clienteId }: { clienteId: string }) {
                 <Label>E-mail</Label>
                 <Input name="email" type="email" defaultValue={editing?.email} />
               </div>
-              <div className="space-y-2">
-                <Label>Telefone</Label>
-                <Input name="telefone" defaultValue={editing?.telefone} />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Telefone Celular</Label>
+                  <Input
+                    value={telefone}
+                    onChange={(e) => setTelefone(maskPhone(e.target.value))}
+                    placeholder="(11) 99999-9999"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefone Fixo</Label>
+                  <Input
+                    value={telefoneFixo}
+                    onChange={(e) => setTelefoneFixo(maskPhone(e.target.value))}
+                    placeholder="(11) 3333-3333"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Cargo</Label>
                 <Input name="cargo" defaultValue={editing?.cargo} />
               </div>
-              <Button type="submit" className="w-full bg-[#FF6B00]">
+              <Button type="submit" className="w-full bg-[#FF6B00] hover:bg-[#E66000] text-white">
                 Salvar Contato
               </Button>
             </form>
@@ -151,7 +195,14 @@ export function ContactsList({ clienteId }: { clienteId: string }) {
               )}
               {c.telefone && (
                 <div className="text-sm text-gray-600 flex items-center gap-2">
-                  <Phone className="w-4 h-4" /> {c.telefone}
+                  <Phone className="w-4 h-4" /> <span className="font-medium">Celular:</span>{' '}
+                  {c.telefone}
+                </div>
+              )}
+              {c.telefone_fixo && (
+                <div className="text-sm text-gray-600 flex items-center gap-2">
+                  <PhoneCall className="w-4 h-4" /> <span className="font-medium">Fixo:</span>{' '}
+                  {c.telefone_fixo}
                 </div>
               )}
             </CardContent>

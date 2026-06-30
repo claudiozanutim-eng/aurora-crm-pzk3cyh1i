@@ -15,6 +15,14 @@ import { toast } from 'sonner'
 import { createContato, updateContato } from '@/services/contatos'
 import type { Contato, Cliente } from '@/services/clientes'
 
+function maskPhone(value: string) {
+  return value
+    .replace(/\D/g, '')
+    .replace(/(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{4,5})(\d)/, '$1-$2')
+    .replace(/(-\d{4})\d+?$/, '$1')
+}
+
 interface ContatoFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -33,11 +41,15 @@ export function ContatoFormDialog({
   const [isLoading, setIsLoading] = useState(false)
   const [clienteId, setClienteId] = useState('')
   const [isPrincipal, setIsPrincipal] = useState(false)
+  const [telefone, setTelefone] = useState('')
+  const [telefoneFixo, setTelefoneFixo] = useState('')
 
   useEffect(() => {
     if (open) {
       setClienteId(initialData?.cliente_id || '')
       setIsPrincipal(initialData?.is_principal || false)
+      setTelefone(initialData?.telefone || '')
+      setTelefoneFixo(initialData?.telefone_fixo || '')
     }
   }, [open, initialData])
 
@@ -61,7 +73,8 @@ export function ContatoFormDialog({
       const data = {
         nome,
         email: (fd.get('email') as string)?.trim() || '',
-        telefone: (fd.get('telefone') as string)?.trim() || '',
+        telefone: telefone.trim(),
+        telefone_fixo: telefoneFixo.trim(),
         cargo: (fd.get('cargo') as string)?.trim() || '',
         cliente_id: selectedClientId,
         is_principal: isPrincipal,
@@ -98,9 +111,23 @@ export function ContatoFormDialog({
             <Label>E-mail</Label>
             <Input name="email" type="email" defaultValue={initialData?.email} />
           </div>
-          <div className="space-y-2">
-            <Label>Telefone</Label>
-            <Input name="telefone" defaultValue={initialData?.telefone} />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Telefone Celular</Label>
+              <Input
+                value={telefone}
+                onChange={(e) => setTelefone(maskPhone(e.target.value))}
+                placeholder="(11) 99999-9999"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Telefone Fixo</Label>
+              <Input
+                value={telefoneFixo}
+                onChange={(e) => setTelefoneFixo(maskPhone(e.target.value))}
+                placeholder="(11) 3333-3333"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Cargo</Label>

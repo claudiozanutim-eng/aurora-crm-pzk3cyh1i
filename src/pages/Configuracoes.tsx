@@ -8,6 +8,9 @@ import { useAuth } from '@/hooks/use-auth'
 import pb from '@/lib/pocketbase/client'
 import { toast } from 'sonner'
 import { extractFieldErrors, getErrorMessage } from '@/lib/pocketbase/errors'
+import { DangerZone } from '@/components/configuracoes/DangerZone'
+import { BackupExport } from '@/components/configuracoes/BackupExport'
+import { AuditLogs } from '@/components/configuracoes/AuditLogs'
 
 export default function Configuracoes() {
   const { user: currentUser } = useAuth()
@@ -216,6 +219,10 @@ export default function Configuracoes() {
           </div>
         </CardContent>
       </Card>
+
+      {currentUser?.perfil === 'Admin' && <BackupExport />}
+      {currentUser?.perfil === 'Admin' && <AuditLogs />}
+      {currentUser?.perfil === 'Admin' && <DangerZone />}
     </div>
   )
 }

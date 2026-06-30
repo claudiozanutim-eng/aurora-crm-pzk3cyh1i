@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -10,7 +10,18 @@ import {
 } from '@/components/ui/select'
 import { Loader2 } from 'lucide-react'
 
-const BRAZILIAN_STATES = [
+export interface AddressValues {
+  pais: string
+  cep: string
+  rua: string
+  numero: string
+  complemento: string
+  bairro: string
+  cidade: string
+  estado: string
+}
+
+const UF_STATES = [
   'AC',
   'AL',
   'AP',
@@ -40,15 +51,34 @@ const BRAZILIAN_STATES = [
   'TO',
 ]
 
-export interface AddressValues {
-  pais: string
-  cep: string
-  rua: string
-  numero: string
-  complemento: string
-  bairro: string
-  cidade: string
-  estado: string
+const UF_NAMES: Record<string, string> = {
+  AC: 'Acre',
+  AL: 'Alagoas',
+  AP: 'Amapá',
+  AM: 'Amazonas',
+  BA: 'Bahia',
+  CE: 'Ceará',
+  DF: 'Distrito Federal',
+  ES: 'Espírito Santo',
+  GO: 'Goiás',
+  MA: 'Maranhão',
+  MT: 'Mato Grosso',
+  MS: 'Mato Grosso do Sul',
+  MG: 'Minas Gerais',
+  PA: 'Pará',
+  PB: 'Paraíba',
+  PR: 'Paraná',
+  PE: 'Pernambuco',
+  PI: 'Piauí',
+  RJ: 'Rio de Janeiro',
+  RN: 'Rio Grande do Norte',
+  RS: 'Rio Grande do Sul',
+  RO: 'Rondônia',
+  RR: 'Roraima',
+  SC: 'Santa Catarina',
+  SP: 'São Paulo',
+  SE: 'Sergipe',
+  TO: 'Tocantins',
 }
 
 interface AddressFieldsProps {
@@ -56,149 +86,141 @@ interface AddressFieldsProps {
   onChange: (field: keyof AddressValues, value: string) => void
 }
 
-function maskCEP(value: string) {
-  return value
-    .replace(/\D/g, '')
-    .replace(/(\d{5})(\d)/, '$1-$2')
-    .replace(/(-\d{3})\d+?$/, '$1')
-}
-
 export function AddressFields({ values, onChange }: AddressFieldsProps) {
-  const [loadingCep, setLoadingCep] = useState(false)
-  const isBrazil = values.pais === 'Brasil'
+  const [cepLoading, setCepLoading] = useState(false)
+  const [cepError, setCepError] = useState('')
 
-  const handleCepLookup = async (cep: string) => {
-    const cleanCep = cep.replace(/\D/g, '')
-    if (cleanCep.length !== 8) return
+  const isBrasil = (values.pais || 'Brasil') === 'Brasil'
 
-    setLoadingCep(true)
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`)
-      const data = await res.json()
-      if (!data.erro) {
+  const handleCepChange = useCallback(
+    async (rawCep: string) => {
+      const digits = rawCep.replace(/\D/g, '').slice(0, 8)
+      const masked = digits.replace(/(\d{5})(\d)/, '$1-$2')
+      onChange('cep', masked)
+      setCepError('')
+
+      if (!isBrasil || digits.length !== 8) return
+
+      setCepLoading(true)
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
+        const data = await res.json()
+        if (data.erro) {
+          setCepError('CEP não encontrado')
+          return
+        }
         onChange('rua', data.logradouro || '')
         onChange('bairro', data.bairro || '')
         onChange('cidade', data.localidade || '')
         onChange('estado', data.uf || '')
+        onChange('complemento', data.complemento || '')
+      } catch {
+        setCepError('Erro ao buscar CEP')
+      } finally {
+        setCepLoading(false)
       }
-    } catch {
-      // silently fail — user can type manually
-    } finally {
-      setLoadingCep(false)
-    }
-  }
-
-  const handleCepChange = (value: string) => {
-    const masked = maskCEP(value)
-    onChange('cep', masked)
-    if (masked.replace(/\D/g, '').length === 8) {
-      handleCepLookup(masked)
-    }
-  }
+    },
+    [isBrasil, onChange],
+  )
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="pais">País</Label>
-        <Input
-          id="pais"
-          value={values.pais}
-          onChange={(e) => onChange('pais', e.target.value)}
-          placeholder="Brasil"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="cep">CEP</Label>
+          <Label htmlFor="pais">País</Label>
+          <Input
+            id="pais"
+            value={values.pais || 'Brasil'}
+            onChange={(e) => onChange('pais', e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="cep">{isBrasil ? 'CEP' : 'Código Postal'}</Label>
           <div className="relative">
             <Input
               id="cep"
-              value={values.cep}
+              value={values.cep || ''}
               onChange={(e) => handleCepChange(e.target.value)}
-              placeholder="00000-000"
-              inputMode="numeric"
-              disabled={loadingCep}
+              placeholder={isBrasil ? '00000-000' : 'Código postal'}
             />
-            {loadingCep && (
+            {cepLoading && (
               <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-gray-400" />
             )}
           </div>
+          {cepError && <span className="text-sm text-red-500">{cepError}</span>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="rua">Rua / Logradouro</Label>
+          <Input
+            id="rua"
+            value={values.rua || ''}
+            onChange={(e) => onChange('rua', e.target.value)}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="numero">Número</Label>
           <Input
             id="numero"
-            value={values.numero}
+            value={values.numero || ''}
             onChange={(e) => onChange('numero', e.target.value)}
-            placeholder="123"
           />
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="rua">Rua / Logradouro</Label>
-        <Input
-          id="rua"
-          value={values.rua}
-          onChange={(e) => onChange('rua', e.target.value)}
-          placeholder="Rua Exemplo"
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="complemento">Complemento</Label>
+          <Input
+            id="complemento"
+            value={values.complemento || ''}
+            onChange={(e) => onChange('complemento', e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="bairro">Bairro</Label>
+          <Input
+            id="bairro"
+            value={values.bairro || ''}
+            onChange={(e) => onChange('bairro', e.target.value)}
+          />
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="complemento">Complemento</Label>
-        <Input
-          id="complemento"
-          value={values.complemento}
-          onChange={(e) => onChange('complemento', e.target.value)}
-          placeholder="Sala 1, Andar 2"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="bairro">Bairro</Label>
-        <Input
-          id="bairro"
-          value={values.bairro}
-          onChange={(e) => onChange('bairro', e.target.value)}
-          placeholder="Centro"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="cidade">Cidade</Label>
           <Input
             id="cidade"
-            value={values.cidade}
+            value={values.cidade || ''}
             onChange={(e) => onChange('cidade', e.target.value)}
-            placeholder="São Paulo"
           />
         </div>
         <div className="space-y-2">
           <Label>Estado</Label>
-          {isBrazil ? (
+          {isBrasil ? (
             <Select
               value={values.estado || undefined}
               onValueChange={(val) => onChange('estado', val)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selecione" />
+                <SelectValue placeholder="Selecione o estado" />
               </SelectTrigger>
               <SelectContent>
-                {BRAZILIAN_STATES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
+                {UF_STATES.map((uf) => (
+                  <SelectItem key={uf} value={uf}>
+                    {uf} - {UF_NAMES[uf]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           ) : (
             <Input
-              value={values.estado}
+              value={values.estado || ''}
               onChange={(e) => onChange('estado', e.target.value)}
-              placeholder="Estado"
+              placeholder="Estado / Província / Região"
             />
           )}
         </div>

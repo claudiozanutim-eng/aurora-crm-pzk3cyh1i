@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-29T23:21:27.957Z",
+  "generatedAt": "2026-06-30T00:38:26.234Z",
   "collections": [
     {
       "name": "users",
@@ -289,6 +289,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "telefone_fixo",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE INDEX idx_contatos_cliente_id ON contatos (cliente_id)"]
@@ -818,6 +824,62 @@
         "CREATE INDEX idx_propostas_status ON propostas (status)",
         "CREATE INDEX idx_propostas_cliente_id ON propostas (cliente_id)",
         "CREATE INDEX idx_propostas_titulo ON propostas (titulo)"
+      ]
+    },
+    {
+      "name": "auditoria",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && @request.auth.perfil = 'Admin'",
+        "view": "@request.auth.id != '' && @request.auth.perfil = 'Admin'",
+        "create": "@request.auth.id != ''",
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "usuario_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "acao",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "recurso",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "detalhes",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": [
+        "CREATE INDEX idx_auditoria_usuario_id ON auditoria (usuario_id)",
+        "CREATE INDEX idx_auditoria_created ON auditoria (created)"
       ]
     }
   ]

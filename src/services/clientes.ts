@@ -6,6 +6,7 @@ export interface Contato extends RecordModel {
   nome: string
   email: string
   telefone: string
+  telefone_fixo?: string
   cargo?: string
   data_aniversario?: string
   is_principal: boolean
