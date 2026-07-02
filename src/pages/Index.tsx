@@ -197,7 +197,7 @@ export default function Index() {
       let filterNegocios =
         period === 'all_time'
           ? ''
-          : `((created >= "${startStr}" && created <= "${endStr}") || (data_fechamento_real >= "${startStr}" && data_fechamento_real <= "${endStr}") || (updated >= "${startStr}" && updated <= "${endStr}") || (data_fechamento_real >= "${chartYearStartStr}" && data_fechamento_real <= "${chartYearEndStr}"))`
+          : `((status = "Prospect" || status = "Proposta Enviada" || status = "Negociação" || status = "Stand By") || (created >= "${startStr}" && created <= "${endStr}") || (data_fechamento_real >= "${startStr}" && data_fechamento_real <= "${endStr}") || (data_fechamento_real >= "${chartYearStartStr}" && data_fechamento_real <= "${chartYearEndStr}"))`
       let filterTarefas =
         period === 'all_time'
           ? ''
@@ -350,16 +350,25 @@ export default function Index() {
       return date >= startDate && date <= endDate
     }
 
+    const activeStatuses = ['Prospect', 'Proposta Enviada', 'Negociação', 'Stand By']
+
     const clientes = data.clientes.filter((c) => isDateInPeriod(c.data_cadastro || c.created))
     const clientesAtivos = clientes.filter((c) => c.status === 'Ativo')
 
     const leads = data.leads.filter((l) => isDateInPeriod(l.created))
-    const negocios = data.negocios.filter((n) => isDateInPeriod(n.created))
+
+    // Active deals: always included regardless of date filter (matches Funnel logic)
+    const negociosAndamento = data.negocios.filter((n) => activeStatuses.includes(n.status))
+
+    // For charts/lists: active deals + finalized deals closed within the period
+    const negocios = data.negocios.filter(
+      (n) =>
+        activeStatuses.includes(n.status) ||
+        (['Fechado/Ganho', 'Perdido'].includes(n.status) &&
+          isDateInPeriod(n.data_fechamento_real || n.updated)),
+    )
 
     const leadsAtivos = leads.filter((l) => !['Não Qualificado', 'Convertido'].includes(l.status))
-    const negociosAndamento = negocios.filter(
-      (n) => !['Fechado/Ganho', 'Perdido'].includes(n.status),
-    )
 
     const valorTotalPipeline = negociosAndamento.reduce(
       (acc, n) => acc + (Number(n.valor_estimado) || 0),
